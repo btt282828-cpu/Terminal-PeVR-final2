@@ -124,5 +124,149 @@
 "tag": "EARLY",
 "sym": "URA",
 "dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "NOCTURNO",
+"sym": "VGK",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "NOCTURNO",
+"sym": "INDA",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "NOCTURNO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "GRADUADO",
+"sym": "IGV",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "GRADUADO",
+"sym": "XME",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "GRADUADO",
+"sym": "URA",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "GRADUADO",
+"sym": "SIL",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "GIRO",
+"sym": "DRAM",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "GIRO",
+"sym": "EWY",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "GIRO",
+"sym": "SIL",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "RISK",
+"sym": "XTB",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "FLOW",
+"sym": "JETS",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "FLOW",
+"sym": "CGW",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "FLOW",
+"sym": "XRT",
+"dir": -1
+},
+{
+"date": "2026-08-14",
+"tag": "0/3",
+"sym": "LIT",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "0/3",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "SUELO",
+"sym": "ARKF",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "SUELO",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "SUELO",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "SUELO",
+"sym": "LIT",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "EARLY",
+"sym": "SLV",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "EARLY",
+"sym": "URA",
+"dir": 1
+},
+{
+"date": "2026-08-14",
+"tag": "EARLY",
+"sym": "XME",
+"dir": 1
 }
 ]

@@ -1,0 +1,133 @@
+name: Terminal PeVR
+# Cuando se ejecuta:
+#   - a mano, desde la pestana Actions (boton "Run workflow")
+#   - automatico los viernes a las 22:00 UTC (cierre de Nueva York + margen para que
+#     Yahoo consolide los datos del dia). El cierre del viernes es el unico disparador
+#     del sistema, asi que el resto de la semana no hace falta.
+on:
+  workflow_dispatch:
+  schedule:
+    # OJO: GitHub programa SIEMPRE en hora UTC y NO conoce el cambio de hora.
+    # Espana va UTC+2 en verano y UTC+1 en invierno, asi que para que siempre
+    # sean las 22:30 de Madrid hay que poner las DOS horas y luego descartar
+    # la que no toque (lo hace el primer paso del job).
+    - cron: "30 20 * * 1-5"      # 22:30 Madrid en HORARIO DE VERANO
+    - cron: "30 21 * * 1-5"      # 22:30 Madrid en HORARIO DE INVIERNO
+# Permisos: escribir en el repo (para guardar el historico actualizado) y publicar en Pages.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+# Si se lanzan dos a la vez, que no se pisen.
+concurrency:
+  group: terminal
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar que en Madrid son las 22:30
+        # De las dos citas programadas arriba, solo una cae a las 22:xx de Madrid.
+        # La otra se para aqui en 2 segundos y no gasta casi nada.
+        # Si lo lanzas a mano (Run workflow), este paso no filtra: se ejecuta siempre.
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Lanzado a mano: se ejecuta sin comprobar la hora."
+            exit 0
+          fi
+          hora=$(TZ=Europe/Madrid date +%H)
+          echo "Hora en Madrid: $(TZ=Europe/Madrid date '+%H:%M %Z')"
+          if [ "$hora" != "22" ]; then
+            echo "No son las 22:xx en Madrid. Esta cita es la del otro horario: se omite."
+            echo "OMITIR=si" >> $GITHUB_ENV
+          fi
+      - name: Descargar el repositorio
+        if: env.OMITIR != 'si'
+        uses: actions/checkout@v4
+        with:
+          # CORREGIDO: sin esto el runner se queda "colgado sin rama" (detached HEAD)
+          # y el git push falla con codigo 128 aunque todo lo demas haya ido bien.
+          ref: main
+          fetch-depth: 0
+      - name: Preparar Python
+        if: env.OMITIR != 'si'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Ejecutar el terminal
+        if: env.OMITIR != 'si'
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python rotacion.py
+      - name: Guardar el historico actualizado
+        if: env.OMITIR != 'si'
+        # El programa reescribe historico_seguimiento_NO_BORRAR ENTERO en cada
+        # ejecucion (fichas, marcador, libro). Por eso NO se debe fusionar con la
+        # version del repo: no hay nada que fusionar, el archivo de hoy ya contiene
+        # todo el historico. Antes se usaba "git pull --rebase", que intentaba
+        # mezclar dos JSON completos, chocaba, dejaba el rebase a medias y perdia
+        # el historico de esa ejecucion en silencio.
+        # Ahora: se guarda lo generado hoy, se traen los cambios remotos SIN tocar
+        # el historico, y se vuelve a poner el de hoy encima. El de hoy siempre gana.
+        run: |
+          set -e
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if [ -z "$(git status --porcelain historico_seguimiento_NO_BORRAR)" ]; then
+            echo "Sin cambios en el historico."
+            exit 0
+          fi
+          # copia de seguridad de lo que acaba de generar el build
+          rm -rf /tmp/historico_de_hoy
+          cp -r historico_seguimiento_NO_BORRAR /tmp/historico_de_hoy
+          git checkout -- historico_seguimiento_NO_BORRAR 2>/dev/null || true
+          git clean -fd historico_seguimiento_NO_BORRAR 2>/dev/null || true
+          git fetch origin main
+          git reset --hard origin/main
+          # el historico de hoy se impone sobre lo que hubiera en el repo
+          rm -rf historico_seguimiento_NO_BORRAR
+          cp -r /tmp/historico_de_hoy historico_seguimiento_NO_BORRAR
+          git add historico_seguimiento_NO_BORRAR
+          if git diff --staged --quiet; then
+            echo "El historico ya estaba al dia."
+            exit 0
+          fi
+          git commit -m "historico $(date -u +%Y-%m-%d)"
+          git push origin HEAD:main
+          echo "Historico guardado correctamente."
+      - name: Comprobar que la web se ha generado
+        if: env.OMITIR != 'si'
+        # Red de seguridad: si el terminal no ha escrito su HTML, es mejor que el
+        # circulo se ponga ROJO aqui a que se publique una pagina vacia y te enteres
+        # el viernes mirando el movil. Un HTML de verdad pesa cientos de KB.
+        run: |
+          test -f site/index.html || { echo "ERROR: no existe site/index.html"; exit 1; }
+          tam=$(stat -c%s site/index.html)
+          echo "site/index.html = $tam bytes"
+          if [ "$tam" -lt 50000 ]; then
+            echo "ERROR: el HTML es demasiado pequeno ($tam bytes). Algo ha fallado."
+            exit 1
+          fi
+          echo "Contenido que se va a publicar:"
+          ls -la site/
+      - name: Preparar la publicacion
+        if: env.OMITIR != 'si'
+        uses: actions/configure-pages@v5
+      - name: Empaquetar la web
+        if: env.OMITIR != 'si'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # site/index.html      -> terminal completo (la raiz)
+          # site/pro/index.html  -> el mismo, para no romper enlaces guardados
+          path: site
+  publicar:
+    needs: build
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

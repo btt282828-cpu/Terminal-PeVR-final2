@@ -1,0 +1,175 @@
+[
+{
+"date": "2026-08-13",
+"sym": "ARKF",
+"fase": "DESPERTANDO",
+"pts": 8,
+"pre": 2,
+"caida": -23.5,
+"cmf": 0.203,
+"sil": 2,
+"vr": 0.89,
+"huellas": [
+"−23% de su máx 52s",
+"19 pts bajo su media histórica",
+"volumen 0.89× (poca atención)",
+"GIRO VERTICAL 6.2× (impulso +3.7 en 3s)"
+],
+"px0": 44.18,
+"inval": 38.29,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+},
+{
+"date": "2026-08-13",
+"sym": "UFO",
+"fase": "DESPERTANDO",
+"pts": 9,
+"pre": 0,
+"caida": -25.7,
+"cmf": 0.148,
+"sil": 3,
+"vr": 0.48,
+"huellas": [
+"−26% de su máx 52s",
+"volumen 0.48× — nadie habla de él",
+"1/3 estructurales",
+"GIRO VERTICAL 2.0× (impulso +2.9 en 3s)"
+],
+"px0": 48.47,
+"inval": 41.57,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+},
+{
+"date": "2026-08-13",
+"sym": "TAN",
+"fase": "DESPERTANDO",
+"pts": 8,
+"pre": 0,
+"caida": -29.0,
+"cmf": -0.001,
+"sil": 3,
+"vr": 0.49,
+"huellas": [
+"−29% de su máx 52s",
+"volumen 0.49× — nadie habla de él",
+"0/3 estructurales (64-65% hist. a 4 sem)",
+"impulso girando (+3.3 en 3s)"
+],
+"px0": 52.47,
+"inval": 46.25,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+},
+{
+"date": "2026-08-13",
+"sym": "LIT",
+"fase": "DESPERTANDO",
+"pts": 8,
+"pre": 0,
+"caida": -16.8,
+"cmf": 0.106,
+"sil": 3,
+"vr": 0.67,
+"huellas": [
+"volumen 0.67× — nadie habla de él",
+"1/3 estructurales",
+"GIRO VERTICAL 2.1× (impulso +3.1 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA"
+],
+"px0": 74.66,
+"inval": 64.74,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+},
+{
+"date": "2026-08-13",
+"sym": "DRIV",
+"fase": "DESPERTANDO",
+"pts": 7,
+"pre": 0,
+"caida": -13.9,
+"cmf": 0.23,
+"sil": 3,
+"vr": 0.71,
+"huellas": [
+"volumen 0.71× — nadie habla de él",
+"1/3 estructurales",
+"impulso girando (+1.6 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA"
+],
+"px0": 35.76,
+"inval": 31.0,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+},
+{
+"date": "2026-08-13",
+"sym": "ARKK",
+"fase": "DESPERTANDO",
+"pts": 6,
+"pre": 0,
+"caida": -7.5,
+"cmf": 0.123,
+"sil": 2,
+"vr": 0.86,
+"huellas": [
+"volumen 0.86× (poca atención)",
+"GIRO VERTICAL 3.9× (impulso +2.3 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA"
+],
+"px0": 82.59,
+"inval": 68.46,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.036,
+"china": "fuerte",
+"china_cmf": 0.095,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
+}
+}
+]

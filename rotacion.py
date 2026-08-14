@@ -150,7 +150,7 @@ XTB_CFD_AGUA = {"ECL","ROP","AWK","FERG","XYL","A","WAT","IDXX","IEX","PNR","MAS
 # === GRUPOS para organizar los paneles (selector del RRG y bloques de tablas) ===
 GRUPO_SECTORES = SECTORS + ["IWM","DIA","RSP"]                             # 11 basicos + small caps + S&P equiponderado (amplitud)
 GRUPO_SUBSECTORES = ["XBI","KRE","JETS","ITB","ITA","XRT","XOP","OIH","ARKX","UFO"]          # temas EE.UU. no-IA (biotech, banca regional, viajes, vivienda, defensa, espacio)
-GRUPO_TECH        = ["SMH","SOXX","IGV","MAGS","ARKF","ARKK","CIBR","SKYY","BOTZ","DRIV","QTUM"]  # tech e innovacion: chips, software, megacaps, fintech, innovacion, ciber, nube, robotica
+GRUPO_TECH        = ["SMH","SOXX","DRAM","NCLD","IGV","MAGS","ARKF","ARKK","CIBR","SKYY","BOTZ","DRIV","QTUM"]  # tech e innovacion: chips, software, megacaps, fintech, innovacion, ciber, nube, robotica
 GRUPO_LIMPIA      = ["TAN","ICLN","FAN","LIT","HYDR"]                               # energia limpia: solar, limpia global, eolica, baterias, hidrogeno
 GRUPO_MATERIALES  = ["XME","GDX","COPX","URA","SIL","SLV","MOO"]                    # materiales y metales: mineria, oro, cobre, uranio, plata, agronegocio
 GRUPO_IAINFRA     = ["GRID","PAVE","FIW","CGW"]                                     # infraestructura: red electrica, construccion, agua EE.UU., agua global
@@ -1261,7 +1261,12 @@ def download_all():
     for sym in symbols:
         d, src = get_ohlcv(sym, start, end)
         if d is None or "Close" not in d.columns:
-            print(f"  {sym:5s}  sin datos")
+            # v4.8: distinguir "ETF recien salido a bolsa" de "ticker mal escrito".
+            # Antes los dos ponian "sin datos" y parecian el mismo problema.
+            _nuevo = sym in ("DRAM", "NCLD") or sym in NAMES
+            print(f"  {sym:5s}  sin datos"
+                  + ("  (¿fondo recien salido? volvera solo cuando tenga cierres semanales)"
+                     if _nuevo else "  (revisa el ticker)"))
             sources[sym] = "—"
             continue
         if src == "stooq":   # intentar refrescar el ultimo dia con Yahoo
@@ -1278,8 +1283,25 @@ def download_all():
     # (un simbolo caido semanas mostraba 0% de movimiento ficticio en el RRG). Ahora: 1 semana de
     # arrastre como maximo (avisado), y si ni con esas tiene dato reciente, el simbolo se EXCLUYE.
     df = pd.DataFrame(weekly).sort_index()
+    # --- ETFs JOVENES (v4.8) ---------------------------------------------
+    # El filtro de abajo exige que una columna tenga el 70% del historial comun.
+    # Con ~112 semanas descargadas eso son ~78 semanas: un ETF salido hace 5 meses
+    # (DRAM, NCLD) se descargaba bien y luego se BORRABA aqui, sin aparecer en
+    # ningun panel y sin avisar. Ahora se separan: los jovenes se apartan antes
+    # del filtro y se reincorporan DESPUES del dropna() final, que es el que
+    # recortaria el historial de todos los demas a la longitud del mas corto.
+    _jovenes = {}
     if df.shape[1] > 0:
         min_obs = max(30, int(0.7 * df.shape[0]))
+        for _c in list(df.columns):
+            _n = int(df[_c].notna().sum())
+            if _n < min_obs and _n >= 12:          # 12 semanas = minimo para verse
+                _jovenes[_c] = df[_c].dropna()
+                _avisar(f"datos.{_c}", f"ETF joven: {_n} semanas de {min_obs} necesarias. "
+                        f"Se muestra aparte con historial corto; no entra en scoring ni cartera "
+                        f"hasta tener historial suficiente")
+        if _jovenes:
+            df = df.drop(columns=list(_jovenes))
         df = df.dropna(axis=1, thresh=min_obs)
     _antes = df.copy()
     df = df.ffill(limit=1)
@@ -1299,6 +1321,13 @@ def download_all():
     df = df.dropna()
     if len(df) > WEEKS:
         df = df.iloc[-WEEKS:]
+    # Los ETFs jovenes vuelven AHORA, ya recortado el indice comun: sus semanas
+    # anteriores a su salida a bolsa quedan como NaN y cada calculo decide si
+    # puede usarlos. Asi salen en los paneles sin recortar el historial de nadie.
+    for _c, _serie in _jovenes.items():
+        df[_c] = _serie.reindex(df.index)
+    if _jovenes:
+        print(f"  ETFs jovenes reincorporados (historial corto): {', '.join(sorted(_jovenes))}")
     # --- SANEADOR DE SALTOS IMPOSIBLES: un solo valor corrupto de Yahoo (un pico de escala, p.ej. SPY
     #     742 -> 74.2 una semana) NO se ve a simple vista pero ENVENENA todo: el backtest (rentabilidad
     #     y drawdown del benchmark), la fuerza relativa del RRG (todo se mide contra SPY) y el plan de
@@ -1380,9 +1409,15 @@ def download_all():
 # ----------------------------------------------------------------------
 # Motor RRG
 # ----------------------------------------------------------------------
-def rolling_z(s, win):
-    m = s.rolling(win).mean()
-    sd = s.rolling(win).std(ddof=0).replace(0, 1e-9)
+def rolling_z(s, win, min_periods=None):
+    """Z-score movil. v4.8: min_periods permite calcularlo con una ventana AUN NO
+    llena. Sin esto, un ETF con 19 semanas y ventana de 26 devuelve todo NaN y
+    desaparece del RRG sin avisar (le paso a DRAM y NCLD). El minimo son 12
+    observaciones: por debajo de eso la desviacion tipica no significa nada."""
+    # el minimo NUNCA puede superar la ventana (pandas lanza ValueError)
+    mp = win if min_periods is None else max(1, min(int(win), int(min_periods)))
+    m = s.rolling(win, min_periods=mp).mean()
+    sd = s.rolling(win, min_periods=mp).std(ddof=0).replace(0, 1e-9)
     return (s - m) / sd
 
 def add_sinteticos(df):
@@ -1422,11 +1457,22 @@ def compute_rrg(df):
     for sym in df.columns:
         if sym == BENCH:
             continue
-        rs = df[sym] / bench
-        smooth = rs.ewm(span=smooth_span).mean()
-        ratio = (100 + SCALE * rolling_z(smooth, z_win)).clip(86, 114)
-        mom_in = ratio - ratio.ewm(span=mom_span).mean()
-        mom = (100 + SCALE * rolling_z(mom_in, z_win2)).clip(86, 114)
+        rs = (df[sym] / bench).dropna()          # v4.8: los jovenes traen NaN al principio
+        ns = len(rs)
+        if ns < 14:
+            continue                             # menos de 14 semanas: no hay nada que medir
+        # v4.8: las ventanas se calculaban con la longitud del historial COMUN (n).
+        # Para un ETF recien salido eso pedia una ventana de 26 sobre 19 datos, y luego
+        # una de 20 sobre los 8 que quedaban: resultado, cero filas y desaparecia del
+        # mapa sin avisar. Ahora cada simbolo usa ventanas acotadas a SU historial.
+        _sw = max(4, min(smooth_span, ns // 6))
+        _zw = max(6, min(z_win, ns // 2))
+        _mw = max(3, min(mom_span, ns // 7))
+        _zw2 = max(5, min(z_win2, ns // 3))
+        smooth = rs.ewm(span=_sw).mean()
+        ratio = (100 + SCALE * rolling_z(smooth, _zw, min(12, _zw))).clip(86, 114)
+        mom_in = ratio - ratio.ewm(span=_mw).mean()
+        mom = (100 + SCALE * rolling_z(mom_in, _zw2, min(6, _zw2))).clip(86, 114)
         d = pd.DataFrame({"ratio": ratio, "mom": mom}).dropna()
         if len(d) < 2:
             continue

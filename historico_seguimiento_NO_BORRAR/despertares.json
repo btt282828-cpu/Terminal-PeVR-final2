@@ -171,5 +171,91 @@
 "eslabon": "C5-RETORNO",
 "cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
 }
+},
+{
+"date": "2026-08-17",
+"sym": "IBIT",
+"fase": "DESPERTANDO",
+"pts": 10,
+"pre": 2,
+"caida": -47.8,
+"cmf": 0.041,
+"sil": 2,
+"vr": 0.86,
+"huellas": [
+"−48% de su máx 52s (paliza)",
+"41 pts bajo su media histórica",
+"volumen 0.86× (poca atención)",
+"14 semanas dormido en Rezagado"
+],
+"px0": 36.42,
+"inval": 34.56,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.4,
+"usd_cmf": 0.045,
+"china": "fuerte",
+"china_cmf": 0.049,
+"eslabon": "C5-RETORNO",
+"cascada": "sin sentido claro"
+}
+},
+{
+"date": "2026-08-17",
+"sym": "OIH",
+"fase": "DESPERTANDO",
+"pts": 6,
+"pre": 2,
+"caida": -4.1,
+"cmf": 0.044,
+"sil": 2,
+"vr": 0.82,
+"huellas": [
+"volumen 0.82× (poca atención)",
+"1/3 estructurales",
+"GIRO VERTICAL 5.3× (impulso +3.6 en 3s)",
+"CMF plano: dejó de salir"
+],
+"px0": 426.6,
+"inval": 356.9,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.4,
+"usd_cmf": 0.045,
+"china": "fuerte",
+"china_cmf": 0.049,
+"eslabon": "C5-RETORNO",
+"cascada": "sin sentido claro"
+}
+},
+{
+"date": "2026-08-17",
+"sym": "EEM",
+"fase": "DESPERTANDO",
+"pts": 6,
+"pre": 0,
+"caida": -4.9,
+"cmf": 0.063,
+"sil": 3,
+"vr": 0.68,
+"huellas": [
+"volumen 0.68× — nadie habla de él",
+"impulso girando (+1.6 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA"
+],
+"px0": 67.32,
+"inval": 59.24,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.4,
+"usd_cmf": 0.045,
+"china": "fuerte",
+"china_cmf": 0.049,
+"eslabon": "C5-RETORNO",
+"cascada": "sin sentido claro"
+}
 }
 ]

@@ -394,5 +394,149 @@
 "tag": "EARLY",
 "sym": "IBIT",
 "dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "NOCTURNO",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "NOCTURNO",
+"sym": "EWG",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "NOCTURNO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "NOCTURNO",
+"sym": "VGK",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GRADUADO",
+"sym": "TLT",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GRADUADO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GRADUADO",
+"sym": "IGV",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GRADUADO",
+"sym": "XME",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GIRO",
+"sym": "LRCX",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "GIRO",
+"sym": "AMAT",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "RISK",
+"sym": "XTB",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "FLOW",
+"sym": "JETS",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "FLOW",
+"sym": "ITB",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "FLOW",
+"sym": "CGW",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "FLOW",
+"sym": "INDA",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "FLOW",
+"sym": "DRAM",
+"dir": -1
+},
+{
+"date": "2026-08-18",
+"tag": "0/3",
+"sym": "IBIT",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "0/3",
+"sym": "LIT",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "0/3",
+"sym": "OIH",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "SUELO",
+"sym": "IBIT",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "SUELO",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "EARLY",
+"sym": "SLV",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "EARLY",
+"sym": "URA",
+"dir": 1
+},
+{
+"date": "2026-08-18",
+"tag": "EARLY",
+"sym": "IBIT",
+"dir": 1
 }
 ]

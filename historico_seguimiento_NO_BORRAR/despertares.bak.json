@@ -257,5 +257,34 @@
 "eslabon": "C5-RETORNO",
 "cascada": "sin sentido claro"
 }
+},
+{
+"date": "2026-08-25",
+"sym": "XLRE",
+"fase": "PRE-DESPERTAR",
+"pts": 7,
+"pre": 3,
+"caida": -1.3,
+"cmf": 0.059,
+"sil": 3,
+"vr": 0.74,
+"huellas": [
+"volumen 0.74× — nadie habla de él",
+"15 semanas dormido en Rezagado",
+"CMF>+0.05: el dinero ya ENTRA",
+"precio baja pero el dinero ENTRA (acumulación oculta)"
+],
+"px0": 45.36,
+"inval": 42.76,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 96.5,
+"usd_cmf": -0.121,
+"china": "fuerte",
+"china_cmf": 0.124,
+"eslabon": "C5-RETORNO",
+"cascada": "sin sentido claro"
+}
 }
 ]

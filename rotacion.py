@@ -11996,6 +11996,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     # pestana entera salia en negro. Se definen aqui y el bloque PRO los
     # reasigna igual mas abajo, asi que no cambia nada de lo que ya funcionaba.
     AMB, GRN, RED, GRY, CYN = "#FFB000", "#00E676", "#FF5252", "#8A96A8", "#4CC2E0"
+    # _mod es lo que envuelve cada panel en su caja. Estaba definido 164 lineas
+    # DESPUES, dentro del bloque PRO: esa era la causa real del panel negro.
+    # Los calculos iban bien, pero al dibujar saltaba UnboundLocalError.
+    _mod = lambda titulo, cuerpo: (f"<div class='bbgp'><div class='bbgh'>{titulo}</div>"
+                                   f"<div class='bbgb'>{cuerpo}</div></div>")
 
     # ══════════════════════════════════════════════════════════════════
     # PESTANA: DETECTOR DE SUELOS (v6.7)

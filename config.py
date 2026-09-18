@@ -193,3 +193,81 @@ REGLA
 
 # Cierres por encima del umbral que confirman la senal (tu regla: 2)
 # MCC_CONFIRMACIONES = 2
+
+# ====================================================================
+# BANCO DE MEDIDA DEL DETECTOR DE SUELOS
+# ====================================================================
+# Mide si el detector de suelos acierta, rebobinando todo tu historico.
+# TARDA VARIOS MINUTOS: enciendelo, lee el resultado, y vuelve a apagarlo.
+# Quita la almohadilla de la linea de abajo para encenderlo:
+# BACKTEST_SUELO = True
+
+# Cada cuantas semanas evalua (1 = todas, mas lento y mas preciso)
+# BACKTEST_SUELO_PASO = 2
+
+# ====================================================================
+# MEDIR EL SISTEMA EN MERCADO BAJISTA
+# ====================================================================
+# El backtest por defecto solo cubre 2022-2026: casi todo alcista. Para
+# saber como se comporta CAYENDO hace falta mas historico. Con estas dos
+# lineas destapadas se mide 2008, 2020 y 2022 ademas de lo de siempre.
+#
+# TARDA MUCHO (media hora larga: descarga 30 anos y evalua ~900 semanas).
+# Lanzalo una vez, lee el resultado, y vuelve a comentarlo todo.
+#
+# BACKTEST_SUELO = True
+# WEEKS = 988              # 19 anos: cubre 2008, 2011, 2018, 2020 y 2022
+# BACKTEST_SUELO_PASO = 4  # evalua 1 de cada 4 semanas (si no, es eterno)
+
+# ====================================================================
+# MAQUINA DEL TIEMPO — ¿que decia el terminal un dia concreto?
+# ====================================================================
+# Recalcula TODO con los datos que existian hasta esa fecha, y despues
+# ensena lo que paso a 4, 8 y 12 semanas. Sirve para ver las senales
+# CONCRETAS de aquel dia, con nombres, en vez de un porcentaje.
+#
+# Necesita historico suficiente: para viajar a 2022 pon WEEKS = 260;
+# para 2008, WEEKS = 988.
+#
+# VIAJE_FECHAS = ["2022-04-17", "2022-10-14", "2020-03-20"]
+# WEEKS = 520
+
+# ====================================================================
+# VIAJE EN EL TIEMPO — el TERMINAL ENTERO de un dia del pasado
+# ====================================================================
+# Regenera el terminal COMPLETO (RRG con estelas, cockpit, CENTINELA,
+# suelos, despertares, cascada) como si fuera esa fecha. Se abre en el
+# navegador igual que el de hoy.
+#
+# PASO A PASO:
+#   1. Descomenta las DOS lineas de abajo y pon tu fecha
+#   2. WEEKS tiene que llegar hasta esa fecha: 260 para 2024, 520 para 2020,
+#      988 para 2008. Si te quedas corto, el programa te avisa y no hace nada
+#   3. python rotacion.py
+#   4. Abre  site\viaje\AAAA-MM-DD\pro\index.html
+#   5. Vuelve a comentar las dos lineas
+#
+# NO TOCA NADA DE TU TERMINAL: escribe en site/viaje/<fecha>/ y el historico
+# real (track record, despertares) ni se lee ni se modifica.
+#
+# VIAJE_A = "2022-04-17"
+# WEEKS = 520
+
+# ====================================================================
+# LABORATORIO DE SUELOS — buscar patrones SIN enganarse
+# ====================================================================
+# Recorre TODO el historico, encuentra SOLO todas las caidas del 5%, 10%
+# y 20%, y anota como estaba el terminal en el fondo, a mitad de caida, y
+# en cada momento en que parecia suelo Y NO LO ERA.
+#
+# Eso ultimo es la clave: si solo miras las caidas que rebotaron, cualquier
+# patron parece perfecto. Aqui los fracasos entran a la fuerza.
+#
+# COMO USARLO:
+#   1. Descomenta las dos lineas de abajo
+#   2. python rotacion.py  (tarda bastante: recorre 19 anos)
+#   3. Sube el fichero laboratorio_suelos.json a la conversacion
+#   4. Vuelve a comentar las dos lineas
+#
+# LABORATORIO = True
+# WEEKS = 988              # 19 anos: cubre 2008, 2011, 2018, 2020 y 2022

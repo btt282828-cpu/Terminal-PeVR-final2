@@ -11989,6 +11989,14 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("</div>")
 
     # ===== V-PRO — TERMINAL PRO (estetica de terminal profesional: negro, ambar, monoespaciada, densa) =====
+    # v6.9.1 — LOS COLORES, ANTES DE USARLOS.
+    # Estaban definidos DENTRO del bloque PRO (linea ~12135), 142 lineas DESPUES
+    # de esta pestana. Al asignarse dentro de build_html, Python los trata como
+    # locales de TODA la funcion: usarlos antes daba UnboundLocalError y la
+    # pestana entera salia en negro. Se definen aqui y el bloque PRO los
+    # reasigna igual mas abajo, asi que no cambia nada de lo que ya funcionaba.
+    AMB, GRN, RED, GRY, CYN = "#FFB000", "#00E676", "#FF5252", "#8A96A8", "#4CC2E0"
+
     # ══════════════════════════════════════════════════════════════════
     # PESTANA: DETECTOR DE SUELOS (v6.7)
     # Reune en un sitio lo que estaba repartido: de que esta hecho el indice,

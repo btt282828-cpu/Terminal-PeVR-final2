@@ -145,7 +145,7 @@ SATELLITES = ["IWM","DIA","TLT","GLD","HYG","UUP","LQD","EMB","RSP"]     # para 
 ACCIONES_SINTETICAS = ["WDC", "STX", "SNDK",       # almacenamiento: discos duros y SSD
                        "ASML", "LRCX", "AMAT", "KLAC"]  # equipos semi: las maquinas que fabrican el chip
 
-XTB_CFD_AGUA = {"ECL","ROP","AWK","FERG","XYL","A","WAT","IDXX","IEX","PNR","MAS","J","ACM","VLTO"}
+XTB_CFD_AGUA = set()   # v5.1: vaciado, el panel de agua ya no existe
 
 # === GRUPOS para organizar los paneles (selector del RRG y bloques de tablas) ===
 GRUPO_SECTORES = SECTORS + ["IWM","DIA","RSP"]                             # 11 basicos + small caps + S&P equiponderado (amplitud)
@@ -318,6 +318,10 @@ for _s in GRUPO_IAINFRA:     GRUPO[_s] = "iainfra"
 for _s in GRUPO_INTERNAC:    GRUPO[_s] = "internac"
 for _s in GRUPO_REFUGIO:     GRUPO[_s] = "refugio"
 for _s in SINTETICOS:        GRUPO[_s] = SINTETICOS[_s].get("grupo", "sintetico")
+# v4.8: las cestas de tema tecnologico se ven tambien en "Tech e innovacion",
+# que es donde el usuario las busca (no en el cajon generico de sinteticos).
+GRUPO["S-ALMACEN"] = "tech"
+GRUPO["CE-EQUIPOS"] = "tech"
 GRUPO_NOMBRE = {"sector": "Sectores", "subsector": "Subsectores EE.UU.", "tech": "Tech e innovación", "limpia": "Energía limpia", "materiales": "Materiales y metales", "iainfra": "IA infraestructura", "internac": "Internacional", "refugio": "Macro / refugio", "sintetico": "Sintéticos", "cascada": "Cascada IA"}
 GRUPO_ORDEN = ("sector", "subsector", "tech", "limpia", "materiales", "iainfra", "internac", "refugio", "sintetico", "cascada")
 
@@ -344,6 +348,12 @@ LEADERS_MIN_RS = 90                              # umbral de "lider" (percentil)
 #   "sp500"  = las ~500 del S&P 500 (percentil de mercado real; mas lento; por defecto)
 #   "sector" = ~164 acciones de SECTOR_STOCKS (mas rapido)
 RS_UNIVERSE = "sp500"
+LABORATORIO = False                             # True = busca TODAS las caidas y anota el estado del terminal
+VIAJE_A = ""                                    # "2022-04-17" = regenerar el TERMINAL ENTERO de ese dia
+VIAJE_FECHAS = []                               # fechas a las que viajar, p.ej. ["2022-04-17"]
+BACKTEST_SUELO = False                          # True = mide el detector de suelos (tarda minutos)
+BACKTEST_SUELO_UMBRAL = 5.0                     # puntos minimos que cuentan como senal
+BACKTEST_SUELO_PASO = 2                          # cada cuantas semanas se evalua (1=todas, mas lento)
 MCC_UMBRAL = -100.0                             # umbral del oscilador de amplitud (el clasico del NYSE)
 MCC_CONFIRMACIONES = 2                          # cierres por encima del umbral que confirman la senal
 SP500_FALLBACK = ["AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","AVGO","TSLA","BRK-B","JPM","LLY","V",
@@ -375,6 +385,39 @@ SP500_FALLBACK = ["AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","AVGO","TSLA
     "AMP","TROW","BEN","IVZ","WTW","ACGL","HIG","CINF","L","NDAQ","MKTX","CBOE","FIS","FI","GPN","PYPL","SYF","DFS",
     "FITB","HBAN","RF","CFG","KEY","MTB","NTRS","STT","PFG","PGR","AFL"]
 SECTOR_STOCKS = {
+    # ---- AMPLIACION v5.5: top-10 aproximado de los ETFs tematicos que Pedro opera.
+    # OJO: escritos a mano desde conocimiento general y NO verificados contra la ficha
+    # del fondo. Las carteras cambian cada trimestre. Antes de operar con esto,
+    # contrasta con la web del emisor. Un nombre mal puesto aqui produce una
+    # sugerencia falsa, no un error visible.
+    # Los ETF de un solo activo (SLV, GLD, IBIT) y los de pais (EWJ, EWG, VGK, FXI...)
+    # se dejan FUERA a proposito: no tiene sentido buscar "la accion rezagada" en ellos.
+    "GDX":  ["NEM", "AEM", "GOLD", "WPM", "FNV", "KGC", "GFI", "AU", "RGLD", "PAAS"],
+    "SIL":  ["WPM", "PAAS", "FNV", "HL", "CDE", "AG", "SSRM", "GATO", "EXK", "FSM"],
+    "COPX": ["FCX", "SCCO", "TECK", "CPPMF", "BHP", "HBM", "ERO", "AMR"],
+    "XME":  ["AA", "CRS", "NUE", "STLD", "CLF", "FCX", "MP", "RS", "CMC", "ATI"],
+    "XOP":  ["APA", "DVN", "FANG", "EOG", "OXY", "COP", "RRC", "AR", "PR", "CTRA"],
+    "OIH":  ["SLB", "HAL", "BKR", "NOV", "WHD", "WFRD", "FTI", "TDW", "RIG", "OII"],
+    "URA":  ["CCJ", "NXE", "UEC", "DNN", "LEU", "PDN", "OKLO", "URG", "UUUU", "SMR"],
+    "MOO":  ["DE", "CTVA", "ZTS", "NTR", "MOS", "CF", "BG", "IFF", "TSN", "ADM"],
+    "ARKK": ["TSLA", "COIN", "ROKU", "RBLX", "PATH", "HOOD", "XYZ", "TDOC", "CRSP", "DKNG"],
+    "ARKF": ["COIN", "XYZ", "SHOP", "HOOD", "SOFI", "TOST", "MELI", "PYPL", "NU", "ADYEY"],
+    "ARKX": ["KTOS", "TRMB", "IRDM", "RKLB", "AVAV", "LHX", "HON", "ACHR", "JOBY", "RTX"],
+    "UFO":  ["RKLB", "IRDM", "VSAT", "GSAT", "PL", "SPCE", "RDW", "ASTS", "LMT", "TSAT"],
+    "SKYY": ["MSFT", "AMZN", "GOOGL", "ORCL", "NOW", "CRM", "SNOW", "DDOG", "NET", "MDB"],
+    "CIBR": ["CRWD", "PANW", "FTNT", "ZS", "OKTA", "NET", "S", "QLYS", "TENB", "CHKP"],
+    "MAGS": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"],
+    "SOXX": ["NVDA", "AVGO", "AMD", "TXN", "QCOM", "MU", "ADI", "INTC", "LRCX", "AMAT"],
+    "QTUM": ["IONQ", "RGTI", "QUBT", "HON", "IBM", "GOOGL", "NVDA", "MSFT", "BABA", "ARQQ"],
+    "BOTZ": ["NVDA", "ISRG", "ABBV", "KEYS", "FANUY", "DE", "TER", "OMCL", "SYM", "PATH"],
+    "TAN": ["FSLR", "ENPH", "SEDG", "RUN", "NXT", "ARRY", "SHLS", "CSIQ", "JKS"],
+    "LIT": ["ALB", "SQM", "TSLA", "SGML", "LAC", "MP", "PANW", "BYD", "PLUG"],
+    "DRIV": ["TSLA", "NVDA", "GM", "F", "APTV", "MBLY", "QCOM", "ON", "RIVN", "LCID"],
+    "PAVE": ["ETN", "PWR", "URI", "NUE", "EMR", "PH", "FAST", "MLM", "VMC", "J"],
+    "GRID": ["ETN", "SE", "ABB", "EMR", "PWR", "AME", "HUBB", "GEV", "CEG", "VST"],
+    "XRT":  ["ANF", "GAP", "BBWI", "DKS", "M", "URBN", "AEO", "ROST", "KSS", "BURL"],
+    "KWEB": ["BABA", "TCEHY", "PDD", "JD", "TME", "NTES", "BIDU", "TCOM", "LI", "XPEV"],
+
     "XLK":  ["AAPL","MSFT","NVDA","AVGO","ORCL","CRM","AMD","ADBE","ACN","CSCO","INTC","IBM","QCOM","NOW","TXN"],
     "XLF":  ["BRK-B","JPM","V","MA","BAC","WFC","GS","AXP","MS","SPGI","BLK","C","SCHW","CB","PGR"],
     "XLE":  ["XOM","CVX","COP","SLB","EOG","MPC","PSX","WMB","OXY","VLO","KMI","DVN"],
@@ -388,7 +431,8 @@ SECTOR_STOCKS = {
     "XLC":  ["META","GOOGL","NFLX","DIS","TMUS","T","VZ","CMCSA","CHTR","EA","TTWO","WBD"],
     "SMH":  ["NVDA","AVGO","AMD","QCOM","TXN","MU","LRCX","AMAT","KLAC","ADI","MRVL","NXPI"],
     "IGV":  ["MSFT","ORCL","CRM","NOW","ADBE","PANW","CRWD","INTU","SNPS","CDNS","FTNT","WDAY","DDOG","TEAM"],
-    "FIW":  ["AWK","ROP","XYL","WAT","FERG","A","VLTO","PNR","MLI","IDXX","ECL","IEX","J","MAS","WMS","STN","CNM","WTS","ACM","TTEK","BMI","ITRI","FELE","MWA","ZWS"],
+    # "FIW": lista de acciones de agua ELIMINADA (v5.1). Alimentaba un panel que
+    #        ya no se usa; eran 24 descargas por build para nada. El ETF FIW sigue.
     "XBI":  ["VRTX","REGN","GILD","ALNY","EXEL","UTHR","INSM","NBIX","ARWR","BEAM","ALKS","TGTX","KRYS","INCY","IONS","BMRN","SRPT","HALO"],
     "KRE":  ["TFC","FITB","RF","HBAN","KEY","CFG","MTB","WBS","ZION","EWBC","WAL","FHN","CFR","ONB","PB"],
     "JETS": ["DAL","UAL","AAL","LUV","ALK","SKYW","ALGT","JBLU","BA","BKNG","EXPE","ABNB"],
@@ -1056,13 +1100,13 @@ def update_track_record(basket, px_now, datestr, marked=None):
     snap = {"week": wk, "date": str(datestr), "basket": list(basket), "marked": list(marked or []), "px": px_clean}
     recs.append(snap)
     recs.sort(key=lambda r: r.get("week", ""))
-    try:
-        with open(TRACK_FILE, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
-        with open(TRACK_BAK, "w", encoding="utf-8") as fh:        # copia de seguridad
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
-    except Exception:
-        pass
+    # v6.9: aqui estaba el caso exacto del que se hablaba. Escribia el fichero
+    # principal y DESPUES el backup, los dos desde memoria. Si fallaba el
+    # segundo, el principal ya se habia sobrescrito y el backup quedaba a 0:
+    # se perdian LOS DOS. Y el except mudo lo tapaba.
+    # Ahora el backup es la version ANTERIOR, que es lo que sirve de copia.
+    if not guardar_json_seguro(TRACK_FILE, recs, backup=TRACK_BAK, indent=0):
+        print("  ⛔ NO se pudo guardar el track record. El anterior sigue intacto.")
     return recs
 
 def pct_desde_entrada(recs, sym, key, cur_week, in_now, cur_px, df=None):
@@ -1457,6 +1501,13 @@ def compute_rrg(df):
     for sym in df.columns:
         if sym == BENCH:
             continue
+        # v4.8: las acciones que solo existen para COMPONER una cesta (WDC/STX/SNDK,
+        # ASML/LRCX/AMAT/KLAC) no son instrumentos que se vigilen sueltos: son
+        # ingredientes. Ensuciaban el mapa y ademas caian sin grupo, asi que salian
+        # en "Todos" pero en ningun filtro. Lo que se sigue es la CESTA (S-ALMACEN,
+        # CE-EQUIPOS), igual que ya se hace con las acciones del sintetico de agua.
+        if sym in ACCIONES_SINTETICAS:
+            continue
         rs = (df[sym] / bench).dropna()          # v4.8: los jovenes traen NaN al principio
         ns = len(rs)
         if ns < 14:
@@ -1551,6 +1602,56 @@ def _trend(values, win=20):
     x = np.arange(len(z))
     b = np.polyfit(x, z, 1)[0]
     return float(b * len(z))
+
+
+def guardar_json_seguro(ruta, datos, backup=None, indent=0):
+    """Escritura ATOMICA. O queda el fichero nuevo entero, o queda el viejo
+    intacto. Nunca uno a medias.
+
+    POR QUE EXISTE: open(ruta,"w") VACIA el fichero antes de escribir. Si el
+    proceso se corta en ese medio segundo (portatil cerrado, luz, timeout del
+    runner, un NaN que revienta al serializar), el track record queda a 0
+    bytes. Y si el fallo pasa en la segunda escritura, el backup tambien.
+    Reproducido: 504 bytes -> 0 bytes en las dos.
+
+    El track record son decisiones fechadas: no se puede reconstruir hacia
+    atras sin destruir lo unico que lo hacia creible. Es el unico dato del
+    proyecto que no se puede regenerar.
+
+    COMO FUNCIONA: se escribe un .tmp, se fuerza a disco, el fichero actual
+    pasa a ser el backup, y el .tmp ocupa su sitio con os.replace(), que es
+    atomico en Windows y en Linux. Si algo falla, AVISA en vez de callarse.
+    """
+    tmp = f"{ruta}.tmp"
+    try:
+        os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(datos, fh, ensure_ascii=False, indent=indent)
+            fh.flush()
+            try:
+                os.fsync(fh.fileno())      # fuerza el volcado real a disco
+            except Exception:
+                pass
+        # comprobacion: un fichero vacio no sustituye a uno bueno
+        if os.path.getsize(tmp) < 2:
+            raise ValueError("el fichero temporal salio vacio")
+        if backup and os.path.exists(ruta):
+            try:
+                os.replace(ruta, backup)   # el backup es la version ANTERIOR
+            except Exception:
+                pass
+        os.replace(tmp, ruta)              # atomico
+        return True
+    except Exception as e:
+        _avisar("persistencia", f"NO se pudo guardar {os.path.basename(ruta)}: {e}. "
+                f"El fichero anterior NO se ha tocado.")
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
+        return False
+
 
 def compute_volume_flow(daily, only=None):
     out = {}
@@ -2081,10 +2182,7 @@ def update_wire_ledger(items, close_date):
     keep = set(dates)
     recs = [r for r in recs if r["date"] in keep]
     try:
-        with open(WIRE_FILE, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
-        with open(WIRE_BAK, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
+        guardar_json_seguro(WIRE_FILE, recs, backup=WIRE_BAK, indent=0)
     except Exception:
         pass
     return recs
@@ -2203,10 +2301,7 @@ def update_contrarian_ledger(sigs, px_now, datestr, df):
                          "n3": s["n3"], "vert": s["vert"]})
     recs.sort(key=lambda r: (r.get("week", ""), r.get("sym", "")))
     try:
-        with open(CONTRA_FILE, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
-        with open(CONTRA_BAK, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
+        guardar_json_seguro(CONTRA_FILE, recs, backup=CONTRA_BAK, indent=0)
     except Exception:
         pass
     # evaluacion de las maduras con las series semanales
@@ -2344,6 +2439,8 @@ def mcc_backtest(osc, bench, umbral=-100.0, confirmaciones=2, horizontes=(5, 10,
     """Que paso DESPUES de cada disparo, medido sobre el indice de referencia.
        Frecuencia observada con Wilson 95% y N a la vista. NO es una prediccion."""
     def _wilson(p, n, z=1.96):
+        return _bt_wilson(p, n, z)
+    def _wilson_viejo(p, n, z=1.96):
         if not n:
             return (None, None)
         d = 1 + z * z / n
@@ -2420,6 +2517,1752 @@ def aviso_historial(sym, df):
     if not n or n >= MIN_SEMANAS_FIABLE:
         return ""
     return f"historial corto: {n} de {MIN_SEMANAS_FIABLE} semanas — sin media de 40s, el scoring va incompleto; mira el CMF"
+
+
+
+# ======================================================================
+# BANCO DE MEDIDA DEL DETECTOR DE SUELOS   (v5.0 — entrega 1)
+#
+# PARA QUE SIRVE, en llano:
+#   El terminal dice "XME esta en zona de suelo, 7/10". ¿Eso acierta?
+#   Hasta ahora nadie lo sabia: el detector de suelos NUNCA se habia medido.
+#   Esto rebobina el historico semana a semana, tapando lo que vino despues,
+#   y anota que decia el detector ese dia y que paso realmente luego.
+#
+# TRES COSAS QUE LO HACEN HONESTO (y que casi todo backtest casero se salta):
+#
+#   1. NO MIRA AL FUTURO. En la semana T solo se usan datos hasta T. El RRG,
+#      el scoring y el flujo se RECALCULAN con la ventana recortada. Es el
+#      error mas comun del backtesting y produce resultados espectaculares
+#      y completamente falsos.
+#
+#   2. NO CUENTA DOS VECES LA MISMA SENAL. Si XBI dispara en la semana 10 y
+#      otra vez en la 12, es la misma senal. Con separacion minima de N
+#      semanas se cuenta una. Sin esto la muestra se infla, igual que contar
+#      cinco metales como cinco apuestas.
+#
+#   3. AGRUPA POR FAMILIA. Senales simultaneas de la misma familia (GDX+GLD+
+#      SIL a la vez) cuentan como UNA apuesta. Reutiliza familia_de().
+#
+# LO QUE NO ES: no es una prediccion ni una promesa. Es la frecuencia con la
+# que, historicamente, lo que el detector marcaba acabo subiendo. Con su
+# intervalo de Wilson y su N a la vista, como todo en esta casa.
+# ======================================================================
+
+def _bt_wilson(p, n, z=1.96):
+    """Intervalo de Wilson 95%. LA UNICA implementacion del proyecto (v6.9).
+    Habia cuatro copias: _wilson, _wil y dos bloques en linea. Coincidian
+    numericamente, pero si alguien corrigiera un borde en una sola, el
+    terminal publicaria dos intervalos distintos para el mismo dato y nadie
+    lo notaria. Las demas ahora llaman a esta."""
+    if not n:
+        return (None, None)
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    m = z * math.sqrt(max(0.0, p * (1 - p) / n + z * z / (4 * n * n))) / d
+    return (round(100 * max(0.0, c - m), 1), round(100 * min(1.0, c + m), 1))
+
+
+
+# ======================================================================
+# ¿CORTAR RAPIDO Y AGUANTAR MEJORA EL RESULTADO?   (v6.6)
+#
+# DE DONDE SALE: el backtest dijo que el detector de suelos rinde +3.72% a
+# 8 semanas frente al +1.91% del SPY — casi el doble de media — pero gana
+# menos de la mitad de las veces. Eso es un sistema de COLA: pocos aciertos
+# grandes y muchos fallos pequenos.
+#
+# En un sistema asi, lo que decide el resultado NO es la senal: es que se
+# hace despues. Si cortas rapido lo que no arranca y dejas correr lo que si,
+# la misma senal puede dar un resultado completamente distinto.
+#
+# Esto lo mide. Compara "comprar y esperar N semanas" contra reglas de
+# salida, con las MISMAS senales y las MISMAS fechas. Lo unico que cambia
+# es la gestion.
+#
+# LO QUE NO ES: no mejora la senal. Si la senal no discrimina — y ya sabemos
+# que no —, esto no la arregla. Solo dice si la gestion aporta algo encima.
+# ======================================================================
+
+def _simular_salida(serie, i, semanas, stop_pct=None, trail_pct=None,
+                    objetivo_pct=None):
+    """Simula UNA posicion desde la semana i. Devuelve el retorno final y
+    como se cerro. Usa solo cierres semanales: es conservador, porque un stop
+    intrasemanal se habria ejecutado peor."""
+    try:
+        p0 = float(serie.iloc[i])
+        if not (p0 > 0):
+            return None
+        pico = p0
+        for k in range(1, semanas + 1):
+            if i + k >= len(serie):
+                break
+            p = float(serie.iloc[i + k])
+            if p != p:
+                continue
+            r = (p / p0 - 1) * 100
+            if objetivo_pct is not None and r >= objetivo_pct:
+                return {"ret": objetivo_pct, "cierre": "objetivo", "semanas": k}
+            if stop_pct is not None and r <= -stop_pct:
+                return {"ret": -stop_pct, "cierre": "stop", "semanas": k}
+            if trail_pct is not None:
+                pico = max(pico, p)
+                if (p / pico - 1) * 100 <= -trail_pct:
+                    return {"ret": round((p / p0 - 1) * 100, 2),
+                            "cierre": "trailing", "semanas": k}
+        j = min(i + semanas, len(serie) - 1)
+        return {"ret": round((float(serie.iloc[j]) / p0 - 1) * 100, 2),
+                "cierre": "vencimiento", "semanas": semanas}
+    except Exception as _dege:
+        _deg("_simular_salida", _dege)
+        return None
+
+
+def backtest_gestion(df, daily, umbral=5.0, semanas=12, min_sep=8, paso=1,
+                     min_ventana=60, verbose=True):
+    """Mismas senales, distintas reglas de salida. Lo unico que cambia es la
+    gestion de la posicion."""
+    try:
+        _nec = min_ventana + semanas + 5
+        if df is None or len(df) < _nec:
+            _m = (f"HISTORIAL INSUFICIENTE: {0 if df is None else len(df)} de {_nec} "
+                  f"semanas. Sube WEEKS en config.py.")
+            if verbose:
+                print(f"\n  NO SE PUEDE MEDIR — {_m}")
+            return {"filas": [], "aviso": _m}
+        # --- 1) recoger las senales UNA sola vez (lo caro es esto)
+        fechas = list(df.index)
+        senales, ultima = [], {}
+        for i in range(min_ventana, len(fechas) - semanas, paso):
+            corte = fechas[i]
+            df_t = df.iloc[:i + 1]
+            daily_t = {}
+            for sym, d in (daily or {}).items():
+                try:
+                    daily_t[sym] = d[d.index <= corte]
+                except Exception:
+                    continue
+            try:
+                rrg_t = compute_rrg(df_t)
+                flow_t = compute_volume_flow(daily_t)
+                sc_t = compute_scores(df_t, rrg_t, daily_t, flow_t)
+                fl_t = compute_suelo(df_t, rrg_t, sc_t, flow_t, {})
+            except Exception as _dege:
+                _deg(f"backtest_gestion:{i}", _dege)
+                continue
+            for r in (fl_t or []):
+                if (r.get("pts") or 0) < umbral:
+                    continue
+                sym = r["sym"]
+                if sym in ultima and (i - ultima[sym]) < min_sep:
+                    continue
+                ultima[sym] = i
+                senales.append((i, sym))
+        if not senales:
+            return {"filas": [], "aviso": "sin senales"}
+        # --- 2) aplicar cada regla a las MISMAS senales
+        reglas = [
+            ("comprar y esperar", {}),
+            ("stop -8%", {"stop_pct": 8}),
+            ("stop -12%", {"stop_pct": 12}),
+            ("stop -15%", {"stop_pct": 15}),
+            ("trailing -10%", {"trail_pct": 10}),
+            ("trailing -15%", {"trail_pct": 15}),
+            ("objetivo +15%", {"objetivo_pct": 15}),
+            ("stop -12% + trailing -15%", {"stop_pct": 12, "trail_pct": 15}),
+            ("stop -8% + objetivo +20%", {"stop_pct": 8, "objetivo_pct": 20}),
+        ]
+        filas = []
+        for nombre, kw in reglas:
+            rets, cierres = [], {}
+            for i, sym in senales:
+                if sym not in df.columns:
+                    continue
+                r = _simular_salida(df[sym], i, semanas, **kw)
+                if r:
+                    rets.append(r["ret"])
+                    cierres[r["cierre"]] = cierres.get(r["cierre"], 0) + 1
+            if not rets:
+                continue
+            n = len(rets)
+            gan = sum(1 for r in rets if r > 0)
+            media = sum(rets) / n
+            pos = [r for r in rets if r > 0]
+            neg = [r for r in rets if r <= 0]
+            # esperanza = lo que deja de media cada operacion
+            filas.append({
+                "regla": nombre, "n": n, "aciertos": round(100 * gan / n, 1),
+                "media": round(media, 2),
+                "media_ganadoras": (round(sum(pos) / len(pos), 2) if pos else 0),
+                "media_perdedoras": (round(sum(neg) / len(neg), 2) if neg else 0),
+                "peor": round(min(rets), 2), "mejor": round(max(rets), 2),
+                "cierres": cierres})
+        base = next((f for f in filas if f["regla"] == "comprar y esperar"), None)
+        filas.sort(key=lambda f: -f["media"])
+        res = {"filas": filas, "n_senales": len(senales), "semanas": semanas,
+               "desde": str(fechas[min_ventana].date()), "hasta": str(fechas[-1].date())}
+        if verbose:
+            print(f"\n  ¿CORTAR RAPIDO Y AGUANTAR MEJORA? ({len(senales)} senales, "
+                  f"horizonte {semanas} semanas)")
+            print(f"    {res['desde']} a {res['hasta']}")
+            print(f"    {'regla de salida':<28} {'N':>4} {'acierta':>8} {'media':>8} "
+                  f"{'gana':>8} {'pierde':>8} {'peor':>8}")
+            for f in filas:
+                marca = " <-- sin gestion" if f["regla"] == "comprar y esperar" else ""
+                print(f"    {f['regla']:<28} {f['n']:>4} {f['aciertos']:>7.1f}% "
+                      f"{f['media']:>+7.2f}% {f['media_ganadoras']:>+7.2f}% "
+                      f"{f['media_perdedoras']:>+7.2f}% {f['peor']:>+7.2f}%{marca}")
+            if base and filas:
+                mejor = filas[0]
+                dif = mejor["media"] - base["media"]
+                print()
+                if mejor["regla"] == "comprar y esperar":
+                    print(f"    -> NINGUNA regla de salida mejora a no hacer nada.")
+                    print(f"       La gestion no aporta sobre estas senales.")
+                else:
+                    print(f"    -> La mejor regla ({mejor['regla']}) deja "
+                          f"{dif:+.2f} pp mas por operacion que no hacer nada.")
+                    print(f"       Con {mejor['n']} operaciones eso son "
+                          f"{dif * mejor['n']:.0f} puntos acumulados.")
+                print(f"\n    AVISO: se han probado {len(reglas)} reglas sobre las mismas")
+                print(f"    senales. La mejor de 9 SIEMPRE parece buena por azar. Para")
+                print(f"    creerla, tiene que ganar tambien partiendo la muestra en dos.")
+        return res
+    except Exception as _dege:
+        _deg("backtest_gestion", _dege)
+        return None
+
+
+def backtest_suelo(df, daily, umbral=5.0, horizontes=(4, 8, 12),
+                   min_sep=8, paso=1, min_ventana=60, verbose=True, campo="pts"):
+    """Mide el detector de suelos fuera de muestra.
+
+    df        : cierres semanales (columnas = simbolos)
+    daily     : OHLCV diario por simbolo (para recalcular el flujo)
+    umbral    : puntos minimos para considerar que hubo senal
+    horizontes: semanas a futuro que se miden
+    min_sep   : semanas minimas entre dos senales del MISMO simbolo
+    paso      : cada cuantas semanas se evalua (1 = todas; 2 = mas rapido)
+    Devuelve dict con filas por horizonte, o None si no hay historico bastante.
+    """
+    try:
+        _necesarias = min_ventana + max(horizontes) + 5
+        if df is None or len(df) < _necesarias:
+            _hay = 0 if df is None else len(df)
+            _msg = (f"HISTORIAL INSUFICIENTE: hay {_hay} semanas y hacen falta {_necesarias}. "
+                    f"El terminal recorta la tabla a WEEKS={WEEKS}. Para medir el detector, "
+                    f"pon WEEKS = 260 en config.py (5 anos), ejecuta, y vuelve a dejarlo en 70.")
+            if verbose:
+                print(f"\n  NO SE PUEDE MEDIR — {_msg}")
+            _avisar("backtest_suelo", _msg)
+            return {"n_senales": 0, "n_semanas": 0, "filas": [], "umbral": umbral,
+                    "aviso": _msg, "semanas_disponibles": _hay,
+                    "semanas_necesarias": _necesarias}
+        fechas = list(df.index)
+        senales = []          # [(fecha, sym, pts)]
+        ultima = {}           # sym -> indice de su ultima senal
+        n_semanas = 0
+
+        for i in range(min_ventana, len(fechas) - max(horizontes), paso):
+            corte = fechas[i]
+            # ---- VENTANA RECORTADA: aqui esta la clave de no mirar al futuro
+            df_t = df.iloc[:i + 1]
+            daily_t = {}
+            for sym, d in (daily or {}).items():
+                try:
+                    daily_t[sym] = d[d.index <= corte]
+                except Exception:
+                    continue
+            try:
+                rrg_t = compute_rrg(df_t)
+                flow_t = compute_volume_flow(daily_t)
+                scores_t = compute_scores(df_t, rrg_t, daily_t, flow_t)
+                filas = compute_suelo(df_t, rrg_t, scores_t, flow_t, {})
+            except Exception as _dege:
+                _deg(f"backtest_suelo:semana_{i}", _dege)
+                continue
+            n_semanas += 1
+            for r in (filas or []):
+                if (r.get(campo) or 0) < umbral:
+                    continue
+                sym = r["sym"]
+                if sym in ultima and (i - ultima[sym]) < min_sep:
+                    continue          # misma senal, no cuenta dos veces
+                ultima[sym] = i
+                senales.append((i, sym, r.get(campo), r.get("fase")))
+
+        if not senales:
+            _m = (f"el detector no disparo ni una vez en {n_semanas} semanas evaluadas "
+                  f"(umbral {umbral}/10)")
+            if verbose:
+                print(f"\n  SIN SENALES — {_m}")
+            _avisar("backtest_suelo", _m)
+            return {"n_senales": 0, "n_semanas": n_semanas, "filas": [],
+                    "umbral": umbral, "aviso": _m}
+
+        # ---- resultado a futuro (aqui SI se usa el futuro: es el resultado)
+        bench = df[BENCH] if BENCH in df.columns else None
+        filas_out = []
+        for h in horizontes:
+            brutos = []
+            for i, sym, pts, fase in senales:
+                try:
+                    if i + h >= len(df) or sym not in df.columns:
+                        continue
+                    p0, p1 = float(df[sym].iloc[i]), float(df[sym].iloc[i + h])
+                    if not (p0 > 0) or p1 != p1:
+                        continue
+                    ret = (p1 / p0 - 1) * 100
+                    # MAE / MFE: lo peor y lo mejor que se vio DENTRO de la ventana.
+                    # El retorno final no cuenta la historia: una posicion que acaba
+                    # +5% habiendo pasado por -18% no se aguanta en la vida real.
+                    _cam = df[sym].iloc[i:i + h + 1].dropna()
+                    _mae = _mfe = None
+                    if len(_cam) > 1 and p0 > 0:
+                        _mae = round((float(_cam.min()) / p0 - 1) * 100, 2)
+                        _mfe = round((float(_cam.max()) / p0 - 1) * 100, 2)
+                    vs = None
+                    if bench is not None:
+                        b0, b1 = float(bench.iloc[i]), float(bench.iloc[i + h])
+                        if b0 > 0:
+                            vs = ret - (b1 / b0 - 1) * 100
+                    brutos.append({"i": i, "sym": sym, "pts": pts,
+                                   "fam": familia_de(sym), "ret": ret, "vs": vs,
+                                   "mae": _mae, "mfe": _mfe})
+                except Exception:
+                    continue
+            if not brutos:
+                filas_out.append({"h": h, "n": 0, "n_fichas": 0})
+                continue
+            # ---- AGRUPACION POR FAMILIA: senales simultaneas de la misma
+            #      familia son UNA apuesta, no varias
+            apuestas = {}
+            for b in brutos:
+                clave = (b["fam"], b["i"] // max(1, min_sep))
+                apuestas.setdefault(clave, []).append(b)
+            ap = []
+            for _k, lst in apuestas.items():
+                rets = [x["ret"] for x in lst]
+                vss = [x["vs"] for x in lst if x["vs"] is not None]
+                maes = [x["mae"] for x in lst if x["mae"] is not None]
+                mfes = [x["mfe"] for x in lst if x["mfe"] is not None]
+                ap.append({"ret": sum(rets) / len(rets),
+                           "vs": (sum(vss) / len(vss)) if vss else None,
+                           "mae": (sum(maes) / len(maes)) if maes else None,
+                           "mfe": (sum(mfes) / len(mfes)) if mfes else None,
+                           "n_fichas": len(lst)})
+            n = len(ap)
+            gan = sum(1 for a in ap if a["ret"] > 0)
+            lo, hi = _bt_wilson(gan / n, n)
+            batidos = [a for a in ap if a["vs"] is not None]
+            gan_vs = sum(1 for a in batidos if a["vs"] > 0)
+            lo2, hi2 = _bt_wilson(gan_vs / len(batidos), len(batidos)) if batidos else (None, None)
+            rets = sorted(a["ret"] for a in ap)
+            _maes = sorted(a["mae"] for a in ap if a["mae"] is not None)
+            _mfes = [a["mfe"] for a in ap if a["mfe"] is not None]
+            filas_out.append({
+                "h": h, "n": n, "n_fichas": len(brutos),
+                # MAE medio = cuanto hay que aguantar de media. MAE p90 = el mal trago
+                # que se sufre 1 de cada 10 veces. Es lo que decide si un sistema se
+                # puede seguir de verdad o se abandona a la tercera.
+                "mae_medio": (round(sum(_maes) / len(_maes), 2) if _maes else None),
+                "mae_p90": (round(_maes[max(0, int(len(_maes) * 0.10))], 2) if _maes else None),
+                "mfe_medio": (round(sum(_mfes) / len(_mfes), 2) if _mfes else None),
+                "pos": round(100 * gan / n, 1), "lo": lo, "hi": hi,
+                "media": round(sum(rets) / n, 2),
+                "mediana": round(rets[n // 2], 2),
+                "peor": round(rets[0], 2), "mejor": round(rets[-1], 2),
+                "bate_pos": (round(100 * gan_vs / len(batidos), 1) if batidos else None),
+                "bate_lo": lo2, "bate_hi": hi2,
+                "vs_media": (round(sum(a["vs"] for a in batidos) / len(batidos), 2)
+                             if batidos else None)})
+        res = {"n_senales": len(senales), "n_semanas": n_semanas,
+               "umbral": umbral, "min_sep": min_sep, "filas": filas_out,
+               "desde": str(fechas[min_ventana].date()), "hasta": str(fechas[-1].date())}
+        if verbose:
+            print(f"\n  BACKTEST DEL DETECTOR DE SUELOS (umbral {umbral}/10)")
+            print(f"    {len(senales)} senales en {n_semanas} semanas evaluadas "
+                  f"({res['desde']} a {res['hasta']})")
+            for f in filas_out:
+                if not f.get("n"):
+                    print(f"    T+{f['h']:>2}: sin casos con recorrido suficiente"); continue
+                print(f"    T+{f['h']:>2}: {f['pos']:>5}% en positivo "
+                      f"(Wilson {f['lo']}-{f['hi']}%) · N={f['n']} apuestas "
+                      f"({f['n_fichas']} fichas) · media {f['media']:+.2f}% · "
+                      f"peor {f['peor']:+.2f}%"
+                      + (f" · bate al indice {f['bate_pos']}%" if f.get("bate_pos") is not None else ""))
+                if f.get("mae_medio") is not None:
+                    print(f"          AGUANTE: caida media dentro de la ventana {f['mae_medio']:+.2f}% · "
+                          f"1 de cada 10 veces llega a {f['mae_p90']:+.2f}% · "
+                          f"subida maxima vista {f['mfe_medio']:+.2f}%")
+        return res
+    except Exception as _dege:
+        _deg("backtest_suelo", _dege)
+        return None
+
+
+def backtest_suelo_por_umbral(df, daily, umbrales=(5, 6, 7, 8), horizonte=8, campo="pts", **kw):
+    """¿Un score mas alto acierta mas? Si la respuesta es NO, el score no
+    discrimina y solo esta midiendo cuanto ha caido algo. Es LA pregunta."""
+    out = []
+    for u in umbrales:
+        r = backtest_suelo(df, daily, umbral=u, horizontes=(horizonte,),
+                           verbose=False, campo=campo, **kw)
+        if r and r.get("filas") and r["filas"][0].get("n"):
+            f = r["filas"][0]
+            out.append({"umbral": u, "n": f["n"], "pos": f["pos"],
+                        "lo": f["lo"], "hi": f["hi"], "media": f["media"]})
+    return out or None
+
+
+
+def comparar_scores(df, daily, horizonte=8, umbral=5.0, **kw):
+    """Mide el score ORIGINAL contra el score V2 (flujo como puerta) con los
+    MISMOS datos y el MISMO periodo. Es la unica forma honesta de saber si un
+    cambio mejora: no basta con que el numero nuevo sea bonito.
+
+    La cifra que decide NO es el % de aciertos: en un mercado alcista casi todo
+    sube. La que decide es BATE AL INDICE, porque comprar SPY sin pensar es la
+    alternativa real que tiene cualquiera."""
+    out = {}
+    for nombre, campo in (("ORIGINAL (suma)", "pts"), ("V2 (flujo multiplica)", "pts2")):
+        r = backtest_suelo(df, daily, umbral=umbral, horizontes=(horizonte,),
+                           verbose=False, campo=campo, **kw)
+        if r and r.get("filas") and r["filas"][0].get("n"):
+            f = r["filas"][0]
+            out[nombre] = {"n": f["n"], "pos": f["pos"], "lo": f["lo"], "hi": f["hi"],
+                           "media": f["media"], "peor": f["peor"],
+                           "bate": f.get("bate_pos"), "bate_lo": f.get("bate_lo"),
+                           "bate_hi": f.get("bate_hi"), "vs_media": f.get("vs_media"),
+                           "n_senales": r["n_senales"]}
+    if not out:
+        return None
+    print(f"\n  COMPARATIVA DE SCORES (horizonte {horizonte} semanas, umbral {umbral})")
+    print(f"  {'version':<24} {'senales':>8} {'N':>5} {'sube':>7} {'BATE INDICE':>13} {'media':>8} {'peor':>8}")
+    for k, v in out.items():
+        b = f"{v['bate']}%" if v["bate"] is not None else "—"
+        print(f"  {k:<24} {v['n_senales']:>8} {v['n']:>5} {v['pos']:>6}% {b:>13} "
+              f"{v['media']:>+7.2f}% {v['peor']:>+7.2f}%")
+    ks = list(out)
+    if len(ks) == 2 and all(out[k]["bate"] is not None for k in ks):
+        d = out[ks[1]]["bate"] - out[ks[0]]["bate"]
+        # solapamiento de intervalos: sin esto, una mejora de 2 pp con N pequena
+        # parece real y es ruido
+        solapan = not (out[ks[1]]["bate_lo"] > out[ks[0]]["bate_hi"] or
+                       out[ks[0]]["bate_lo"] > out[ks[1]]["bate_hi"])
+        print(f"\n  Diferencia en 'bate al indice': {d:+.1f} puntos porcentuales")
+        if solapan:
+            print("  ⚠ Los intervalos de Wilson SE SOLAPAN: la diferencia NO es concluyente.")
+            print("    Con esta muestra no se puede afirmar que una version sea mejor.")
+        else:
+            print(f"  ✓ Los intervalos NO se solapan: la diferencia si es significativa.")
+    return out
+
+
+
+# ======================================================================
+# MESA DE OPCIONES — PUT SPREAD DE RIESGO DEFINIDO   (v5.3)
+#
+# QUE HACE Y QUE NO HACE. Leelo antes de usarlo:
+#
+#   HACE: coger la cadena real de Yahoo (strikes con bid/ask vivos), y para un
+#   ETF con sesgo alcista construir el PUT SPREAD VENDIDO concreto: que strikes,
+#   cuanto se cobra, cuanta garantia se bloquea, cual es la perdida maxima y
+#   cual la relacion riesgo/beneficio. Todo son cuentas exactas sobre precios
+#   reales, no estimaciones.
+#
+#   NO HACE: decir la probabilidad de acertar. La delta de una opcion NO es una
+#   probabilidad del mundo real: es probabilidad NEUTRAL AL RIESGO, lleva dentro
+#   la prima que la gente paga por asegurarse. Sobreestima sistematicamente las
+#   caidas grandes. Publicar eso como "72% de exito" seria vender el precio del
+#   seguro disfrazado de estadistica.
+#
+#   TAMPOCO SE PUEDE BACKTESTEAR. Yahoo no da cadenas historicas: no existe
+#   forma de saber a que precio cotizaba un put hace dos anyos. Por eso aqui NO
+#   hay tasa de acierto ni Sharpe de la estrategia. Lo que si esta medido es la
+#   SENAL que la dispara (el detector de suelos), y su medicion del 2026-08-28
+#   dice que bate al indice el 47% de las veces: por debajo de la moneda.
+#
+#   CONSECUENCIA HONESTA: esto es una herramienta de EJECUCION, no una fuente de
+#   ventaja. Sirve para expresar mejor una idea que ya tengas, con riesgo capado
+#   y conocido de antemano. No para tener mas ideas.
+# ======================================================================
+
+def _bs_d1d2(spot, strike, t_anyos, iv, r=0.04):
+    """Black-Scholes. Solo se usa para delta y theta, no para valorar: el precio
+    real lo da el bid/ask de la cadena."""
+    try:
+        if not (spot > 0 and strike > 0 and t_anyos > 0 and iv > 0):
+            return None, None
+        v = iv * math.sqrt(t_anyos)
+        d1 = (math.log(spot / strike) + (r + iv * iv / 2) * t_anyos) / v
+        return d1, d1 - v
+    except Exception:
+        return None, None
+
+
+def _norm_cdf(x):
+    return 0.5 * (1 + math.erf(x / math.sqrt(2)))
+
+
+def put_spread_candidato(sym, opt, ancho_pct=0.05, dist_pct=0.05, riesgo="bajo"):
+    """Construye el put spread vendido concreto sobre la cadena real.
+    Devuelve None si la cadena no da para una estructura sensata (mejor nada
+    que un spread inventado con strikes que no cotizan)."""
+    try:
+        o = (opt or {}).get(sym) or {}
+        cad = o.get("cadena") or {}
+        puts = cad.get("put") or []
+        spot = o.get("spot")
+        if not puts or not spot or spot <= 0 or o.get("iliquido"):
+            return None
+        dist = {"bajo": 0.07, "medio": 0.05, "alto": 0.03}.get(riesgo, dist_pct)
+        obj_v = spot * (1 - dist)                       # strike vendido
+        obj_c = spot * (1 - dist - ancho_pct)           # strike comprado
+        def _cerca(objetivo):
+            return min(puts, key=lambda p: abs(float(p.get("strike", 0)) - objetivo))
+        pv, pc = _cerca(obj_v), _cerca(obj_c)
+        kv, kc = float(pv["strike"]), float(pc["strike"])
+        if kv <= kc:
+            return None
+        # Se COBRA al vender (bid del vendido) y se PAGA al comprar (ask del comprado).
+        # Usar el punto medio inflaria la prima: esto es lo que de verdad entra.
+        prima = float(pv.get("bid", 0)) - float(pc.get("ask", 0))
+        if prima <= 0:
+            return None
+        ancho = kv - kc
+        riesgo_max = (ancho - prima) * 100
+        cobro = prima * 100
+        if riesgo_max <= 0:
+            return None
+        # horquilla: si es ancha, el precio de entrada real sera peor
+        def _horq(p):
+            b, a = float(p.get("bid", 0)), float(p.get("ask", 0))
+            return round(100 * (a - b) / ((a + b) / 2), 1) if (a + b) > 0 else None
+        dte = o.get("dte") or 30
+        t = max(dte, 1) / 365.0
+        iv = float(pv.get("impliedVolatility") or o.get("iv") or 0.25)
+        d1, d2 = _bs_d1d2(spot, kv, t, iv)
+        delta_v = (_norm_cdf(d1) - 1) if d1 is not None else None
+        # theta aproximada del vendido (a favor del vendedor)
+        theta = None
+        if d1 is not None:
+            theta = (spot * iv * math.exp(-d1 * d1 / 2) / math.sqrt(2 * math.pi)
+                     / (2 * math.sqrt(t)) / 365.0)
+        return {
+            "sym": sym, "spot": round(spot, 2), "riesgo": riesgo,
+            "vende": kv, "compra": kc, "ancho": round(ancho, 2), "dte": dte,
+            "exp": o.get("exp"),
+            "cobro_eur": round(cobro, 0), "riesgo_max_eur": round(riesgo_max, 0),
+            "rr": round(cobro / riesgo_max, 2),
+            "colchon_pct": round(100 * (spot - kv) / spot, 1),
+            "iv": round(100 * iv, 1), "iv_pct": o.get("iv_pct"),
+            "delta_vendido": (round(delta_v, 3) if delta_v is not None else None),
+            "prob_implicita": (round(100 * (1 + delta_v), 1) if delta_v is not None else None),
+            "theta_dia_eur": (round(theta * 100, 1) if theta is not None else None),
+            "horq_v": _horq(pv), "horq_c": _horq(pc),
+            "oi_v": pv.get("openInterest"), "oi_c": pc.get("openInterest"),
+        }
+    except Exception as _dege:
+        _deg(f"put_spread_candidato:{sym}", _dege)
+        return None
+
+
+def mesa_opciones(opt, scores, rrg, flow, centinela=None, riesgo="bajo", top=6):
+    """Solo propone estructura sobre ETFs que YA pasan el filtro del sistema:
+    scoring >= 4/5 y cuadrante Lider o Mejorando. La opcion no es una senal
+    nueva: es otra forma de expresar la que ya existe."""
+    try:
+        if not opt:
+            return None
+        _sc = {r["sym"]: r for r in (scores or [])}
+        filas = []
+        for sym in (opt or {}):
+            r = _sc.get(sym)
+            q = (rrg or {}).get(sym, {}).get("quad")
+            if not r or (r.get("score") or 0) < 4:
+                continue
+            if q not in ("leading", "improving"):
+                continue
+            f = (flow or {}).get(sym) or {}
+            if (f.get("cmf") or 0) <= 0:
+                continue                      # el flujo confirma, tambien aqui
+            c = put_spread_candidato(sym, opt, riesgo=riesgo)
+            if c:
+                c["score"] = r.get("score")
+                c["quad"] = q
+                c["cmf"] = f.get("cmf")
+                filas.append(c)
+        if not filas:
+            return None
+        # Ordenar por relacion riesgo/beneficio ajustada por colchon: se prefiere
+        # cobrar algo menos a cambio de mas distancia hasta el strike vendido.
+        filas.sort(key=lambda x: -(x["rr"] * (1 + x["colchon_pct"] / 100)))
+        return {"riesgo": riesgo, "filas": filas[:top],
+                "regimen": (centinela or {}).get("estado")}
+    except Exception as _dege:
+        _deg("mesa_opciones", _dege)
+        return None
+
+
+
+# ======================================================================
+# BACKTEST DE LA REGLA DE CRUCE   (v5.4)
+#
+# LA REGLA QUE PEDRO OBSERVO EN PANTALLA, escrita en codigo para poder medirla:
+#   1. El ETF estaba en REZAGADO (lagging) y cruza a MEJORANDO (improving)
+#   2. Con ANILLO VERDE: acumulacion oculta, o etiqueta Acumulacion con CMF>0
+#      (las MISMAS condiciones que dibujan el circulo verde en el RRG)
+#   3. SIN ANILLO ROJO: nada de distribucion oculta
+#   4. Con VERTICALIDAD: el impulso girando con fuerza, no de refilon
+#
+# POR QUE ESTO ES DISTINTO DEL SCORE DE SUELO: el score es una foto estatica y
+# disparaba 393 veces en 94 semanas (4 por semana: casi cualquier cosa
+# castigada). Esto es un EVENTO: solo ocurre en el momento del cruce. Deberia
+# disparar mucho menos y, si la observacion de Pedro es buena, acertar mas.
+#
+# AVISO NECESARIO: la regla nace de mirar las ultimas semanas, donde se recuerdan
+# sobre todo las que salieron bien. Eso es seleccion por resultado. Por eso se
+# mide sobre TODO el historico, incluidas las semanas que nadie recuerda.
+# ======================================================================
+
+def _anillo_verde(f):
+    """Mismas condiciones que pintan el circulo verde en el RRG."""
+    if not f:
+        return False
+    if f.get("diverg") == "acumulacion oculta":
+        return True
+    return f.get("label") == "Acumulacion" and (f.get("cmf") or 0) > 0
+
+
+def _anillo_rojo(f):
+    return bool(f) and f.get("diverg") == "distribucion oculta"
+
+
+def backtest_cruce(df, daily, horizontes=(4, 8, 12), min_sep=8, paso=1,
+                   min_ventana=60, vert_min=1.0, exigir_verde=True, verbose=True):
+    """Mide la regla del cruce rezagado -> mejorando. Misma disciplina que el
+    otro banco: sin mirar al futuro, sin contar dos veces, agrupando familias."""
+    try:
+        _nec = min_ventana + max(horizontes) + 5
+        if df is None or len(df) < _nec:
+            _m = (f"HISTORIAL INSUFICIENTE: {0 if df is None else len(df)} semanas, "
+                  f"hacen falta {_nec}. Pon WEEKS = 260 en config.py.")
+            if verbose:
+                print(f"\n  NO SE PUEDE MEDIR — {_m}")
+            return {"n_senales": 0, "filas": [], "aviso": _m}
+        fechas = list(df.index)
+        senales, ultima, n_sem = [], {}, 0
+        prev_quad = {}
+        for i in range(min_ventana, len(fechas) - max(horizontes), paso):
+            corte = fechas[i]
+            df_t = df.iloc[:i + 1]
+            daily_t = {}
+            for sym, d in (daily or {}).items():
+                try:
+                    daily_t[sym] = d[d.index <= corte]
+                except Exception:
+                    continue
+            try:
+                rrg_t = compute_rrg(df_t)
+                flow_t = compute_volume_flow(daily_t)
+            except Exception as _dege:
+                _deg(f"backtest_cruce:{i}", _dege)
+                continue
+            n_sem += 1
+            for sym, d in rrg_t.items():
+                q = d.get("quad")
+                antes = prev_quad.get(sym)
+                prev_quad[sym] = q
+                if antes != "lagging" or q != "improving":
+                    continue                       # solo el momento del CRUCE
+                f = flow_t.get(sym) or {}
+                if _anillo_rojo(f):
+                    continue                       # anillo rojo: fuera
+                if exigir_verde and not _anillo_verde(f):
+                    continue
+                if abs(d.get("mom", 100) - 100) < vert_min and (d.get("dmom") or 0) < vert_min:
+                    continue                       # sin verticalidad
+                if sym in ultima and (i - ultima[sym]) < min_sep:
+                    continue
+                ultima[sym] = i
+                senales.append((i, sym))
+        if not senales:
+            _m = f"la regla no disparo ni una vez en {n_sem} semanas evaluadas"
+            if verbose:
+                print(f"\n  SIN SENALES — {_m}")
+            return {"n_senales": 0, "n_semanas": n_sem, "filas": [], "aviso": _m}
+        bench = df[BENCH] if BENCH in df.columns else None
+        filas = []
+        for h in horizontes:
+            brutos = []
+            for i, sym in senales:
+                try:
+                    if i + h >= len(df) or sym not in df.columns:
+                        continue
+                    p0, p1 = float(df[sym].iloc[i]), float(df[sym].iloc[i + h])
+                    if not (p0 > 0) or p1 != p1:
+                        continue
+                    ret = (p1 / p0 - 1) * 100
+                    cam = df[sym].iloc[i:i + h + 1].dropna()
+                    mae = round((float(cam.min()) / p0 - 1) * 100, 2) if len(cam) > 1 else None
+                    vs = None
+                    if bench is not None:
+                        b0, b1 = float(bench.iloc[i]), float(bench.iloc[i + h])
+                        if b0 > 0:
+                            vs = ret - (b1 / b0 - 1) * 100
+                    brutos.append({"i": i, "fam": familia_de(sym), "ret": ret,
+                                   "vs": vs, "mae": mae})
+                except Exception:
+                    continue
+            if not brutos:
+                filas.append({"h": h, "n": 0}); continue
+            ap = {}
+            for b in brutos:
+                ap.setdefault((b["fam"], b["i"] // max(1, min_sep)), []).append(b)
+            aps = []
+            for lst in ap.values():
+                rr = [x["ret"] for x in lst]
+                vv = [x["vs"] for x in lst if x["vs"] is not None]
+                mm = [x["mae"] for x in lst if x["mae"] is not None]
+                aps.append({"ret": sum(rr) / len(rr),
+                            "vs": (sum(vv) / len(vv)) if vv else None,
+                            "mae": (sum(mm) / len(mm)) if mm else None})
+            n = len(aps)
+            gan = sum(1 for a in aps if a["ret"] > 0)
+            lo, hi = _bt_wilson(gan / n, n)
+            bat = [a for a in aps if a["vs"] is not None]
+            gv = sum(1 for a in bat if a["vs"] > 0)
+            blo, bhi = _bt_wilson(gv / len(bat), len(bat)) if bat else (None, None)
+            rets = sorted(a["ret"] for a in aps)
+            maes = sorted(a["mae"] for a in aps if a["mae"] is not None)
+            filas.append({"h": h, "n": n, "n_fichas": len(brutos),
+                          "pos": round(100 * gan / n, 1), "lo": lo, "hi": hi,
+                          "media": round(sum(rets) / n, 2), "peor": round(rets[0], 2),
+                          "bate_pos": (round(100 * gv / len(bat), 1) if bat else None),
+                          "bate_lo": blo, "bate_hi": bhi,
+                          "mae_medio": (round(sum(maes) / len(maes), 2) if maes else None)})
+        res = {"n_senales": len(senales), "n_semanas": n_sem, "filas": filas,
+               "desde": str(fechas[min_ventana].date()), "hasta": str(fechas[-1].date())}
+        if verbose:
+            print(f"\n  REGLA DEL CRUCE: REZAGADO -> MEJORANDO"
+                  f"{' + anillo verde' if exigir_verde else ''}, sin anillo rojo")
+            print(f"    {len(senales)} senales en {n_sem} semanas ({res['desde']} a {res['hasta']})")
+            for f in filas:
+                if not f.get("n"):
+                    print(f"    T+{f['h']:>2}: sin casos"); continue
+                print(f"    T+{f['h']:>2}: {f['pos']:>5}% sube (Wilson {f['lo']}-{f['hi']}%) "
+                      f"N={f['n']:>3} · media {f['media']:+.2f}% · peor {f['peor']:+.2f}%"
+                      + (f" · BATE AL INDICE {f['bate_pos']}%" if f.get("bate_pos") is not None else ""))
+                if f.get("mae_medio") is not None:
+                    print(f"          aguante medio dentro de la ventana: {f['mae_medio']:+.2f}%")
+        return res
+    except Exception as _dege:
+        _deg("backtest_cruce", _dege)
+        return None
+
+
+def comparar_cruce_vs_score(df, daily, horizonte=8, **kw):
+    """La regla del cruce contra el score de suelo, mismos datos y periodo."""
+    out = {}
+    r1 = backtest_suelo(df, daily, umbral=5.0, horizontes=(horizonte,),
+                        verbose=False, **kw)
+    if r1 and r1.get("filas") and r1["filas"][0].get("n"):
+        out["SCORE de suelo (>=5)"] = r1["filas"][0]
+    for nombre, verde in (("CRUCE + anillo verde", True), ("CRUCE (sin exigir verde)", False)):
+        r = backtest_cruce(df, daily, horizontes=(horizonte,), exigir_verde=verde,
+                           verbose=False, **kw)
+        if r and r.get("filas") and r["filas"][0].get("n"):
+            out[nombre] = r["filas"][0]
+    if not out:
+        return None
+    print(f"\n  ¿LA REGLA DEL CRUCE ES MEJOR QUE EL SCORE? (horizonte {horizonte} semanas)")
+    print(f"  {'metodo':<26} {'N':>5} {'sube':>7} {'BATE INDICE':>13} {'media':>8} {'aguante':>9}")
+    for k, f in out.items():
+        b = f"{f['bate_pos']}%" if f.get("bate_pos") is not None else "—"
+        ag = f"{f['mae_medio']:+.1f}%" if f.get("mae_medio") is not None else "—"
+        print(f"  {k:<26} {f['n']:>5} {f['pos']:>6}% {b:>13} {f['media']:>+7.2f}% {ag:>9}")
+    print("  Lo que decide es BATE INDICE: comprar SPY sin pensar es la alternativa real.")
+    ks = [k for k in out if out[k].get("bate_lo") is not None]
+    if len(ks) >= 2:
+        a, b = out[ks[0]], out[ks[1]]
+        if a["bate_lo"] > b["bate_hi"] or b["bate_lo"] > a["bate_hi"]:
+            print("  ✓ Los intervalos NO se solapan: la diferencia es significativa.")
+        else:
+            print("  ⚠ Los intervalos SE SOLAPAN: la diferencia NO es concluyente.")
+    return out
+
+
+
+# ======================================================================
+# CRUCE DE ACCIONES EN ETFs QUE DESPIERTAN   (v5.5)
+#
+# LA IDEA DE PEDRO, en dos partes que son preguntas DISTINTAS:
+#
+#   A) "Si una accion esta en 3 ETFs que despiertan, le entra dinero por 3
+#      sitios". CIERTO y no depende de que los sectores se parezcan: el
+#      creador del ETF compra acciones de verdad, y los apalancados obligan
+#      a la mesa a cubrirse comprando el subyacente. Eso es CANTIDAD DE DINERO.
+#
+#   B) Pero si XLI, ITA y JETS se mueven juntos, no son 3 avisos independientes
+#      de que algo pasa: cuando uno gire, giran los tres. Eso es CONFIANZA, y
+#      se mide contando FAMILIAS, no ETFs. Mismo criterio que el libro de
+#      despertares, donde 5 metales eran 1 apuesta.
+#
+#   Las dos columnas se muestran POR SEPARADO. Ejemplo real del universo:
+#     ORCL: 3 ETFs / 1 familia  -> mucho dinero, una sola historia
+#     NUE:  3 ETFs / 3 familias -> menos dinero, tres historias distintas
+#
+#   C) LA REZAGADA: dentro de un ETF que despierta, la accion que se ha
+#      quedado atras. Si el sector tira, deberia ponerse al dia. AVISO: puede
+#      estar rezagada porque el sector la dejo atras (lo que se busca) o porque
+#      la empresa tiene un problema propio (trampa de valor). Por eso se marca
+#      cuando ADEMAS le sale el dinero: eso apunta a problema suyo, no del sector.
+#
+# LIMITACION QUE NO SE PUEDE TAPAR: las listas de acciones son a mano y sin
+# PESOS. Una accion que es el 0.5% de tres ETFs recibe menos dinero que una
+# que es el 8% de uno. El ranking usa la posicion en la lista como aproximacion
+# (las primeras pesan mas), pero es una aproximacion, no el peso real.
+# ======================================================================
+
+def _etfs_despertando(rrg, flow, scores, prev_quad=None, exigir_flujo=True):
+    """ETFs que estan en la zona que le interesa a Pedro: cruzando de Rezagado
+    a Mejorando, con verticalidad y con el flujo al menos neutro."""
+    out = []
+    for sym, d in (rrg or {}).items():
+        if sym in SINTETICOS or sym == BENCH:
+            continue
+        q = d.get("quad")
+        if q not in ("improving", "leading"):
+            continue
+        f = (flow or {}).get(sym) or {}
+        cmf = f.get("cmf")
+        if exigir_flujo and (cmf is None or cmf < -0.05):
+            continue                      # el dinero saliendo descarta
+        if _anillo_rojo(f):
+            continue                      # distribucion oculta: fuera
+        vert = abs((d.get("mom") or 100) - 100)
+        if q == "improving" and vert < 1.0 and (d.get("dmom") or 0) < 1.0:
+            continue                      # sin verticalidad no cuenta
+        out.append({"sym": sym, "quad": q, "cmf": cmf,
+                    "mom": d.get("mom"), "fam": familia_de(sym)})
+    return out
+
+
+def cruce_acciones(rrg, flow, scores, stock_close=None, top=14):
+    """Cruza las acciones de los ETFs que despiertan. Devuelve None si no hay
+    ETFs despertando o si ninguno tiene lista de acciones."""
+    try:
+        despiertos = _etfs_despertando(rrg, flow, scores)
+        if not despiertos:
+            return None
+        con_lista = [e for e in despiertos if SECTOR_STOCKS.get(e["sym"])]
+        if not con_lista:
+            return {"filas": [], "n_etf": len(despiertos), "sin_lista": True,
+                    "etfs": [e["sym"] for e in despiertos]}
+        # --- A y B: dinero (ETFs) y confianza (familias) ---
+        acc = {}
+        for e in con_lista:
+            lista = SECTOR_STOCKS[e["sym"]][:10]
+            for pos, st in enumerate(lista):
+                a = acc.setdefault(st, {"etfs": [], "fams": set(), "peso": 0.0})
+                a["etfs"].append(e["sym"])
+                a["fams"].add(e["fam"])
+                # aproximacion de peso: la primera de la lista pesa mas que la ultima
+                a["peso"] += (10 - pos) / 10.0 * (1 + max(0.0, (e["cmf"] or 0)) * 2)
+        filas = []
+        for st, a in acc.items():
+            if len(a["etfs"]) < 2:
+                continue                  # solo interesa lo que sale repetido
+            r = {"sym": st, "n_etf": len(a["etfs"]), "n_fam": len(a["fams"]),
+                 "etfs": a["etfs"], "fams": sorted(a["fams"]),
+                 "peso": round(a["peso"], 2)}
+            # rendimiento en el ano, si la accion esta descargada
+            r["ytd"] = _ytd_accion(st, stock_close)
+            filas.append(r)
+        # orden: primero por familias (confianza), luego por ETFs (dinero)
+        filas.sort(key=lambda x: (-x["n_fam"], -x["n_etf"], -x["peso"]))
+        return {"filas": filas[:top], "n_etf": len(despiertos),
+                "etfs": [e["sym"] for e in despiertos],
+                "con_lista": [e["sym"] for e in con_lista]}
+    except Exception as _dege:
+        _deg("cruce_acciones", _dege)
+        return None
+
+
+
+def _giro_precio(sym, stock_close):
+    """¿La accion sigue cayendo o ya ha girado? Solo con cierres, que es lo unico
+    que hay para las acciones (sin volumen no se puede calcular el CMF).
+    Devuelve dict con el dato o None si no hay serie suficiente."""
+    try:
+        s = (stock_close or {}).get(sym)
+        if s is None:
+            return None
+        s = s.dropna()
+        if len(s) < 60:
+            return None
+        ult = float(s.iloc[-1])
+        m50 = float(s.iloc[-50:].mean())
+        # ultimas 4 semanas contra las 4 anteriores: ¿acelera o sigue sangrando?
+        r4 = (ult / float(s.iloc[-21]) - 1) * 100 if len(s) > 21 else None
+        r4p = (float(s.iloc[-21]) / float(s.iloc[-42]) - 1) * 100 if len(s) > 42 else None
+        min60 = float(s.iloc[-60:].min())
+        return {"sobre_m50": ult > m50,
+                "r4": (round(r4, 1) if r4 is not None else None),
+                "mejora": (r4 is not None and r4p is not None and r4 > r4p),
+                "en_minimos": ult <= min60 * 1.03}
+    except Exception as _dege:
+        _deg(f"_giro_precio:{sym}", _dege)
+        return None
+
+
+def _ytd_accion(sym, stock_close):
+    """% en lo que va de ano. None si no esta descargada (no se inventa)."""
+    try:
+        s = (stock_close or {}).get(sym)
+        if s is None or len(s) < 30:
+            return None
+        s = s.dropna()
+        ini = s[s.index >= pd.Timestamp(dt.date(dt.date.today().year, 1, 1))]
+        if len(ini) < 5:
+            return None
+        return round((float(s.iloc[-1]) / float(ini.iloc[0]) - 1) * 100, 1)
+    except Exception:
+        return None
+
+
+def rezagadas_del_etf(rrg, flow, scores, stock_close=None, min_acciones=5):
+    """C) Dentro de cada ETF que despierta, la accion mas rezagada del ano.
+    La idea: si el sector tira, la que se quedo atras deberia ponerse al dia."""
+    try:
+        out = []
+        for e in _etfs_despertando(rrg, flow, scores):
+            lista = SECTOR_STOCKS.get(e["sym"], [])[:10]
+            if len(lista) < min_acciones:
+                continue
+            datos = []
+            for st in lista:
+                y = _ytd_accion(st, stock_close)
+                if y is not None:
+                    datos.append((st, y))
+            if len(datos) < min_acciones:
+                continue
+            datos.sort(key=lambda x: x[1])
+            # v5.9: guardar el desglose. Una media suelta no se puede comprobar;
+            # con las 10 acciones y su % delante, cualquiera ve si el numero
+            # cuadra o si hay una que lo esta distorsionando. Ejemplo real: la
+            # media de XLE parecia alta hasta ver que MPC/PSX/VLO son refineras
+            # y no petroleras, y en un buen ano de refino van muy por encima.
+            peor, mejor = datos[0], datos[-1]
+            media = sum(y for _, y in datos) / len(datos)
+            # v5.7: aqui habia un bug. Se buscaba el CMF de la ACCION en el
+            # diccionario `flow`, que es de ETFs: devolvia None siempre y la
+            # columna salia vacia. Y no tiene arreglo directo: del S&P 500 solo
+            # se descargan CIERRES, sin volumen, y sin volumen NO HAY CMF.
+            # En su lugar se usa lo unico que si se puede calcular con precios:
+            # ¿la rezagada sigue cayendo o ya ha girado? Es la misma pregunta
+            # (¿es el sector el que la dejo atras, o tiene un problema propio?)
+            # respondida con la herramienta que hay, no con la que gustaria.
+            out.append({"etf": e["sym"], "cmf_etf": e["cmf"], "quad": e["quad"],
+                        "rezagada": peor[0], "ytd_rez": peor[1],
+                        "lider": mejor[0], "ytd_lider": mejor[1],
+                        "media": round(media, 1),
+                        "brecha": round(media - peor[1], 1),
+                        "n": len(datos), "n_lista": len(lista),
+                        "detalle": [(t, round(y, 1)) for t, y in datos],
+                        "giro": _giro_precio(peor[0], stock_close)})
+        # v5.8: NO ordenar solo por brecha. La brecha mas grande suele ser la
+        # empresa con problema propio (trampa de valor), no la oportunidad.
+        # Arriba lo que tiene brecha Y ademas ha girado; abajo lo que sigue
+        # en minimos por mucha brecha que tenga.
+        def _prio(x):
+            g = x.get("giro") or {}
+            if g.get("sobre_m50") and g.get("mejora"):
+                rango = 0            # giro al alza: lo que se busca
+            elif g.get("mejora"):
+                rango = 1            # dejo de caer
+            elif g.get("en_minimos"):
+                rango = 3            # sigue sangrando: al final
+            else:
+                rango = 2
+            return (rango, -x["brecha"])
+        out.sort(key=_prio)
+        return out or None
+    except Exception as _dege:
+        _deg("rezagadas_del_etf", _dege)
+        return None
+
+
+
+# ======================================================================
+# EL BACKTEST, PARTIDO POR REGIMEN DE MERCADO   (v6.0)
+#
+# LA PREGUNTA QUE RESUELVE: "¿y si entramos en un mercado bajista?"
+#
+# El backtest anterior media 2022-11 a 2026-08. En ese periodo el SPY subio
+# un 84.8%: era casi todo mercado alcista. Un 67% de aciertos ahi no dice
+# nada sobre como se comporta el sistema CAYENDO, que es justo cuando las
+# entradas de beta alta duelen.
+#
+# Esto mide lo mismo pero SEPARANDO cada senal segun como estaba el mercado
+# EL DIA que se disparo (nunca despues: eso seria mirar al futuro):
+#   ALCISTA    = SPY por encima de su media de 40 semanas
+#   CORRECCION = SPY por debajo de la media, caida < 15% desde maximos
+#   BAJISTA    = SPY por debajo de la media, caida >= 15%
+#
+# El filtro de tendencia del sistema (TREND_FILTER) apaga la cartera en
+# mercado bajista, pero el detector de suelos y el cockpit NO se apagan: se
+# supone que ahi es donde deberian brillar. Esto comprueba si es verdad.
+# ======================================================================
+
+def _regimen_en(df, i, ma_sem=40):
+    """Como estaba el mercado en la semana i. SOLO con datos hasta i."""
+    try:
+        if BENCH not in df.columns:
+            return None
+        b = df[BENCH].iloc[:i + 1].dropna()
+        if len(b) < ma_sem + 2:
+            return None
+        ult = float(b.iloc[-1])
+        ma = float(b.iloc[-ma_sem:].mean())
+        pico = float(b.iloc[-52:].max()) if len(b) >= 52 else float(b.max())
+        dd = (ult / pico - 1) * 100 if pico > 0 else 0.0
+        if ult >= ma:
+            return "ALCISTA"
+        return "BAJISTA" if dd <= -15 else "CORRECCION"
+    except Exception as _dege:
+        _deg("_regimen_en", _dege)
+        return None
+
+
+def backtest_por_regimen(df, daily, umbral=5.0, horizonte=8, min_sep=8,
+                         paso=1, min_ventana=60, verbose=True):
+    """Mide el detector de suelos separando por como estaba el mercado."""
+    try:
+        _nec = min_ventana + horizonte + 5
+        if df is None or len(df) < _nec:
+            _m = (f"HISTORIAL INSUFICIENTE: {0 if df is None else len(df)} semanas de {_nec}. "
+                  f"Para cubrir mercados bajistas pon WEEKS = 520 o mas en config.py.")
+            if verbose:
+                print(f"\n  NO SE PUEDE MEDIR — {_m}")
+            return {"filas": [], "aviso": _m}
+        fechas = list(df.index)
+        senales, ultima, n_sem = [], {}, 0
+        for i in range(min_ventana, len(fechas) - horizonte, paso):
+            corte = fechas[i]
+            df_t = df.iloc[:i + 1]
+            daily_t = {}
+            for sym, d in (daily or {}).items():
+                try:
+                    daily_t[sym] = d[d.index <= corte]
+                except Exception:
+                    continue
+            try:
+                rrg_t = compute_rrg(df_t)
+                flow_t = compute_volume_flow(daily_t)
+                scores_t = compute_scores(df_t, rrg_t, daily_t, flow_t)
+                filas_t = compute_suelo(df_t, rrg_t, scores_t, flow_t, {})
+            except Exception as _dege:
+                _deg(f"backtest_por_regimen:{i}", _dege)
+                continue
+            n_sem += 1
+            reg = _regimen_en(df, i)
+            for r in (filas_t or []):
+                if (r.get("pts") or 0) < umbral:
+                    continue
+                sym = r["sym"]
+                if sym in ultima and (i - ultima[sym]) < min_sep:
+                    continue
+                ultima[sym] = i
+                senales.append((i, sym, reg))
+        if not senales:
+            return {"filas": [], "aviso": f"sin senales en {n_sem} semanas"}
+        bench = df[BENCH] if BENCH in df.columns else None
+        por_reg = {}
+        for i, sym, reg in senales:
+            if not reg or sym not in df.columns:
+                continue
+            try:
+                p0, p1 = float(df[sym].iloc[i]), float(df[sym].iloc[i + horizonte])
+                if not (p0 > 0) or p1 != p1:
+                    continue
+                ret = (p1 / p0 - 1) * 100
+                vs = None
+                if bench is not None:
+                    b0, b1 = float(bench.iloc[i]), float(bench.iloc[i + horizonte])
+                    if b0 > 0:
+                        vs = ret - (b1 / b0 - 1) * 100
+                cam = df[sym].iloc[i:i + horizonte + 1].dropna()
+                mae = (float(cam.min()) / p0 - 1) * 100 if len(cam) > 1 else None
+                por_reg.setdefault(reg, []).append(
+                    {"i": i, "fam": familia_de(sym), "ret": ret, "vs": vs, "mae": mae})
+            except Exception:
+                continue
+        filas = []
+        for reg in ("ALCISTA", "CORRECCION", "BAJISTA"):
+            lst = por_reg.get(reg)
+            if not lst:
+                filas.append({"reg": reg, "n": 0, "n_fichas": 0}); continue
+            ap = {}
+            for b in lst:
+                ap.setdefault((b["fam"], b["i"] // max(1, min_sep)), []).append(b)
+            aps = []
+            for grupo in ap.values():
+                rr = [x["ret"] for x in grupo]
+                vv = [x["vs"] for x in grupo if x["vs"] is not None]
+                mm = [x["mae"] for x in grupo if x["mae"] is not None]
+                aps.append({"ret": sum(rr) / len(rr),
+                            "vs": (sum(vv) / len(vv)) if vv else None,
+                            "mae": (sum(mm) / len(mm)) if mm else None})
+            n = len(aps)
+            gan = sum(1 for a in aps if a["ret"] > 0)
+            lo, hi = _bt_wilson(gan / n, n)
+            bat = [a for a in aps if a["vs"] is not None]
+            gv = sum(1 for a in bat if a["vs"] > 0)
+            blo, bhi = _bt_wilson(gv / len(bat), len(bat)) if bat else (None, None)
+            rets = sorted(a["ret"] for a in aps)
+            maes = [a["mae"] for a in aps if a["mae"] is not None]
+            filas.append({"reg": reg, "n": n, "n_fichas": len(lst),
+                          "pos": round(100 * gan / n, 1), "lo": lo, "hi": hi,
+                          "media": round(sum(rets) / n, 2), "peor": round(rets[0], 2),
+                          "bate": (round(100 * gv / len(bat), 1) if bat else None),
+                          "bate_lo": blo, "bate_hi": bhi,
+                          "mae": (round(sum(maes) / len(maes), 2) if maes else None)})
+        res = {"filas": filas, "n_senales": len(senales), "n_semanas": n_sem,
+               "desde": str(fechas[min_ventana].date()), "hasta": str(fechas[-1].date()),
+               "horizonte": horizonte}
+        if verbose:
+            print(f"\n  EL DETECTOR DE SUELOS, PARTIDO POR REGIMEN (horizonte {horizonte} semanas)")
+            print(f"    {res['desde']} a {res['hasta']} · {len(senales)} senales")
+            print(f"    {'regimen':<12} {'N':>4} {'sube':>7} {'BATE INDICE':>13} "
+                  f"{'media':>8} {'peor':>8} {'aguante':>9}")
+            for f in filas:
+                if not f.get("n"):
+                    print(f"    {f['reg']:<12} {'—':>4}  sin senales en este regimen")
+                    continue
+                b = f"{f['bate']}%" if f["bate"] is not None else "—"
+                ag = f"{f['mae']:+.1f}%" if f.get("mae") is not None else "—"
+                print(f"    {f['reg']:<12} {f['n']:>4} {f['pos']:>6}% {b:>13} "
+                      f"{f['media']:>+7.2f}% {f['peor']:>+7.2f}% {ag:>9}")
+            _b = [f for f in filas if f["reg"] == "BAJISTA" and f.get("n")]
+            if not _b:
+                print("    ⚠ NO HAY SENALES EN MERCADO BAJISTA: el periodo medido no")
+                print("      incluye ninguno. Sube WEEKS en config.py (520 = 10 anos,")
+                print("      988 = 19 anos) para cubrir 2008, 2020 y 2022.")
+            else:
+                print(f"    -> En mercado bajista la muestra es N={_b[0]['n']}. "
+                      f"Mira el intervalo, no el numero central.")
+        return res
+    except Exception as _dege:
+        _deg("backtest_por_regimen", _dege)
+        return None
+
+
+
+# ======================================================================
+# MAQUINA DEL TIEMPO   (v6.1)
+#
+# "¿Que decia el terminal el 17 de abril de 2022, y que paso despues?"
+#
+# Recalcula TODO (RRG, flujo, scoring, suelos, centinela) con los datos que
+# existian hasta esa fecha y ni uno mas. Luego, y SOLO para ensenar el
+# resultado, mira lo que ocurrio a 4, 8 y 12 semanas.
+#
+# POR QUE ES MEJOR QUE LA TABLA DEL BACKTEST: un "67% de acierto" no deja
+# juzgar nada. Esto te ensena los NOMBRES concretos de aquel dia, y decides
+# tu si eran senales sensatas o ruido. Es la diferencia entre un resumen y
+# poder mirar la jugada.
+#
+# LA LINEA QUE NO SE CRUZA: lo de ANTES de la fecha se calcula sin ver el
+# futuro; lo de DESPUES se marca siempre como resultado, nunca como senal.
+# ======================================================================
+
+def maquina_del_tiempo(df, daily, fecha, horizontes=(4, 8, 12), top=12, verbose=True):
+    """fecha: 'AAAA-MM-DD'. Devuelve lo que el terminal habria dicho ese dia
+    y lo que paso despues. None si la fecha cae fuera del historico."""
+    try:
+        objetivo = pd.Timestamp(fecha)
+        if df is None or not len(df):
+            return None
+        pos = df.index.searchsorted(objetivo)
+        if pos >= len(df):
+            return {"aviso": f"{fecha} es posterior al ultimo dato ({df.index[-1].date()})"}
+        if pos < 60:
+            return {"aviso": f"{fecha} esta demasiado al principio del historico. "
+                             f"Sube WEEKS en config.py para tener mas pasado."}
+        corte = df.index[pos]
+        # ---- EL PASADO: se recalcula todo con la ventana recortada
+        df_t = df.iloc[:pos + 1]
+        daily_t = {}
+        for sym, d in (daily or {}).items():
+            try:
+                daily_t[sym] = d[d.index <= corte]
+            except Exception:
+                continue
+        rrg_t = compute_rrg(df_t)
+        flow_t = compute_volume_flow(daily_t)
+        scores_t = compute_scores(df_t, rrg_t, daily_t, flow_t)
+        suelo_t = compute_suelo(df_t, rrg_t, scores_t, flow_t, {})
+        reg = _regimen_en(df, pos)
+        # contexto de mercado de aquel dia
+        b = df_t[BENCH].dropna() if BENCH in df_t.columns else None
+        dd = None
+        if b is not None and len(b) >= 52:
+            dd = round((float(b.iloc[-1]) / float(b.iloc[-52:].max()) - 1) * 100, 1)
+        lideres = sorted([s for s, d in rrg_t.items()
+                          if d.get("quad") == "leading" and s not in SINTETICOS])
+        # ---- EL FUTURO: solo para MOSTRAR el resultado, nunca para la senal
+        def _luego(sym, h):
+            try:
+                if pos + h >= len(df) or sym not in df.columns:
+                    return None
+                p0, p1 = float(df[sym].iloc[pos]), float(df[sym].iloc[pos + h])
+                if not (p0 > 0) or p1 != p1:
+                    return None
+                r = (p1 / p0 - 1) * 100
+                cam = df[sym].iloc[pos:pos + h + 1].dropna()
+                mae = (float(cam.min()) / p0 - 1) * 100 if len(cam) > 1 else None
+                return {"ret": round(r, 1), "mae": (round(mae, 1) if mae is not None else None)}
+            except Exception:
+                return None
+        senales = []
+        for r in (suelo_t or [])[:top]:
+            fila = {"sym": r["sym"], "pts": r.get("pts"), "fase": r.get("fase"),
+                    "cmf": r.get("cmf"), "hi52": r.get("hi52"),
+                    "fam": familia_de(r["sym"])}
+            for h in horizontes:
+                fila[f"t{h}"] = _luego(r["sym"], h)
+            senales.append(fila)
+        bench_luego = {h: _luego(BENCH, h) for h in horizontes}
+        res = {"fecha": str(corte.date()), "regimen": reg, "dd_spy": dd,
+               "lideres": lideres[:12], "n_senales": len(suelo_t or []),
+               "senales": senales, "bench": bench_luego, "horizontes": list(horizontes)}
+        if verbose:
+            print(f"\n  ══ MAQUINA DEL TIEMPO: {corte.date()} ══")
+            print(f"    Mercado ese dia: {reg}"
+                  + (f" · SPY {dd:+.1f}% desde maximos" if dd is not None else ""))
+            print(f"    Lideres entonces: {', '.join(lideres[:10]) or '—'}")
+            print(f"    El detector marcaba {len(suelo_t or [])} suelo(s)")
+            _bl = bench_luego.get(horizontes[1] if len(horizontes) > 1 else horizontes[0])
+            if _bl:
+                print(f"    Lo que hizo el SPY despues: {_bl['ret']:+.1f}% "
+                      f"(llego a caer {_bl['mae']:+.1f}%)")
+            if senales:
+                print(f"\n    {'ETF':6} {'pts':>4} {'CMF':>6} {'vs max':>7}  "
+                      + "  ".join(f"T+{h:<2} (peor)" for h in horizontes))
+                for s_ in senales:
+                    _c = f"{s_['cmf']:+.2f}" if s_.get("cmf") is not None else "  n/d"
+                    _h = f"{100 - (s_['hi52'] or 100):.0f}%" if s_.get("hi52") else "  —"
+                    _t = []
+                    for h in horizontes:
+                        v = s_.get(f"t{h}")
+                        _t.append(f"{v['ret']:>+6.1f}% ({v['mae']:>+5.1f}%)" if v else "     —      ")
+                    print(f"    {s_['sym']:6} {s_['pts']:>4} {_c:>6} {_h:>7}  " + "  ".join(_t))
+                print(f"\n    Lo de la izquierda se calculo SIN ver el futuro.")
+                print(f"    Lo de la derecha es el resultado, y solo se sabe ahora.")
+        return res
+    except Exception as _dege:
+        _deg("maquina_del_tiempo", _dege)
+        return None
+
+
+
+# ======================================================================
+# LABORATORIO DE SUELOS   (v6.3)
+#
+# EL PROBLEMA QUE RESUELVE, y es de metodo, no de codigo:
+#   Pedro viajo a dos caidas y en las dos encontro capitulacion + CENTINELA
+#   en LIQUIDEZ justo en el suelo. Parece un patron perfecto. Pero eligio
+#   esas dos fechas PORQUE SABIA QUE HABIAN REBOTADO. La pregunta que decide
+#   si el patron vale es la contraria: ¿cuantas veces salto la capitulacion
+#   y el mercado SIGUIO CAYENDO? Si fueron seis, el patron acierta 2 de 8.
+#
+#   Por eso aqui NO se eligen fechas. El programa recorre todo el historico,
+#   encuentra SOLO todas las caidas, y anota el estado del terminal en tres
+#   momentos de cada una: a mitad, en el fondo, y en cada aviso que resulto
+#   ser falso. Los fracasos entran a la fuerza en la muestra.
+#
+# QUE GUARDA: un unico JSON pequeno con una linea por observacion. Nada de
+# HTML gigantes. El objetivo es que quepa entero en una conversacion.
+# ======================================================================
+
+def _caidas_del_indice(df, umbrales=(5, 10, 20), ventana_pico=52, daily=None):
+    """Encuentra TODAS las caidas del indice desde su pico de 52 semanas.
+
+    v6.4 — MIDE CON MAXIMOS Y MINIMOS DIARIOS, no con cierres semanales.
+    Con cierres semanales la caida de marzo-abril de 2025 salia -16.9% y se
+    clasificaba en el cubo de -10%, cuando en realidad toco el -20% intradia.
+    El propio terminal ya avisaba de esto en el plan de liquidez: "los cubos
+    grandes saltan a partir de -9.5% y -19.5% porque el SPY solo registra su
+    sesion de contado". Aqui se arregla de raiz usando el High para el pico y
+    el Low para el fondo, que es la caida que de verdad se vivio.
+    Si no hay daily, cae a cierres semanales y lo deja anotado."""
+    try:
+        if BENCH not in df.columns:
+            return []
+        b = df[BENCH].dropna()
+        # --- serie de maximos y minimos semanales a partir del diario
+        hi_sem = lo_sem = None
+        try:
+            d0 = (daily or {}).get(BENCH)
+            if d0 is not None and "High" in d0.columns and "Low" in d0.columns:
+                per = d0.index.to_period("W-FRI")
+                hi_sem = d0["High"].groupby(per).max()
+                lo_sem = d0["Low"].groupby(per).min()
+                hi_sem.index = hi_sem.index.to_timestamp("W-FRI")
+                lo_sem.index = lo_sem.index.to_timestamp("W-FRI")
+                hi_sem = hi_sem.reindex(b.index, method="nearest", tolerance=pd.Timedelta("4D"))
+                lo_sem = lo_sem.reindex(b.index, method="nearest", tolerance=pd.Timedelta("4D"))
+                if hi_sem.isna().mean() > 0.3 or lo_sem.isna().mean() > 0.3:
+                    hi_sem = lo_sem = None
+        except Exception as _dege:
+            _deg("_caidas_del_indice:intradia", _dege)
+            hi_sem = lo_sem = None
+        _intradia = hi_sem is not None
+        _hi = hi_sem.fillna(b) if _intradia else b
+        _lo = lo_sem.fillna(b) if _intradia else b
+        if len(b) < ventana_pico + 10:
+            return []
+        # v6.4.1 — DOS SERIES, y mezclarlas fue el fallo de la version anterior:
+        #   dd_cierre  decide CUANDO empieza y CUANDO acaba un episodio
+        #   dd_min     mide SOLO la profundidad que se vivio
+        # Usando los minimos para las dos cosas, la curva se queda siempre mas
+        # abajo, la condicion de "recuperado" casi nunca se cumple, y los
+        # episodios no cierran: se fundieron el bache de 2024 con la caida de
+        # 2025 en uno solo de 51 semanas, y desaparecieron 2010, 2012 y 2023.
+        pico = _hi.rolling(ventana_pico, min_periods=ventana_pico // 2).max()
+        dd = (b / pico - 1) * 100          # cierres: marca inicio y fin
+        dd_min = (_lo / pico - 1) * 100    # minimos: mide la profundidad
+        episodios, dentro, ini = [], False, None
+        for i in range(len(b)):
+            d = float(dd.iloc[i]) if dd.iloc[i] == dd.iloc[i] else 0.0
+            dm = float(dd_min.iloc[i]) if dd_min.iloc[i] == dd_min.iloc[i] else 0.0
+            if not dentro and dm <= -min(umbrales):
+                dentro, ini = True, i
+            elif dentro and d >= -1.0:          # recuperado: el episodio cierra
+                tramo = dd_min.iloc[ini:i + 1]
+                fondo = int(tramo.values.argmin()) + ini
+                prof = float(tramo.min())
+                episodios.append({"ini": ini, "fondo": fondo, "fin": i,
+                                  "prof": round(prof, 1),
+                                  "cubo": max([u for u in umbrales if prof <= -u], default=0),
+                                  "f_ini": str(b.index[ini].date()),
+                                  "f_fondo": str(b.index[fondo].date()),
+                                  "semanas": fondo - ini, "intradia": _intradia})
+                dentro, ini = False, None
+        if dentro and ini is not None:          # caida aun abierta al final
+            tramo = dd_min.iloc[ini:]
+            fondo = int(tramo.values.argmin()) + ini
+            prof = float(tramo.min())
+            episodios.append({"ini": ini, "fondo": fondo, "fin": len(b) - 1,
+                              "prof": round(prof, 1),
+                              "cubo": max([u for u in umbrales if prof <= -u], default=0),
+                              "f_ini": str(b.index[ini].date()),
+                              "f_fondo": str(b.index[fondo].date()),
+                              "semanas": fondo - ini, "abierta": True,
+                              "intradia": _intradia})
+        return [e for e in episodios if e["cubo"] > 0]
+    except Exception as _dege:
+        _deg("_caidas_del_indice", _dege)
+        return []
+
+
+def _foto_terminal(df, daily, i):
+    """Estado del terminal en la semana i, calculado SOLO con datos hasta i.
+    Es la ficha que luego se compara entre suelos reales y falsas alarmas."""
+    try:
+        corte = df.index[i]
+        df_t = df.iloc[:i + 1]
+        daily_t = {}
+        for sym, d in (daily or {}).items():
+            try:
+                daily_t[sym] = d[d.index <= corte]
+            except Exception:
+                continue
+        rrg = compute_rrg(df_t)
+        flow = compute_volume_flow(daily_t)
+        scores = compute_scores(df_t, rrg, daily_t, flow)
+        suelo = compute_suelo(df_t, rrg, scores, flow, {}) or []
+        # --- capitulacion: misma definicion que usa el terminal en pantalla
+        capit = [s_ for s_, f in flow.items()
+                 if f.get("clima") == "capitulacion" and (f.get("clima_hace") or 9) <= 2]
+        climax = [s_ for s_, f in flow.items()
+                  if f.get("clima") == "climax" and (f.get("clima_hace") or 9) <= 2]
+        # --- donde estan los defensivos vs la beta alta (el spread del CENTINELA)
+        def _q(sym):
+            return (rrg.get(sym) or {}).get("quad")
+        defensivos = [s_ for s_ in ("XLP", "XLU", "XLV", "TLT", "GLD")
+                      if _q(s_) in ("leading", "improving")]
+        explosivos = [s_ for s_ in ("SMH", "SOXX", "XBI", "ARKK", "KWEB", "IGV")
+                      if _q(s_) in ("leading", "improving")]
+        lideres = sorted([s_ for s_, d in rrg.items()
+                          if d.get("quad") == "leading" and s_ not in SINTETICOS])
+        # --- amplitud: cuantos ETF tienen fuerza sobre el indice
+        vivos = [d for s_, d in rrg.items() if s_ not in SINTETICOS]
+        amp = round(100 * sum(1 for d in vivos if (d.get("ratio") or 100) > 100)
+                    / max(1, len(vivos)))
+        # --- flujo agregado
+        cmfs = [f.get("cmf") for f in flow.values() if f.get("cmf") is not None]
+        return {
+            "fecha": str(corte.date()),
+            "regimen_mercado": _regimen_en(df, i),
+            "n_suelos": len(suelo),
+            "suelos_top": [(r["sym"], r.get("pts")) for r in suelo[:5]],
+            "capitulacion": capit[:8], "n_capit": len(capit),
+            "climax": climax[:5], "n_climax": len(climax),
+            "defensivos_arriba": defensivos, "n_def": len(defensivos),
+            "explosivos_arriba": explosivos, "n_expl": len(explosivos),
+            "spread_def_expl": len(explosivos) - len(defensivos),
+            "lideres": lideres[:10], "amplitud_pct": amp,
+            "cmf_medio": (round(sum(cmfs) / len(cmfs), 3) if cmfs else None),
+            "cmf_positivos_pct": (round(100 * sum(1 for c in cmfs if c > 0) / len(cmfs))
+                                  if cmfs else None),
+            "n_scoring_45": sum(1 for r in (scores or []) if (r.get("score") or 0) >= 4),
+        }
+    except Exception as _dege:
+        _deg(f"_foto_terminal:{i}", _dege)
+        return None
+
+
+def laboratorio_suelos(df, daily, horizontes=(4, 8, 12), ruta=None, verbose=True):
+    """Recorre TODO el historico, encuentra las caidas solo, y anota el estado
+    del terminal en el fondo, a mitad, y en las FALSAS ALARMAS."""
+    try:
+        eps = _caidas_del_indice(df, daily=daily)
+        if not eps:
+            _m = ("no se han encontrado caidas en el historico disponible. "
+                  "Sube WEEKS en config.py (988 = 19 anos).")
+            if verbose:
+                print(f"\n  LABORATORIO: {_m}")
+            return {"obs": [], "aviso": _m}
+        b = df[BENCH]
+        obs = []
+        if verbose:
+            print(f"\n  ══ LABORATORIO DE SUELOS ══")
+            print(f"    {len(eps)} caidas encontradas en el historico:")
+            _md = "maximos/minimos DIARIOS" if eps[0].get("intradia") else "cierres SEMANALES (aprox.)"
+            print(f"    medidas con {_md}")
+            for e in eps:
+                print(f"      {e['f_ini']} -> fondo {e['f_fondo']} "
+                      f"({e['prof']:+.1f}%, cubo -{e['cubo']}%, {e['semanas']} semanas)")
+            print(f"    Analizando... (cada punto tarda unos segundos)")
+        for e in eps:
+            # 1) EL FONDO REAL: lo que se quiere aprender a reconocer
+            puntos = [(e["fondo"], "FONDO")]
+            # 2) MITAD DE CAIDA: aqui el terminal NO deberia decir suelo
+            mitad = e["ini"] + (e["fondo"] - e["ini"]) // 2
+            if mitad != e["fondo"]:
+                puntos.append((mitad, "MITAD"))
+            # 3) FALSAS ALARMAS: capitulaciones ANTES del fondo. Son las que
+            #    Pedro no habria mirado, y son las que deciden si el patron vale.
+            for k in range(e["ini"], e["fondo"], 2):
+                if k not in (mitad, e["fondo"]):
+                    puntos.append((k, "ANTES_DEL_FONDO"))
+            for i, etiqueta in puntos:
+                if i < 60 or i + max(horizontes) >= len(df):
+                    continue
+                foto = _foto_terminal(df, daily, i)
+                if not foto:
+                    continue
+                foto["momento"] = etiqueta
+                foto["caida_episodio"] = e["prof"]
+                foto["cubo"] = e["cubo"]
+                foto["semanas_hasta_el_fondo"] = e["fondo"] - i
+                foto["era_el_fondo"] = (etiqueta == "FONDO")
+                for h in horizontes:
+                    try:
+                        p0, p1 = float(b.iloc[i]), float(b.iloc[i + h])
+                        cam = b.iloc[i:i + h + 1]
+                        foto[f"spy_t{h}"] = round((p1 / p0 - 1) * 100, 1)
+                        foto[f"spy_peor_t{h}"] = round((float(cam.min()) / p0 - 1) * 100, 1)
+                    except Exception:
+                        pass
+                obs.append(foto)
+        res = {"generado": str(df.index[-1].date()), "n_caidas": len(eps),
+               "episodios": eps, "n_observaciones": len(obs),
+               "horizontes": list(horizontes), "obs": obs}
+        if ruta:
+            try:
+                os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+                with open(ruta + ".tmp", "w", encoding="utf-8") as fh:
+                    json.dump(res, fh, ensure_ascii=False, indent=1)
+                os.replace(ruta + ".tmp", ruta)
+                if verbose:
+                    _kb = os.path.getsize(ruta) // 1024
+                    print(f"\n    Guardado en {ruta}  ({_kb} KB)")
+            except Exception as _e_g:
+                _avisar("laboratorio", f"no se pudo guardar: {_e_g}")
+        if verbose:
+            n_fondo = sum(1 for o in obs if o["era_el_fondo"])
+            n_no = len(obs) - n_fondo
+            print(f"    {len(obs)} observaciones: {n_fondo} fondos reales, "
+                  f"{n_no} momentos que NO eran el fondo")
+            # resumen inmediato de la hipotesis de Pedro
+            con_cap = [o for o in obs if o["n_capit"] > 0]
+            if con_cap:
+                aciertos = sum(1 for o in con_cap if o["era_el_fondo"])
+                lo, hi = _bt_wilson(aciertos / len(con_cap), len(con_cap))
+                print(f"\n    HIPOTESIS 'capitulacion = suelo':")
+                print(f"      hubo capitulacion en {len(con_cap)} observaciones")
+                print(f"      de esas, era el fondo en {aciertos} -> "
+                      f"{round(100*aciertos/len(con_cap))}% (Wilson {lo}-{hi}%)")
+                print(f"      las otras {len(con_cap)-aciertos} son FALSAS ALARMAS:")
+                print(f"      capitulacion con el mercado aun cayendo.")
+            print(f"\n    Sube ese fichero a la conversacion para analizarlo.")
+        return res
+    except Exception as _dege:
+        _deg("laboratorio_suelos", _dege)
+        return None
+
+
+
+# ======================================================================
+# DE QUE ESTA HECHO EL INDICE   (v6.7)
+#
+# LA IDEA DE PEDRO, bien planteada: si los 7 Magnificos son casi la mitad
+# del peso del Nasdaq y les sale dinero, el indice no puede subir aunque la
+# ciberseguridad vaya bien. Y al reves.
+#
+# ESTO NO ES UNA PREDICCION, y es importante: es ARITMETICA. No dice "el
+# Nasdaq subira un X%". Dice "el 45% de su peso tiene el dinero saliendo".
+# Es un hecho de composicion, no un pronostico. Por eso se puede publicar
+# sin mentir, a diferencia de un "78% de probabilidad de subida".
+#
+# Los pesos son APROXIMADOS y estan escritos a mano: cambian cada trimestre
+# y el reparto exacto no es publico en tiempo real. Sirven para saber si un
+# bloque pesa mucho o poco, no para calcular al decimal.
+# ======================================================================
+COMPOSICION = {
+    "NASDAQ 100 (QQQ)": {
+        "bench": "QQQ",
+        "bloques": [
+            ("7 Magnificos",       "MAGS", 43),
+            ("Semiconductores",    "SMH",  13),
+            ("Software y nube",    "IGV",   9),
+            ("Ciberseguridad",     "CIBR",  3),
+            ("Consumo discrec.",   "XLY",   6),
+            ("Comunicaciones",     "XLC",   5),
+            ("Salud",              "XLV",   6),
+            ("Industriales",       "XLI",   4),
+        ],
+    },
+    "S&P 500 (SPY)": {
+        "bench": "SPY",
+        "bloques": [
+            ("Tecnologia",         "XLK",  32),
+            ("Financiero",         "XLF",  13),
+            ("Salud",              "XLV",  10),
+            ("Consumo discrec.",   "XLY",  10),
+            ("Comunicaciones",     "XLC",   9),
+            ("Industriales",       "XLI",   8),
+            ("Consumo basico",     "XLP",   6),
+            ("Energia",            "XLE",   4),
+            ("Materiales",         "XLB",   2),
+            ("Utilities",          "XLU",   2),
+        ],
+    },
+    "RUSSELL 2000 (IWM)": {
+        "bench": "IWM",
+        "bloques": [
+            ("Banca regional",     "KRE",  17),
+            ("Biotecnologia",      "XBI",  14),
+            ("Industriales",       "XLI",  13),
+            ("Consumo discrec.",   "XLY",  11),
+            ("Inmobiliario",       "XLRE",  7),
+            ("Energia",            "XLE",   5),
+            ("Tecnologia",         "XLK",  12),
+            ("Salud",              "XLV",   6),
+        ],
+    },
+}
+
+
+def descomponer_indice(nombre, rrg, flow, scores):
+    """Reparte el peso del indice segun si a cada bloque le ENTRA o le SALE
+    dinero. Devuelve None si no hay datos suficientes."""
+    try:
+        cfg = COMPOSICION.get(nombre)
+        if not cfg:
+            return None
+        _sc = {r["sym"]: r for r in (scores or [])}
+        filas, peso_visto = [], 0
+        for etq, sym, peso in cfg["bloques"]:
+            f = (flow or {}).get(sym) or {}
+            d = (rrg or {}).get(sym) or {}
+            cmf = f.get("cmf")
+            if cmf is None and not d:
+                continue
+            quad = d.get("quad")
+            # verticalidad: cuanto se esta moviendo, no solo donde esta
+            vert = round((d.get("mom") or 100) - 100, 1)
+            if cmf is None:
+                estado, signo = "sin dato", 0
+            elif f.get("diverg") == "distribucion oculta":
+                estado, signo = "sale (oculta)", -1
+            elif cmf > 0.05:
+                estado, signo = "entra", 1
+            elif cmf < -0.05:
+                estado, signo = "sale", -1
+            else:
+                estado, signo = "plano", 0
+            filas.append({"etq": etq, "sym": sym, "peso": peso, "cmf": cmf,
+                          "quad": quad, "vert": vert, "estado": estado,
+                          "signo": signo,
+                          "score": (_sc.get(sym) or {}).get("score")})
+            peso_visto += peso
+        if not filas or peso_visto < 40:
+            return None
+        p_entra = sum(f["peso"] for f in filas if f["signo"] > 0)
+        p_sale = sum(f["peso"] for f in filas if f["signo"] < 0)
+        p_plano = peso_visto - p_entra - p_sale
+        # el bloque que MANDA: el de mas peso, y si tira o frena
+        dom = max(filas, key=lambda f: f["peso"])
+        filas.sort(key=lambda f: -f["peso"])
+        # lectura: no es un pronostico, es lo que pesa cada lado
+        if p_entra >= p_sale * 2 and p_entra >= 40:
+            lectura = ("La mayor parte del peso tiene dinero entrando. "
+                       "El indice tiene el viento a favor por composicion.")
+            color = "verde"
+        elif p_sale >= p_entra * 2 and p_sale >= 40:
+            lectura = ("La mayor parte del peso tiene dinero saliendo. "
+                       "Por mucho que suban bloques pequenos, no compensan.")
+            color = "rojo"
+        elif dom["signo"] < 0:
+            lectura = (f"El bloque que mas pesa ({dom['etq']}, {dom['peso']}%) tiene "
+                       f"el dinero saliendo. Es dificil que el indice tire sin el.")
+            color = "ambar"
+        else:
+            lectura = ("Peso repartido entre los dos lados: el indice no tiene "
+                       "una direccion clara por composicion.")
+            color = "ambar"
+        return {"nombre": nombre, "bench": cfg["bench"], "filas": filas,
+                "peso_visto": peso_visto, "p_entra": p_entra, "p_sale": p_sale,
+                "p_plano": p_plano, "dominante": dom, "lectura": lectura,
+                "color": color}
+    except Exception as _dege:
+        _deg(f"descomponer_indice:{nombre}", _dege)
+        return None
+
+
+
+# ======================================================================
+# LA SECUENCIA DEL SUELO — UNA SOLA TABLA   (v6.8)
+#
+# LA TESIS DE PEDRO, literal: "hay un sector que lo han vendido y poco a poco
+# va entrando dinero de forma silenciosa y empieza a despegar".
+#
+# Eso es una SECUENCIA de cuatro pasos, no cuatro indicadores sueltos:
+#     1. CASTIGADO   lo han vendido (lejos de maximos)
+#     2. SILENCIO    nadie lo mira (volumen por debajo de su media)
+#     3. DINERO      empieza a entrar callado (CMF girando, acumulacion oculta)
+#     4. ARRANQUE    el precio se mueve (impulso girando, cambio de cuadrante)
+#
+# Hasta ahora eso estaba repartido en cinco paneles: durmientes, cazador de
+# suelos, recien despertados, cockpit alta beta y radar de atencion. Cada uno
+# miraba un paso. Aqui va todo en UNA fila por sector, ordenada por lo cerca
+# que esta de encenderse.
+#
+# LO QUE NO HACE, y hay que decirlo cada vez: no predice. El backtest de este
+# mismo sistema dijo que acierta el 67% pero bate al indice solo el 47% de las
+# veces, y que el score no distingue un 5 de un 8. Esto ORGANIZA la
+# informacion para que se vea la secuencia de un vistazo. La decision sigue
+# siendo del viernes y sigue siendo tuya.
+# ======================================================================
+
+def secuencia_del_suelo(rrg, flow, scores, suelo=None, cockpit=None,
+                        despertares=None, df=None, top=20):
+    """Una fila por sector con los cuatro pasos marcados. Ordena por cercania
+    al arranque: arriba lo que ya tiene dinero y empieza a moverse."""
+    try:
+        if not rrg or not flow:
+            return None
+        _su = {r["sym"]: r for r in (suelo or [])}
+        _ck = {r["sym"]: r for r in ((cockpit or {}).get("rows") or [])}
+        _sc = {r["sym"]: r for r in (scores or [])}
+        _gr = {}
+        for g in ((despertares or {}).get("activas") or []):
+            if isinstance(g, dict) and g.get("sym"):
+                _gr[g["sym"]] = g
+        filas = []
+        for sym, d in rrg.items():
+            if sym == BENCH or sym in SINTETICOS:
+                continue
+            f = flow.get(sym) or {}
+            su = _su.get(sym) or {}
+            ck = _ck.get(sym) or {}
+            cmf = f.get("cmf")
+            # ---- PASO 1: castigado
+            hi52 = su.get("hi52") or ck.get("dd52")
+            dd = None
+            if hi52 is not None:
+                dd = -(100 - hi52) if hi52 <= 100 else 0
+            elif ck.get("dd52") is not None:
+                dd = ck["dd52"]
+            castigado = (dd is not None and dd <= -12)
+            # ---- PASO 2: silencio (volumen por debajo de lo normal)
+            vr = f.get("vol_rel5") or f.get("vol_rel")
+            silencio = (vr is not None and vr < 0.95)
+            # ---- PASO 3: dinero entrando, con o sin ruido
+            mejora = bool(f.get("cmf_mejora"))
+            oculta = (f.get("diverg") == "acumulacion oculta")
+            nocturno = bool(f.get("aext") or ck.get("aext"))
+            dinero = ((cmf is not None and cmf > 0.05) or oculta or nocturno
+                      or (mejora and cmf is not None and cmf > -0.05))
+            sale = (f.get("diverg") == "distribucion oculta"
+                    or (cmf is not None and cmf < -0.05))
+            # ---- PASO 4: arranque
+            quad = d.get("quad")
+            dmom = d.get("dmom") or 0
+            arranque = (quad in ("improving", "leading") and dmom > 0.5)
+            # ---- fase de la secuencia
+            if sale:
+                fase, orden = "AUN SANGRA", 5
+            elif castigado and silencio and dinero and arranque:
+                fase, orden = "ARRANCANDO", 0
+            elif castigado and dinero and arranque:
+                fase, orden = "ARRANCANDO", 0
+            elif castigado and silencio and dinero:
+                fase, orden = "DINERO CALLADO", 1
+            elif castigado and dinero:
+                fase, orden = "DINERO ENTRANDO", 2
+            elif castigado and silencio:
+                fase, orden = "SILENCIO", 3
+            elif castigado:
+                fase, orden = "CASTIGADO", 4
+            else:
+                continue          # sin castigo no hay suelo que cazar
+            pasos = sum([castigado, silencio, dinero, arranque])
+            filas.append({
+                "sym": sym, "fase": fase, "orden": orden, "pasos": pasos,
+                "dd52": (round(dd, 1) if dd is not None else None),
+                "vol_rel": (round(float(vr), 2) if vr is not None else None),
+                "cmf": cmf, "mejora": mejora, "oculta": oculta,
+                "nocturno": nocturno, "quad": quad, "dmom": round(dmom, 1),
+                "castigado": castigado, "silencio": silencio,
+                "dinero": dinero, "arranque": arranque,
+                "pts": su.get("pts"), "pre": su.get("pre"),
+                "capit": bool(ck.get("capit")),
+                "score": (_sc.get(sym) or {}).get("score"),
+                "grad": sym in _gr,
+                "fam": familia_de(sym),
+                "nombre": (NAMES.get(sym) or ("", sym, ""))[1] if isinstance(
+                    NAMES.get(sym), (list, tuple)) else sym,
+            })
+        if not filas:
+            return None
+        filas.sort(key=lambda r: (r["orden"], -(r["pts"] or 0), r["dd52"] or 0))
+        # ---- agrupar por familia: cinco metales no son cinco oportunidades
+        fam_cnt = {}
+        for r in filas:
+            fam_cnt[r["fam"]] = fam_cnt.get(r["fam"], 0) + 1
+        for r in filas:
+            r["n_fam"] = fam_cnt[r["fam"]]
+        return {"filas": filas[:top], "total": len(filas),
+                "familias": len({r["fam"] for r in filas[:top]})}
+    except Exception as _dege:
+        _deg("secuencia_del_suelo", _dege)
+        return None
 
 
 def compute_flow_score(sym, flow):
@@ -2582,16 +4425,21 @@ def build_html_lite(fecha, centinela=None, chosen=None, scores=None, flow=None,
                 _v = _r.get("sistema")
                 _b = _r.get("SPY")
                 _c = C["grn"] if (_v or 0) >= 0 else C["red"]
+                # una semana sin dato deja _v = None: formatearlo revienta el bloque
+                _txt = f"{_v:+.1f}%" if isinstance(_v, (int, float)) else "—"
                 _t += (f"<tr><td>{esc(_r.get('week', ''))}</td>"
-                       f"<td style='color:{_c}'>{_v:+.1f}%</td>"
-                       f"<td class='dim'>{(f'{_b:+.1f}%' if _b is not None else '—')}</td></tr>")
+                       f"<td style='color:{_c}'>{_txt}</td>"
+                       f"<td class='dim'>"
+                       + (f"{_b:+.1f}%" if isinstance(_b, (int, float)) else "—")
+                       + "</td></tr>")
             _t += "</table>"
             _res = ""
-            if _sis is not None:
+            if isinstance(_sis, (int, float)):
                 _cc = C["grn"] if _sis >= 0 else C["red"]
                 _res = (f"<div class='big' style='color:{_cc}'>{_sis * 100:+.1f}%</div>"
                         f"<div class='sub'>acumulado en {len(_w)} semanas"
-                        + (f" · SPY {_spy * 100:+.1f}%" if _spy is not None else "") + "</div>")
+                        + (f" · SPY {_spy * 100:+.1f}%" if isinstance(_spy, (int, float)) else "")
+                        + "</div>")
             H.append(_lite_mod("Track record", _res + _t,
                      "Cadena real: incluye las posiciones que ganaron Y las que perdieron. "
                      "Resultados pasados no garantizan resultados futuros."))
@@ -3093,9 +4941,27 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                 mp_dist = (maxpain / spot - 1) * 100
                 if abs(mp_dist) > 12:
                     maxpain, mp_dist = None, None
+            # v5.3: se conservan los STRIKES VIVOS del vencimiento cercano. Antes se
+            # calculaban los agregados (IV, skew, PCR) y se tiraba la cadena, con lo
+            # que era imposible montar nada operativo encima. Solo strikes con
+            # cotizacion real (el filtro de liquidez de arriba ya los ha depurado).
+            _cad = None
+            try:
+                _cols = ["strike", "bid", "ask", "impliedVolatility", "openInterest", "volume"]
+                _cd = {}
+                for _lado, _dfo in (("call", cq), ("put", pq)):
+                    if _dfo is None or not len(_dfo):
+                        continue
+                    _t = _dfo[[c for c in _cols if c in _dfo.columns]].copy()
+                    _t = _t[(_t.get("bid", 0) > 0) & (_t.get("ask", 0) > 0)]
+                    if len(_t):
+                        _cd[_lado] = _t.to_dict("records")
+                _cad = _cd or None
+            except Exception as _dege:
+                _deg("compute_options:cadena", _dege)
             return {"exp": exp0, "pcr_vol": pcr_vol, "pcr_oi": pcr_oi, "iv": iv_atm, "skew": skew,
                     "maxpain": maxpain, "mp_dist": mp_dist, "spot": spot, "iliquido": iliq,
-                    "dte_iv": dte_iv, "n_exp_pcr": n_exp_pcr}
+                    "dte_iv": dte_iv, "n_exp_pcr": n_exp_pcr, "cadena": _cad}
         except Exception as e:
             _avisar(f"options.{tkr}", f"cadena de opciones no analizada: {type(e).__name__}: {e}")
             return None
@@ -3888,6 +5754,71 @@ def backtest(df, rrg, hold=("leading", "improving"), trend=None, max_pos=None, w
 # ----------------------------------------------------------------------
 # Caidas del S&P 500: frecuencia anual, probabilidad y plan de liquidez
 # ----------------------------------------------------------------------
+
+def comparar_drawdown(bt, verbose=True):
+    """¿El sistema cae MENOS que comprar y mantener? Es la ventaja que Pe
+    siempre ha dicho que tenia, y la unica que nunca se habia medido.
+
+    POR QUE IMPORTA MAS QUE LA RENTABILIDAD: un sistema que gana lo mismo
+    pero cae la mitad se puede AGUANTAR. Y un sistema que no se aguanta no
+    se opera: se abandona en el peor momento, que es justo cuando habria que
+    seguirlo. El drawdown no mide rendimiento, mide si una persona real
+    puede seguir el sistema sin rendirse.
+
+    Tambien calcula el RETORNO POR UNIDAD DE CAIDA (Calmar): cuanto ganas
+    por cada punto de dolor. Ahi un sistema que rinde menos puede ganar de
+    calle si cae mucho menos."""
+    try:
+        if not bt or bt.get("mdd_s") is None or bt.get("mdd_b") is None:
+            return None
+        dd_s, dd_b = abs(bt["mdd_s"]), abs(bt["mdd_b"])
+        t_s, t_b = bt["tot_s"], bt["tot_b"]
+        sem = bt.get("weeks") or 1
+        anos = max(sem / 52.0, 0.1)
+        cagr_s = ((1 + t_s / 100) ** (1 / anos) - 1) * 100
+        cagr_b = ((1 + t_b / 100) ** (1 / anos) - 1) * 100
+        cal_s = cagr_s / dd_s if dd_s > 0 else None
+        cal_b = cagr_b / dd_b if dd_b > 0 else None
+        res = {"dd_sistema": round(dd_s, 1), "dd_indice": round(dd_b, 1),
+               "dd_ahorrado": round(dd_b - dd_s, 1),
+               "dd_ratio": (round(dd_s / dd_b, 2) if dd_b > 0 else None),
+               "cagr_sistema": round(cagr_s, 1), "cagr_indice": round(cagr_b, 1),
+               "calmar_sistema": (round(cal_s, 2) if cal_s else None),
+               "calmar_indice": (round(cal_b, 2) if cal_b else None),
+               "exposicion_pct": bt.get("exposure"), "semanas": sem,
+               "anos": round(anos, 1)}
+        if verbose:
+            print(f"\n  ¿EL SISTEMA CAE MENOS? ({res['anos']} anos, {sem} semanas)")
+            print(f"    {'':<22} {'sistema':>10} {'comprar y mantener':>20}")
+            print(f"    {'rentabilidad total':<22} {t_s:>9.1f}% {t_b:>19.1f}%")
+            print(f"    {'anual (CAGR)':<22} {cagr_s:>9.1f}% {cagr_b:>19.1f}%")
+            print(f"    {'PEOR CAIDA':<22} {-dd_s:>9.1f}% {-dd_b:>19.1f}%")
+            if cal_s and cal_b:
+                print(f"    {'ganancia / caida':<22} {cal_s:>10.2f} {cal_b:>20.2f}")
+            print(f"    {'tiempo invertido':<22} {res['exposicion_pct']:>9}% {'100':>19}%")
+            print()
+            if dd_s < dd_b:
+                print(f"    -> El sistema cayo {res['dd_ahorrado']:.1f} puntos MENOS "
+                      f"({100*res['dd_ratio']:.0f}% de la caida del indice).")
+                if cal_s and cal_b and cal_s > cal_b:
+                    print(f"    -> Y gana MAS por cada punto de caida ({cal_s:.2f} vs {cal_b:.2f}):")
+                    print(f"       rinde menos en total, pero es mas seguible.")
+                elif cal_s and cal_b:
+                    print(f"    -> Pero gana MENOS por punto de caida ({cal_s:.2f} vs {cal_b:.2f}).")
+            else:
+                print(f"    -> El sistema cayo IGUAL O MAS que el indice "
+                      f"({-dd_s:.1f}% vs {-dd_b:.1f}%).")
+                print(f"       La ventaja de reducir drawdown NO aparece en estos datos.")
+            print(f"\n    AVISO: es UNA sola serie historica, no N=muchos: un solo camino.")
+            print(f"    Y el sistema estuvo fuera del mercado el "
+                  f"{100 - (res['exposicion_pct'] or 0)}% del tiempo, lo que reduce la")
+            print(f"    caida por construccion, no necesariamente por acertar.")
+        return res
+    except Exception as _dege:
+        _deg("comparar_drawdown", _dege)
+        return None
+
+
 def compute_seasonality(close, ahead=5):
     # Estacionalidad por MEDIA-QUINCENA (1H = dias 1-15, 2H = 16-fin de mes) sobre el historico largo.
     # Para el periodo actual y los proximos: % de años con retorno positivo y retorno medio.
@@ -4389,16 +6320,38 @@ def fetch_stock_universe():
             # Sin esto, esas acciones no tienen percentil y desaparecen del panel.
             extra = sorted({t for lst in SECTOR_STOCKS.values() for t in lst if t not in closes})
             if extra:
-                print(f"  +{len(extra)} acciones de SECTOR_STOCKS fuera del S&P (incluye agua FIW: MLI, FERG, etc.)...")
+                print(f"  +{len(extra)} acciones de SECTOR_STOCKS fuera del S&P...")
                 start = dt.date.today() - dt.timedelta(days=500)
+                _fallidos = []
                 for t in extra:
                     try:
                         d, _ = get_ohlcv(t, start, dt.date.today())
                         if d is not None and "Close" in d.columns and len(d) > 200:
                             closes[t] = d["Close"].dropna()
+                        else:
+                            _fallidos.append(t)
                     except Exception:
-                        pass
+                        _fallidos.append(t)
                     time.sleep(0.15)
+                # v5.6: AVISAR de los tickers muertos en vez de tragarselos.
+                # Las listas de SECTOR_STOCKS son a mano y envejecen: las empresas
+                # se compran, se fusionan o cambian de ticker. Un nombre muerto no
+                # rompe nada, simplemente DESAPARECE del cruce y del panel de
+                # rezagadas — y esa ausencia silenciosa es justo lo peligroso,
+                # porque el panel parece completo y no lo esta.
+                if _fallidos:
+                    _dueno = {}
+                    for _e, _l in SECTOR_STOCKS.items():
+                        for _t in _fallidos:
+                            if _t in _l:
+                                _dueno.setdefault(_t, []).append(_e)
+                    _txt = ", ".join(f"{t} (en {'/'.join(_dueno.get(t, ['?']))})"
+                                     for t in _fallidos[:12])
+                    _avisar("acciones", f"{len(_fallidos)} ticker(s) de SECTOR_STOCKS sin datos "
+                            f"— probablemente compradas, fusionadas o con ticker nuevo. "
+                            f"NO aparecen en el cruce ni en las rezagadas: {_txt}")
+                    print(f"  ⚠ {len(_fallidos)} tickers de SECTOR_STOCKS sin datos "
+                          f"(revisa la lista): {', '.join(_fallidos[:10])}")
             return closes
         print("  (S&P 500 insuficiente; uso la lista por sectores)")
     tickers = sorted({t for lst in SECTOR_STOCKS.values() for t in lst})
@@ -5726,13 +7679,48 @@ def compute_suelo(df, rrg, scores, flow, meanrev):
             fase = "ACUMULACION"
         else:
             fase = "DORMIDO"
-        rows.append({"sym": s, "pts": min(pts, 10), "det": det, "hi52": hi52, "vr": vr, "sil": sil,
+        # ---- SCORE V2: FLUJO COMO PUERTA, NO COMO SUMANDO (v5.2) ------------
+        # El backtest del 2026-08-28 demostro que el score sumado NO discrimina:
+        #   umbral 5 -> 67.1% | umbral 6 -> 66.1% | umbral 7 -> 66.0% | umbral 8 -> 63.8%
+        # Un 8 acierta MENOS que un 5. La causa: 6 de los ~14 puntos repartibles
+        # miden lo mismo ("ha caido mucho") con cuatro reglas distintas, y eso no
+        # predice el rebote. Aqui se calcula un score ALTERNATIVO donde:
+        #   1) cada FACTOR aporta como mucho su peso, se cumplan 1 o 4 de sus reglas
+        #   2) el flujo MULTIPLICA en vez de sumar, y sin flujo el techo es 4.9,
+        #      con lo que la regla de la casa ("sin flujo no hay mano") pasa de ser
+        #      un comentario a ser imposible de saltarse.
+        # RESULTADO DE LA MEDICION (2026-08-28, 260 semanas, 94 evaluadas):
+        #   ORIGINAL: 393 senales, N=215, sube 67.0%, BATE INDICE 47.0%, media +4.02%, peor -23.04%
+        #   V2:       193 senales, N=134, sube 63.4%, BATE INDICE 44.0%, media +3.31%, peor -31.75%
+        # V2 SALIO PEOR EN LAS CINCO METRICAS. La hipotesis era que exigir flujo
+        # quitaria falsos positivos; lo que hizo fue quitar tambien aciertos, y
+        # ADEMAS empeoro el peor caso (-32% vs -23%): el CMF positivo en algo muy
+        # castigado suele ser rebote de gato muerto, o sea entrada tarde.
+        # NO se usa para filtrar. Se conserva para que nadie (ni una IA futura)
+        # vuelva a proponer lo mismo creyendo que es obvio que funcionaria.
+        _f_caida = 1.0 if (hi52 is not None and hi52 <= 82) else 0.0
+        _f_sil = min(1.0, (sil or 0) / 2.0)
+        _f_giro = 1.0 if (vert is not None and vert >= 1.5) else (0.6 if (dmom or 0) >= 1.0 else 0.0)
+        _f_pat = min(1.0, (pre or 0) / 3.0)
+        _f_flujo = 0.0
+        if cmf is not None:
+            _f_flujo = 1.0 if cmf > 0.05 else (0.45 if cmf >= -0.05 else 0.0)
+        _ctx = _f_caida * 2 + _f_sil * 1.5 + _f_giro * 2 + _f_pat * 1.5      # max 7
+        if _f_flujo <= 0:
+            _pts2 = min(_ctx, 4.9)          # techo duro: sin flujo NUNCA llega a 5
+        else:
+            _pts2 = min(_ctx * (1 + _f_flujo * 0.45), 10.0)
+        rows.append({"pts2": round(_pts2, 2),
+                     "sym": s, "pts": min(pts, 10), "det": det, "hi52": hi52, "vr": vr, "sil": sil,
                      "wk_lag": wk_lag, "n3": n3, "cmf": cmf, "dmom": dmom,
                      "vert": (round(vert, 1) if vert is not None else None),
                      "quieto": (round(quieto, 1) if quieto is not None else None),
                      "sangra": sangra, "despertando": despertando, "pre": pre, "fase": fase})
     rows.sort(key=lambda r: (-int(r["despertando"]), -int(r["fase"] == "PRE-DESPERTAR"), -r["pre"], -r["pts"],
                              (r["hi52"] if r["hi52"] is not None else 999)))
+    # v5.2.1: pts2 NO filtra. Se midió el 2026-08-28 con 260 semanas y salió PEOR
+    # que el score original en las cinco métricas (ver comentario de pts2 arriba).
+    # Se conserva solo para poder seguir comparándolo en el backtest.
     return [r for r in rows if r["pts"] >= 5 or r["pre"] >= 3][:14] or None
 
 
@@ -6044,10 +8032,7 @@ def update_despertares(suelo, daily, close_date, bench="SPY", macro=None):
         except Exception:
             continue
     try:
-        with open(DESPERTARES_FILE, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
-        with open(DESPERTARES_BAK, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
+        guardar_json_seguro(DESPERTARES_FILE, recs, backup=DESPERTARES_BAK, indent=0)
     except Exception:
         pass
 
@@ -6168,8 +8153,7 @@ def update_centinela_ledger(estado, close_date):
     recs.append({"date": d, "estado": estado})
     recs = sorted(recs, key=lambda r: r["date"])[-90:]
     try:
-        with open(CENTINELA_FILE, "w", encoding="utf-8") as fh:
-            json.dump(recs, fh, ensure_ascii=False, indent=0)
+        guardar_json_seguro(CENTINELA_FILE, recs, indent=0)
     except Exception:
         pass
     return recs
@@ -7095,7 +9079,7 @@ def _spark(vals, w=70, h=20, color=None, sw=1.4):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -7190,7 +9174,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html = []
     html.append("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>")
     html.append("<meta name='viewport' content='width=device-width,initial-scale=1'>")
-    html.append("<title>Rotacion - Smart-Money Flow Terminal</title>")
+    html.append(f"<title>{'VIAJE ' + VIAJE_A + ' · ' if VIAJE_A else ''}"
+                "Rotacion - Smart-Money Flow Terminal</title>")
     html.append("<meta name='theme-color' content='#0A0E17'>")
     html.append("<link rel='manifest' href='manifest.webmanifest'>")
     html.append("<meta name='apple-mobile-web-app-capable' content='yes'>")
@@ -7217,6 +9202,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         "<button class='viewtab mainview active' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
         "<button class='viewtab mainview' onclick=\"mainView('op',this)\" style='font-size:13px;padding:7px 16px'>🎯 Operativa</button>"
         "<button class='viewtab mainview' onclick=\"mainView('vig',this)\" style='font-size:13px;padding:7px 16px'>📋 Vigilancia</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('sue',this)\" style='font-size:13px;padding:7px 16px;border-color:#2FD08A55;color:#2FD08A'>🎯 Detector de suelos</button>"
         "<button class='viewtab mainview' onclick=\"mainView('bbg',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00055;color:#FFB000'>🖥️ PRO</button>"
         "<button class='viewtab mainview' onclick=\"mainView('rds',this)\" style='font-size:13px;padding:7px 16px;border-color:#4CC2E055;color:#4CC2E0'>📣 Redes</button>"
         "<button class='viewtab mainview' onclick=\"mainView('cl',this)\" style='font-size:13px;padding:7px 16px'>🤖 Modo Claude</button>"
@@ -8111,18 +10097,23 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     rows += f"<tr><td class='se-l'>Precio vs media 40s</td><td class='r'>{_yns(not below, 'por encima', 'por debajo (ya débil)')}</td></tr>"
                 if mom3 is not None:
                     rows += f"<tr><td class='se-l'>Momentum 3 meses</td><td class='r' style='color:{'#2FD08A' if mom3 > 0 else '#F4607A'}'>{mom3:+.1f}%</td></tr>"
-                html.append(
-                    "<div class='panel full' style='border:1px solid #F4607A55'><h2>🔻 Corto táctico — semiconductores (SOXS −3x)</h2>"
-                    "<div class='note' style='color:#F4B740'><b>Avanzado y peligroso.</b> Lee el flujo de los semis (SMH) y lo traduce al lado corto. El instrumento sería <b>SOXS</b> (Direxion −3x diario, el más volátil).</div>"
-                    f"<div class='readbox' style='border-color:{vcol}55;margin-top:8px'><div class='read-light' style='background:{vcol}'></div>"
-                    f"<div><div class='read-txt'>{verd}</div><div class='read-stance' style='color:{vcol}'>¿está saliendo dinero de los semis?</div></div></div>"
-                    "<div class='scrollx' style='margin-top:10px'><table class='se'><tr><th class='se-l'>señal (sobre SMH)</th><th class='r'>lectura</th></tr>"
-                    + rows + "</table></div>"
-                    "<div class='note' style='margin-top:10px;color:#F4607A'><b>Reglas de supervivencia:</b> "
-                    "① corto SOLO con <b>distribución oculta</b> (dinero saliendo y precio aún arriba), nunca solo porque \"esté extendido\". "
-                    "② SOXS −3x tiene <b>decay diario brutal</b>: es de <b>días, no semanas</b>. "
-                    "③ Si ya cae en vertical, <b>llegas tarde</b> y el rebote te revienta. "
-                    "④ Stop duro, tamaño mínimo. Esto es <b>predecir un techo</b>, lo contrario a tu sistema. No es asesoramiento.</div></div>")
+                # v6.9 — CORTO TACTICO SOXS: DESACTIVADO.
+                # El propio panel decia "esto es predecir un techo, lo contrario a tu
+                # sistema". Y SOXS -3x tiene decay diario brutal. Con la mesa de opciones
+                # montada, el corto apalancado sobra. Codigo conservado por si acaso.
+                if False:
+                    html.append(
+                        "<div class='panel full' style='border:1px solid #F4607A55'><h2>🔻 Corto táctico — semiconductores (SOXS −3x)</h2>"
+                        "<div class='note' style='color:#F4B740'><b>Avanzado y peligroso.</b> Lee el flujo de los semis (SMH) y lo traduce al lado corto. El instrumento sería <b>SOXS</b> (Direxion −3x diario, el más volátil).</div>"
+                        f"<div class='readbox' style='border-color:{vcol}55;margin-top:8px'><div class='read-light' style='background:{vcol}'></div>"
+                        f"<div><div class='read-txt'>{verd}</div><div class='read-stance' style='color:{vcol}'>¿está saliendo dinero de los semis?</div></div></div>"
+                        "<div class='scrollx' style='margin-top:10px'><table class='se'><tr><th class='se-l'>señal (sobre SMH)</th><th class='r'>lectura</th></tr>"
+                        + rows + "</table></div>"
+                        "<div class='note' style='margin-top:10px;color:#F4607A'><b>Reglas de supervivencia:</b> "
+                        "① corto SOLO con <b>distribución oculta</b> (dinero saliendo y precio aún arriba), nunca solo porque \"esté extendido\". "
+                        "② SOXS −3x tiene <b>decay diario brutal</b>: es de <b>días, no semanas</b>. "
+                        "③ Si ya cae en vertical, <b>llegas tarde</b> y el rebote te revienta. "
+                        "④ Stop duro, tamaño mínimo. Esto es <b>predecir un techo</b>, lo contrario a tu sistema. No es asesoramiento.</div></div>")
         except Exception:
             pass
 
@@ -8645,50 +10636,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     "El seguimiento se construye <b>ejecutando la herramienta cada semana</b>: la próxima vez compararé esta cesta con <b>SPY / QQQ / IWM</b> "
                     "y verás, semana a semana y en acumulado, si el sistema bate al mercado. No es asesoramiento.</div></div>")
 
-    # ---- SINTETIZAR FIW: acciones de agua ordenadas por fuerza relativa (para España, donde no se compra el ETF) ----
-    if leaders and leaders.get("FIW"):
-        _wn = {"ROP":"Roper","FERG":"Ferguson","MLI":"Mueller Ind.","AWK":"American Water","WAT":"Waters",
-               "XYL":"Xylem","VLTO":"Veralto","ECL":"Ecolab","IEX":"IDEX","PNR":"Pentair","A":"Agilent",
-               "IDXX":"IDEXX Labs","J":"Jacobs","MAS":"Masco","STN":"Stantec","ACM":"AECOM","FELE":"Franklin Electric",
-               "WMS":"Adv. Drainage","WTS":"Watts Water","MWA":"Mueller Water","TTEK":"Tetra Tech","ZWS":"Zurn Elkay",
-               "CNM":"Core & Main","BMI":"Badger Meter","ITRI":"Itron"}
-        wrows = ""
-        for r in leaders["FIW"]:
-            acc = "—"
-            if r["drs"] is not None:
-                if r["drs"] >= 8:
-                    acc = f"<span style='color:#2FD08A'>⚡ +{r['drs']}</span>"
-                elif r["drs"] <= -8:
-                    acc = f"<span style='color:#F4607A'>▼ {r['drs']}</span>"
-                else:
-                    acc = f"<span style='color:var(--txt3)'>{r['drs']:+d}</span>"
-            rscol = "#2FD08A" if r["rs"] >= 70 else ("#F4B740" if r["rs"] >= 40 else "#9FB0C8")
-            hicol = "#2FD08A" if r["hi"] >= 90 else ("#F4B740" if r["hi"] >= 75 else "#9FB0C8")
-            cfd = (" <span class='lchip' style='background:#13351F;border-color:#2FD08A55;color:#2FD08A;font-size:10px;padding:1px 5px'>CFD XTB</span>"
-                   if r["sym"] in XTB_CFD_AGUA else "")
-            ph = r.get("phase"); pe, pl, pc = PHASE_INFO.get(ph, ("", "—", "#9FB0C8"))
-            wrows += (f"<tr><td class='se-l'><b>{r['sym']}</b> <span style='color:var(--txt3);font-size:11px'>{esc(_wn.get(r['sym'],''))}</span>{cfd}</td>"
-                      f"<td class='r' style='color:{rscol};font-weight:700'>{r['rs']}</td>"
-                      f"<td class='r' style='color:{hicol}'>{r['hi']}%</td>"
-                      f"<td class='r'>{acc}</td>"
-                      f"<td class='r' style='color:{pc};font-size:11px;white-space:nowrap'>{pe} {pl}</td></tr>")
-        topn = [r["sym"] for r in leaders["FIW"][:6]]
-        html.append("<div class='panel full'><h2>Sintetiza FIW: agua por fuerza relativa</h2>"
-                    "<div class='note'>El ETF FIW no se compra en España, pero <b>sus acciones US sí</b> (XTB/DEGIRO; lo que la UE bloquea es el ETF, no la acción). "
-                    "Aquí van las empresas del fondo <b>ordenadas por percentil de fuerza relativa frente a todo el mercado</b> (no por tamaño): "
-                    "<b>percentil</b> 1–99 (99 = de las más fuertes del mercado), <b>% máx 52s</b> (cerca de 100 = en máximos), "
-                    "<b>acel. 3m</b> = cuánto ha subido su percentil en 3 meses (⚡ acelerando, ▼ perdiendo fuerza). "
-                    f"Para sintetizar el ETF quedándote con lo mejor, una vía es las de mayor percentil — ahora mismo: <b>{esc(', '.join(topn))}</b>. "
-                    "Equipondéralas y revisa cada semana: rota la que caiga de percentil. Ojo: 5–8 acciones es <b>más concentrado</b> que las 39 del ETF, "
-                    "así que más riesgo idiosincrático; cuantas más metas, más te pareces al fondo. "
-                    "La etiqueta <span style='color:#2FD08A'>CFD XTB</span> marca las que creo disponibles como CFD en XTB (para apalancar agua, que no tiene ETF x3); "
-                    "<b>es una lista de partida que debes verificar</b> en el buscador de XTB, porque su catálogo cambia y no puedo comprobarlo en vivo. No es asesoramiento.</div>"
-                    "<div class='note' style='margin-top:6px'><b>Fase</b> (modelo de 4 fases): "
-                    "🟦 base/acumulación (lateral abajo, dinero entrando callado, antes de arrancar) · 🟢 subiendo (tendencia sana, aquí quieres estar) · "
-                    "🟠 distribución (lateral pegada a máximos, techo formándose y el dinero saliendo — <b>la trampa de MLI</b>) · 🔴 cayendo · ⚪ lateral medio sin sesgo claro. "
-                    "Se calcula con la media de 30 semanas, dónde está en su rango de 52s y si su fuerza acelera. Es un <b>mapa de probabilidad, no una predicción</b>: una base puede romper para arriba o para abajo; el flujo inclina la balanza, no la garantiza.</div>"
-                    "<div class='scrollx'><table class='se'><tr><th class='se-l'>empresa</th><th class='r'>percentil RS</th>"
-                    "<th class='r'>% máx 52s</th><th class='r'>acel. 3m</th><th class='r'>fase</th></tr>" + wrows + "</table></div></div>")
+    # ---- SINTETIZAR FIW: panel ELIMINADO (v5.1) --------------------------
+    # Pedro ya no usa el desglose de acciones de agua por fuerza relativa.
+    # Se quita el panel Y las 24 acciones que lo alimentaban (ver SECTOR_STOCKS),
+    # que eran descarga y tiempo de build para nada. El ETF FIW sigue en el
+    # universo y en la cascada de IA: lo que desaparece es solo su desglose.
 
     # ---- PLAN DE ROTACION DE MI CARTERA (compara tu cartera real con las señales) ----
     mi_plan = compute_mi_cartera_plan(MI_CARTERA, rrg, scores, flow, chosen, df)
@@ -10037,7 +11989,147 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("</div>")
 
     # ===== V-PRO — TERMINAL PRO (estetica de terminal profesional: negro, ambar, monoespaciada, densa) =====
+    # ══════════════════════════════════════════════════════════════════
+    # PESTANA: DETECTOR DE SUELOS (v6.7)
+    # Reune en un sitio lo que estaba repartido: de que esta hecho el indice,
+    # durmientes, cazador de suelos, recien despertados y cockpit alta beta.
+    # La idea es que la decision de "¿hay algo castigado al que le empieza a
+    # entrar dinero?" se tome mirando UNA pantalla, no cinco pestanas.
+    # ══════════════════════════════════════════════════════════════════
+    html.append("<div id='vista-sue' style='display:none'>")
+    try:
+        _su_sb = []
+        # --- 1) DE QUE ESTA HECHO EL INDICE
+        for _su_ix in ("NASDAQ 100 (QQQ)", "S&P 500 (SPY)", "RUSSELL 2000 (IWM)"):
+            _su_dc = descomponer_indice(_su_ix, rrg, flow, scores)
+            if not _su_dc:
+                continue
+            _su_col = {"verde": GRN, "rojo": RED, "ambar": AMB}.get(_su_dc["color"], GRY)
+            _su_t = (f"<div style='font-size:12px;margin-bottom:8px'>"
+                  f"<span style='color:{GRN};font-weight:700'>{_su_dc['p_entra']}% entra</span> · "
+                  f"<span style='color:{GRY}'>{_su_dc['p_plano']}% plano</span> · "
+                  f"<span style='color:{RED};font-weight:700'>{_su_dc['p_sale']}% sale</span>"
+                  f"<span style='color:#5E708A'> (de {_su_dc['peso_visto']}% del índice cubierto)</span></div>")
+            # barra visual del reparto de peso
+            _su_tot = max(1, _su_dc["peso_visto"])
+            _su_t += ("<div style='display:flex;height:16px;border-radius:4px;overflow:hidden;"
+                   "margin-bottom:10px'>"
+                   f"<div style='width:{100*_su_dc['p_entra']/_su_tot:.0f}%;background:{GRN}'></div>"
+                   f"<div style='width:{100*_su_dc['p_plano']/_su_tot:.0f}%;background:#2A3648'></div>"
+                   f"<div style='width:{100*_su_dc['p_sale']/_su_tot:.0f}%;background:{RED}'></div></div>")
+            _su_t += ("<table><tr style='color:#888;font-size:10px'><td>bloque</td><td>peso</td>"
+                   "<td>CMF</td><td>dinero</td><td>cuadrante</td></tr>")
+            for _su_f in _su_dc["filas"]:
+                _su_sc2 = {1: GRN, -1: RED}.get(_su_f["signo"], GRY)
+                _su_cm = f"{_su_f['cmf']:+.2f}" if _su_f["cmf"] is not None else "—"
+                _su_t += (f"<tr><td style='font-weight:700'>{esc(_su_f['etq'])} "
+                       f"<span style='color:{GRY};font-weight:400;font-size:10px'>{esc(_su_f['sym'])}</span></td>"
+                       f"<td style='font-weight:700'>{_su_f['peso']}%</td>"
+                       f"<td style='color:{GRY}'>{_su_cm}</td>"
+                       f"<td style='color:{_su_sc2};font-weight:700'>{esc(_su_f['estado'])}</td>"
+                       f"<td style='color:{GRY};font-size:11px'>{esc(_su_f['quad'] or '—')}</td></tr>")
+            _su_t += "</table>"
+            _su_t += (f"<div style='color:{_su_col};font-size:12px;margin-top:8px'>{esc(_su_dc['lectura'])}</div>")
+            _su_t += ("<div style='font-size:10px;color:#666;margin-top:6px'>"
+                   "<b>Esto NO es una predicción.</b> Es aritmética de composición: cuánto del peso "
+                   "del índice tiene dinero entrando y cuánto saliendo. No dice cuánto subirá, dice "
+                   "si los bloques que mandan acompañan o frenan. Los pesos son aproximados y "
+                   "cambian cada trimestre.</div>")
+            _su_sb.append(_mod(f"⚖️ DE QUÉ ESTÁ HECHO EL {esc(_su_dc['nombre'])}", _su_t))
+        for _su_blk in _su_sb:
+            html.append(_su_blk)
+    except Exception as _dege:
+        _deg("vista_suelos:indices", _dege)
+        _avisar("suelos", f"descomposición de índices no generada: {_dege}")
+    # --- LA SECUENCIA DEL SUELO: los cinco paneles fusionados en uno
+    try:
+        _sqsq = secuencia_del_suelo(rrg, flow, scores, suelo=suelo_pre,
+                                  cockpit=(desks if isinstance(desks, dict) else None),
+                                  despertares=despertares, df=df)
+        if _sqsq and _sqsq.get("filas"):
+            _sqCOL = {"ARRANCANDO": GRN, "DINERO CALLADO": GRN, "DINERO ENTRANDO": AMB,
+                    "SILENCIO": CYN, "CASTIGADO": GRY, "AUN SANGRA": RED}
+            _sqqb = ("<table><tr style='color:#888;font-size:10px'><td>SECTOR</td>"
+                   "<td>FASE</td><td>1·castigado</td><td>2·silencio</td>"
+                   "<td>3·dinero</td><td>4·arranque</td><td>vs máx</td>"
+                   "<td>CMF</td><td>vol</td></tr>")
+            for _sqr in _sqsq["filas"]:
+                _sqc = _sqCOL.get(_sqr["fase"], GRY)
+                def _tic(b, extra=""):
+                    return (f"<span style='color:{GRN};font-weight:700'>✓{extra}</span>"
+                            if b else f"<span style='color:#3A4658'>·</span>")
+                _sqex = ""
+                if _sqr["oculta"]:
+                    _sqex = "<span style='font-size:9px'> oculta</span>"
+                elif _sqr["nocturno"]:
+                    _sqex = "<span style='font-size:9px'> noct</span>"
+                elif _sqr["mejora"]:
+                    _sqex = "<span style='font-size:9px'> ↗3t</span>"
+                _sqcmfv = f"{_sqr['cmf']:+.2f}" if _sqr["cmf"] is not None else "—"
+                _sqccm = GRN if (_sqr["cmf"] or 0) > 0.05 else (RED if (_sqr["cmf"] or 0) < -0.05 else GRY)
+                _sqavfam = ""
+                if _sqr.get("n_fam", 1) >= 3:
+                    _sqavfam = (f"<span style='color:{AMB};font-size:9px'> "
+                              f"×{_sqr['n_fam']} en su familia</span>")
+                _sqqb += (f"<tr><td style='font-weight:700'>{esc(_sqr['sym'])}"
+                        f"<span style='color:{GRY};font-weight:400;font-size:10px'> "
+                        f"{esc(_sqr['fam'])}</span>{_sqavfam}</td>"
+                        f"<td style='color:{_sqc};font-weight:700;font-size:11px'>{esc(_sqr['fase'])}</td>"
+                        f"<td>{_tic(_sqr['castigado'])}</td>"
+                        f"<td>{_tic(_sqr['silencio'])}</td>"
+                        f"<td>{_tic(_sqr['dinero'], _sqex)}</td>"
+                        f"<td>{_tic(_sqr['arranque'])}</td>"
+                        f"<td style='color:{GRY};font-size:11px'>"
+                        + (f"{_sqr['dd52']:.0f}%" if _sqr['dd52'] is not None else "—") + "</td>"
+                        f"<td style='color:{_sqccm};font-size:11px'>{_sqcmfv}</td>"
+                        f"<td style='color:{GRY};font-size:11px'>"
+                        + (f"{_sqr['vol_rel']:.2f}×" if _sqr['vol_rel'] is not None else "—")
+                        + "</td></tr>")
+            _sqqb += "</table>"
+            _sqqb += ("<div style='font-size:10px;color:#666;margin-top:10px'>"
+                    "<b>La secuencia que buscas, en una tabla.</b> «Lo han vendido, va entrando "
+                    "dinero callado, y empieza a despegar» son cuatro pasos, no cuatro indicadores "
+                    "sueltos: <b>1</b> lejos de máximos · <b>2</b> volumen por debajo de su media "
+                    "(nadie lo mira) · <b>3</b> el dinero entra, incluida la acumulación oculta y la "
+                    "nocturna en internacionales · <b>4</b> el impulso gira y cambia de cuadrante. "
+                    "Arriba lo que lleva más pasos; abajo lo que aún sangra, que es «ni tocar».<br><br>"
+                    "<b>El aviso ×N en su familia</b> significa que varios de la misma historia están "
+                    "en la lista: cinco metales no son cinco oportunidades, son una.<br><br>"
+                    "<b>Y lo que esto NO es.</b> No predice. El backtest de este mismo sistema, sobre "
+                    "19 años, dijo que acierta el 67% pero bate al índice solo el 47% de las veces, y "
+                    "que la puntuación no distingue un 5 de un 8. Esto <b>organiza</b> lo que ya sabías "
+                    "para que la secuencia se vea de un vistazo. La decisión sigue siendo del cierre "
+                    "del viernes, y sigue siendo tuya.</div>")
+            html.append(_mod(f"🎯 LA SECUENCIA DEL SUELO — {_sqsq['total']} SECTORES CASTIGADOS, "
+                             f"{_sqsq['familias']} HISTORIAS DISTINTAS", _sqqb))
+    except Exception as _dege:
+        _deg("vista_suelos:secuencia", _dege)
+        _avisar("suelos", f"secuencia del suelo no generada: {_dege}")
+
+    _sue_mark = len(html)
+    html.append("</div>")
+
     html.append("<div id='vista-bbg' style='display:none'>")
+    if VIAJE_A:
+        # Aviso imposible de pasar por alto: esto NO es el terminal de hoy.
+        # Y hay que decir que partes NO son reconstruibles, o alguien las
+        # leera como si fueran de 2022 y no lo son.
+        html.append(
+            "<div style='background:#7A1020;color:#fff;padding:14px 16px;border-radius:10px;"
+            "margin:0 0 14px;font-size:13px;line-height:1.5'>"
+            f"<div style='font-size:17px;font-weight:800;letter-spacing:1px'>"
+            f"⏳ VIAJE EN EL TIEMPO — {esc(VIAJE_A)}</div>"
+            "Esto <b>NO es el terminal de hoy</b>. Todo lo que ves está recalculado con los "
+            "datos que existían hasta esa fecha y ni uno más: RRG, cockpit, CENTINELA, "
+            "scoring, suelos, despertares y cascada son reales de ese día.<br><br>"
+            "<b>Lo que NO es de esa fecha, y hay que ignorar:</b> el panel de tu cartera "
+            "(MI_CARTERA está escrito a mano y es la de hoy), el track record y el libro de "
+            "despertares (empezaron en 2026, salen vacíos), y las opciones, el DIX y las "
+            "noticias (son datos de hoy: se han apagado a propósito).<br><br>"
+            "<b>Para qué sirve:</b> abre el gráfico real de esas semanas en otra pestaña y "
+            "compara. Lo que el terminal marcaba entonces contra lo que pasó después. "
+            "Es la única forma de juzgar las señales con nombres, en vez de con un porcentaje."
+            "</div>")
     _bbg_mark = len(html)
     try:
         AMB, GRN, RED, GRY, CYN = "#FFB000", "#00E676", "#FF5252", "#8A96A8", "#4CC2E0"
@@ -10190,6 +12282,145 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                                  "<div style='color:" + GRN + ";font-size:12px'>✓ Sin incidencias: todas las fuentes respondieron y ningún dato fue descartado por los filtros de cordura.</div>"))
         except Exception:
             pass
+        # --- CRUCE DE ACCIONES EN ETFs QUE DESPIERTAN (v5.5) ---------------
+        try:
+            _cx = cruce_acciones(rrg, flow, scores, stk_univ)
+            _rz = rezagadas_del_etf(rrg, flow, scores, stk_univ)
+            if _cx or _rz:
+                _xb = ""
+                if _cx and _cx.get("etfs"):
+                    _xb += (f"<div style='color:{GRY};font-size:11px;margin-bottom:8px'>"
+                            f"ETFs despertando ahora ({len(_cx['etfs'])}): "
+                            f"<b style='color:{GRN}'>{esc(', '.join(_cx['etfs'][:14]))}</b></div>")
+                if _cx and _cx.get("filas"):
+                    _xb += ("<table><tr style='color:#888;font-size:10px'><td>ACCIÓN</td>"
+                            "<td>DINERO</td><td>CONFIRMACIÓN</td><td>en el año</td>"
+                            "<td>por dónde entra</td></tr>")
+                    for _fx in _cx["filas"]:
+                        _yy = (f"{_fx['ytd']:+.1f}%" if _fx.get("ytd") is not None else "—")
+                        _yc = (GRN if (_fx.get("ytd") or 0) > 0 else RED) if _fx.get("ytd") is not None else GRY
+                        _cc2 = GRN if _fx["n_fam"] >= 2 else AMB
+                        _xb += (f"<tr><td style='font-weight:700'>{esc(_fx['sym'])}</td>"
+                                f"<td style='color:{CYN}'>{_fx['n_etf']} ETF</td>"
+                                f"<td style='color:{_cc2};font-weight:700'>{_fx['n_fam']} "
+                                f"famili{'as' if _fx['n_fam']>1 else 'a'}</td>"
+                                f"<td style='color:{_yc}'>{_yy}</td>"
+                                f"<td style='color:{GRY};font-size:10px'>{esc(', '.join(_fx['etfs'][:5]))}</td></tr>")
+                    _xb += "</table>"
+                elif _cx and _cx.get("sin_lista"):
+                    _xb += (f"<div style='color:{AMB};font-size:11px'>Los ETFs que despiertan "
+                            f"no tienen lista de acciones cargada todavía.</div>")
+                # ---- la rezagada de cada ETF
+                if _rz:
+                    _xb += (f"<div style='margin-top:14px;color:{CYN};font-size:11px'>"
+                            f"LA MÁS REZAGADA DE CADA ETF QUE DESPIERTA "
+                            f"<span style='color:{GRY}'>({len(_rz)} ETF con datos"
+                            + (f", se muestran los 14 de mayor brecha" if len(_rz) > 14 else "")
+                            + ")</span></div>")
+                    _xb += ("<table><tr style='color:#888;font-size:10px'><td>ETF</td>"
+                            "<td>la rezagada</td><td>su año</td><td>media del ETF</td>"
+                            "<td>brecha</td><td>¿ya giró?</td><td>N</td></tr>")
+                    for _rr in _rz[:14]:
+                        _cx_bc = GRN if _rr["brecha"] >= 10 else (AMB if _rr["brecha"] >= 5 else GRY)
+                        _g = _rr.get("giro") or {}
+                        if not _g:
+                            _cx_fl = "—"
+                        elif _g.get("en_minimos"):
+                            _cx_fl = f"<span style='color:{RED}'>sigue en mínimos</span>"
+                        elif _g.get("sobre_m50") and _g.get("mejora"):
+                            _cx_fl = f"<span style='color:{GRN}'>giró al alza</span>"
+                        elif _g.get("mejora"):
+                            _cx_fl = f"<span style='color:{AMB}'>dejó de caer</span>"
+                        else:
+                            _cx_fl = f"<span style='color:{RED}'>aún cayendo</span>"
+                        _xb += (f"<tr><td style='color:{GRY}'>{esc(_rr['etf'])}</td>"
+                                f"<td style='font-weight:700'>{esc(_rr['rezagada'])}</td>"
+                                f"<td style='color:{RED if _rr['ytd_rez']<0 else GRY}'>{_rr['ytd_rez']:+.1f}%</td>"
+                                f"<td style='color:{GRY}'>{_rr['media']:+.1f}%</td>"
+                                f"<td style='color:{_cx_bc};font-weight:700'>{_rr['brecha']:.1f} pp</td>"
+                                f"<td style='font-size:11px'>{_cx_fl}</td>"
+                                f"<td style='color:{GRY};font-size:10px'>{_rr['n']}/{_rr.get('n_lista', '?')}</td></tr>")
+                        _det = _rr.get("detalle") or []
+                        if _det:
+                            _dl = " · ".join(
+                                f"<span style='color:{GRN if _y>0 else RED}'>{esc(_t)} {_y:+.0f}%</span>"
+                                for _t, _y in _det)
+                            _xb += (f"<tr><td colspan='7' style='padding:0 0 8px 12px;"
+                                    f"font-size:10px;color:#5E708A;border:0'>{_dl}</td></tr>")
+                    _xb += "</table>"
+                _xb += ("<div style='font-size:10px;color:#666;margin-top:10px'>"
+                        "<b>DINERO vs CONFIRMACIÓN, y por qué van separadas.</b> "
+                        "«Dinero» cuenta ETFs: si una acción está en 3 que despiertan, el creador de "
+                        "cada uno compra acciones de verdad, y los apalancados obligan además a la mesa "
+                        "a cubrirse comprando el subyacente. Eso es flujo real y se suma. "
+                        "«Confirmación» cuenta <b>familias</b>: si XLI, ITA y JETS se mueven juntos no son "
+                        "tres avisos independientes — cuando uno gire, giran los tres. Boeing en esos tres "
+                        "recibe mucho dinero desde una sola historia; una acción en energía Y en materiales "
+                        "recibe menos desde dos historias distintas. Tú decides cuál buscas.<br><br>"
+                        "<b>LA REZAGADA.</b> Si el sector tira y una se quedó atrás, debería ponerse al día. "
+                        "Pero cuidado: puede estar rezagada porque el sector la dejó atrás (lo que buscas) o "
+                        "porque la empresa tiene un problema propio, y entonces se queda atrás para siempre. "
+                        "La columna <b>¿ya giró?</b> es lo que las separa: «sigue en mínimos» o «aún cayendo» "
+                        "apunta a problema suyo; «giró al alza» a que el sector la está levantando.<br><br>"
+                        "<b>Por qué no hay CMF aquí.</b> Del S&amp;P 500 solo se descargan cierres, sin volumen, "
+                        "y sin volumen no se puede calcular el CMF. Así que en vez de un flujo inventado se usa "
+                        "lo único que sí se puede medir con precios: si la acción ha girado o sigue sangrando. "
+                        "La columna <b>N</b> dice sobre cuántas acciones de la lista se ha calculado la media "
+                        "(4/10 significa que 6 no tenían datos y la media es solo de 4). "
+                        "Debajo de cada fila está el <b>desglose completo</b>: las acciones una a una con "
+                        "su año. Una media suelta no se puede comprobar; con el desglose delante ves si "
+                        "el número cuadra o si hay alguna que lo distorsiona. Ojo con las listas mixtas: "
+                        "XLE lleva petroleras (XOM, CVX) y refineras (MPC, PSX, VLO), que son negocios "
+                        "distintos y en algunos años se separan muchísimo.<br><br>"
+                        "<b>Limitación.</b> Las listas son de elaboración propia y <b>sin pesos</b>: una acción que "
+                        "es el 0,5% de tres ETFs recibe menos dinero que una que es el 8% de uno. Contrasta con la "
+                        "ficha del fondo antes de operar. Nada de esto está backtesteado todavía.</div>")
+                html.append(_mod("🔗 CRUCE DE ACCIONES — QUIÉN RECIBE DINERO DE VARIOS ETFs A LA VEZ", _xb))
+        except Exception as _dege:
+            _deg("panel_cruce_acciones", _dege)
+
+        # --- MESA DE OPCIONES (v5.3) ---------------------------------------
+        try:
+            _mo = mesa_opciones(options, scores, rrg, flow, centinela, riesgo="bajo")
+            if _mo and _mo.get("filas"):
+                _ob = ("<table><tr style='color:#888;font-size:10px'><td>ETF</td>"
+                       "<td>estructura</td><td>cobras</td><td>riesgo máx</td><td>R/R</td>"
+                       "<td>colchón</td><td>θ/día</td><td>horquilla</td></tr>")
+                for _op_c in _mo["filas"]:
+                    _hq = max(_op_c.get("horq_v") or 0, _op_c.get("horq_c") or 0)
+                    _op_hc = GRN if _hq < 8 else (AMB if _hq < 15 else RED)
+                    _ob += (f"<tr><td style='font-weight:700'>{esc(_op_c['sym'])} "
+                            f"<span style='color:{GRY};font-weight:400'>{_op_c['score']}/5</span></td>"
+                            f"<td style='font-size:11px'>vende {_op_c['vende']:.0f} / compra {_op_c['compra']:.0f}"
+                            f"<br><span style='color:{GRY}'>{esc(_op_c['exp'])} · {_op_c['dte']}d</span></td>"
+                            f"<td style='color:{GRN}'>{_op_c['cobro_eur']:.0f}$</td>"
+                            f"<td style='color:{RED}'>{_op_c['riesgo_max_eur']:.0f}$</td>"
+                            f"<td>{_op_c['rr']}</td>"
+                            f"<td style='color:{GRN if _op_c['colchon_pct']>=5 else AMB}'>{_op_c['colchon_pct']}%</td>"
+                            f"<td style='color:{GRY}'>{_op_c.get('theta_dia_eur')}$</td>"
+                            f"<td style='color:{_op_hc};font-size:11px'>{_hq:.1f}%</td></tr>")
+                _ob += "</table>"
+                _ob += ("<div style='font-size:10px;color:#666;margin-top:8px'>"
+                        "<b>Qué es.</b> Put spread vendido: vendes un put por debajo del precio y compras "
+                        "otro más abajo. Cobras prima y la <b>pérdida máxima está capada y la conoces al "
+                        "abrir</b>. Ganas si el ETF sube o simplemente no cae hasta el strike vendido. "
+                        "Solo aparecen ETFs que ya pasan el filtro del sistema (scoring ≥4/5, cuadrante "
+                        "Líder o Mejorando, CMF positivo): la opción no es una señal nueva, es otra forma "
+                        "de expresar la que ya tenías.<br><br>"
+                        "<b>Lo que esta mesa NO te dice.</b> No hay probabilidad de acierto. La delta da una "
+                        "probabilidad <b>implícita en el precio</b>, que lleva dentro la prima del seguro y "
+                        "exagera las caídas: no es la frecuencia real. Y no se puede backtestear, porque "
+                        "Yahoo no da cadenas históricas. La señal que dispara esto <b>sí</b> está medida, y "
+                        "bate al índice el 47% de las veces: por debajo de una moneda al aire.<br><br>"
+                        "<b>Antes de operarlo.</b> Un contrato bloquea unos 300-400$ de garantía. DEGIRO no "
+                        "permite spreads a minoristas; harían falta IBKR y su test de opciones. Y con el "
+                        "apalancamiento consolidado que marca el panel de riesgo, cada contrato es colchón "
+                        "que dejas de tener. Herramienta de ejecución, no fuente de ventaja.</div>")
+                html.append(_mod(f"MESA DE OPCIONES — PUT SPREAD DE RIESGO DEFINIDO "
+                                 f"({len(_mo['filas'])} candidatos)", _ob))
+        except Exception as _dege:
+            _deg("panel_mesa_opciones", _dege)
+
         # --- ETFs CON HISTORIAL CORTO (v4.6) ------------------------------
         try:
             _nuevos = []
@@ -11667,6 +13898,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("<script>function mainView(v,b){document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
                 "document.getElementById('vista-op').style.display=(v=='op')?'contents':'none';"
                 "var vg=document.getElementById('vista-vig');if(vg)vg.style.display=(v=='vig')?'contents':'none';"
+                "var su=document.getElementById('vista-sue');if(su)su.style.display=(v=='sue')?'contents':'none';"
                 "var bg=document.getElementById('vista-bbg');if(bg)bg.style.display=(v=='bbg')?'contents':'none';"
                 "var rd=document.getElementById('vista-rds');if(rd)rd.style.display=(v=='rds')?'contents':'none';"
                 "var cl=document.getElementById('vista-cl');if(cl)cl.style.display=(v=='cl')?'contents':'none';"
@@ -11937,8 +14169,7 @@ def export_estela(rrg, flow, scores, suelo, graduados, despertares, centinela,
                   "garantizan resultados futuros."),
     }
     os.makedirs(ESTELA_DIR, exist_ok=True)
-    with open(ESTELA_JSON, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"))
+    guardar_json_seguro(ESTELA_JSON, payload, indent=0)
     return os.path.abspath(ESTELA_JSON)
 
 
@@ -11950,6 +14181,57 @@ def main():
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
     print("=" * 56)
     df, daily, sources = download_all()
+
+    # ══════════════════════════════════════════════════════════════════
+    # MODO VIAJE (v6.2): regenera el TERMINAL ENTERO como si fuera otro dia.
+    #
+    # Se recorta aqui, justo despues de la descarga, y TODO lo que viene
+    # despues (RRG, cockpit, CENTINELA, suelos, despertares, cascada) se
+    # calcula solo con lo que existia entonces. No hay que tocar nada mas.
+    #
+    # PROTECCIONES, porque esto podria destrozar el terminal de verdad:
+    #   · el HTML va a site/viaje/<fecha>/ — NUNCA pisa site/pro/
+    #   · el historico va a una carpeta desechable — el track record real
+    #     ni se lee ni se toca (si no, quedaria contaminado con 2022)
+    #   · opciones, DIX, IA y noticias se APAGAN: son datos de hoy y
+    #     mezclarlos con precios de 2022 seria mentir
+    # ══════════════════════════════════════════════════════════════════
+    if VIAJE_A:
+        try:
+            _obj = pd.Timestamp(VIAJE_A)
+            _pos = df.index.searchsorted(_obj)
+            if _pos >= len(df):
+                print(f"\n  ⛔ VIAJE: {VIAJE_A} es posterior al ultimo dato "
+                      f"({df.index[-1].date()}). No se puede viajar al futuro.")
+                return
+            if _pos < 60:
+                print(f"\n  ⛔ VIAJE: {VIAJE_A} esta demasiado atras para el historico "
+                      f"descargado. Sube WEEKS en config.py (520 = 10 anos, 988 = 19).")
+                return
+            _corte = df.index[_pos]
+            df = df.iloc[:_pos + 1]
+            daily = {k: v[v.index <= _corte] for k, v in (daily or {}).items()}
+            globals()["SITE_DIR"] = os.path.join("site", "viaje", str(_corte.date()))
+            globals()["OUTPUT_HTML"] = os.path.join(SITE_DIR, "pro", "index.html")
+            globals()["LITE_HTML"] = os.path.join(SITE_DIR, "lite", "index.html")
+            globals()["SEGUIMIENTO_DIR"] = os.path.join("viaje_temporal",
+                                                        str(_corte.date()), "historico")
+            globals()["TRACK_FILE"] = os.path.join(SEGUIMIENTO_DIR, "track_record.json")
+            globals()["TRACK_BAK"] = os.path.join(SEGUIMIENTO_DIR, "track_record.bak.json")
+            globals()["IA_AUTO"] = False
+            globals()["DIX_ON"] = False
+            globals()["BACKTEST_SUELO"] = False
+            globals()["VIAJE_FECHAS"] = []
+            os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
+            print(f"\n  ══════════════════════════════════════════════════")
+            print(f"   MODO VIAJE — el terminal se reconstruye a {_corte.date()}")
+            print(f"   {len(df)} semanas de datos, cortadas en esa fecha")
+            print(f"   Se escribe en: {SITE_DIR}")
+            print(f"   Tu terminal de hoy NO se toca.")
+            print(f"  ══════════════════════════════════════════════════")
+        except Exception as _e_v:
+            print(f"\n  ⛔ VIAJE fallido ({_e_v}). Se aborta para no dejar nada a medias.")
+            return
     df = add_sinteticos(df)
     if BENCH not in df.columns or len(df) < 30:
         print("\nNo hay suficientes datos comunes para calcular. Reintenta mas tarde.")
@@ -12223,6 +14505,11 @@ def main():
     if avoid: print(f"  Evitar/reducir: {', '.join(avoid)}")
     divs = [s for s, d in (flow or {}).items() if d.get("diverg")]
     if divs: print(f"  Divergencias de flujo: {', '.join(divs)}")
+    if bt:
+        try:
+            comparar_drawdown(bt)
+        except Exception as _e_dd:
+            _deg("comparar_drawdown:main", _e_dd)
     if bt:   print(f"  Backtest: estrategia {bt['tot_s']:+}% vs {BENCH} {bt['tot_b']:+}% ({bt['weeks']} sem)")
     if plan: print(f"  Caida actual del {BENCH} desde maximos: {plan['dd']}%")
 
@@ -12252,7 +14539,7 @@ def main():
             print("\nAviso enviado.")
 
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):
@@ -12268,6 +14555,69 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"\nPanel generado: {out}")
+    # --- BANCO DE MEDIDA DEL DETECTOR DE SUELOS (v5.0) ---------------------
+    # Solo se ejecuta si BACKTEST_SUELO = True (en config.py). Esta APAGADO por
+    # defecto porque recalcula RRG+flujo+scoring en cada semana del historico y
+    # tarda varios minutos: no tiene sentido pagarlo cada noche. Se enciende una
+    # vez, se lee el resultado, y se vuelve a apagar.
+    # --- LABORATORIO DE SUELOS (v6.3)
+    if LABORATORIO:
+        try:
+            _lab = laboratorio_suelos(df, daily, ruta="laboratorio_suelos.json")
+        except Exception as _e_l:
+            _avisar("laboratorio", f"no se pudo generar: {_e_l}")
+
+    # --- MAQUINA DEL TIEMPO (v6.1): si hay fechas en config.py, las muestra
+    if VIAJE_FECHAS:
+        for _fx in VIAJE_FECHAS:
+            try:
+                _mt = maquina_del_tiempo(df, daily, _fx)
+                if _mt and _mt.get("aviso"):
+                    print(f"\n  MAQUINA DEL TIEMPO {_fx}: {_mt['aviso']}")
+            except Exception as _e_mt:
+                _avisar("viaje", f"no se pudo viajar a {_fx}: {_e_mt}")
+
+    if BACKTEST_SUELO:
+        try:
+            print("\n  Midiendo el detector de suelos (esto tarda unos minutos)...")
+            _bts = backtest_suelo(df, daily, umbral=BACKTEST_SUELO_UMBRAL,
+                                  horizontes=(4, 8, 12), paso=BACKTEST_SUELO_PASO)
+            _btu = backtest_suelo_por_umbral(df, daily, umbrales=(5, 6, 7, 8),
+                                             horizonte=8, paso=BACKTEST_SUELO_PASO)
+            _cmp = comparar_scores(df, daily, horizonte=8, umbral=5.0,
+                                   paso=BACKTEST_SUELO_PASO)
+            _ges = backtest_gestion(df, daily, semanas=12, paso=BACKTEST_SUELO_PASO)
+            _reg = backtest_por_regimen(df, daily, horizonte=8,
+                                        paso=BACKTEST_SUELO_PASO)
+            _cru = backtest_cruce(df, daily, horizontes=(4, 8, 12),
+                                  paso=BACKTEST_SUELO_PASO)
+            _cvs = comparar_cruce_vs_score(df, daily, horizonte=8,
+                                           paso=BACKTEST_SUELO_PASO)
+            if _btu:
+                print("\n  ¿UN SCORE MAS ALTO ACIERTA MAS? (horizonte 8 semanas)")
+                for _r in _btu:
+                    print(f"    umbral {_r['umbral']}/10: {_r['pos']:>5}% "
+                          f"(Wilson {_r['lo']}-{_r['hi']}%) N={_r['n']:>3} "
+                          f"media {_r['media']:+.2f}%")
+                print("    Si el acierto NO sube con el umbral, el score no discrimina:")
+                print("    solo esta midiendo cuanto ha caido algo, no si va a rebotar.")
+            if not _bts or not _bts.get("filas"):
+                print("\n  ⛔ El backtest NO ha podido medir nada. Motivo arriba.")
+                print("     No se guarda resultado: un fichero vacio parece un resultado.")
+                raise ValueError(_bts.get("aviso", "sin resultado") if _bts else "sin resultado")
+            _ruta_bt = os.path.join(SEGUIMIENTO_DIR, "backtest_suelo.json")
+            os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
+            with open(_ruta_bt + ".tmp", "w", encoding="utf-8") as fh:
+                json.dump({"fecha": str(df.index[-1].date()), "global": _bts,
+                           "por_umbral": _btu, "comparativa": _cmp,
+                           "cruce": _cru, "cruce_vs_score": _cvs,
+                           "por_regimen": _reg, "gestion": _ges}, fh,
+                          ensure_ascii=False, indent=1)
+            os.replace(_ruta_bt + ".tmp", _ruta_bt)
+            print(f"  Resultado guardado en {_ruta_bt}")
+        except Exception as _e_bt:
+            _avisar("backtest_suelo", f"no se pudo medir el detector: {_e_bt}")
+
     # --- VERSION LITE / PUBLICA (v4.3) -------------------------------------
     # Se genera con los datos que YA estan en memoria: cero descargas extra.
     # Va en site/lite/ para no tocar nada de lo que ya funciona.

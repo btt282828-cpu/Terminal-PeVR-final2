@@ -7809,6 +7809,18 @@ FAMILIAS = {
     "china":              ["KWEB", "FXI"],
     "emergentes":         ["EWZ", "INDA", "EEM", "EWY"],
     "petroleo":           ["XLE", "XOP", "OIH"],
+    # v6.9.3 — estos nueve caian en el cajon generico "sector" y aparecian
+    # todos como "×9 en su familia", lo que daba un aviso de concentracion
+    # falso: XLF y XLRE no son la misma historia, aunque los dos sean sectores.
+    "financiero":         ["XLF", "KRE"],
+    "consumo":            ["XLY", "XLP", "XRT", "ITB"],
+    "industrial":         ["XLI", "ITA", "JETS", "PAVE"],
+    "inmobiliario":       ["XLRE"],
+    "comunicaciones":     ["XLC"],
+    "indice amplio":      ["IWM", "DIA", "RSP", "SPY", "QQQ"],
+    "utilities":          ["XLU", "GRID"],
+    "tecnologia":         ["XLK", "SKYY", "CIBR", "IGV", "MAGS"],
+    "agua":               ["FIW", "CGW"],
 }
 _FAM_DE = {t: f for f, lst in FAMILIAS.items() for t in lst}
 
@@ -12062,11 +12074,16 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         if _sqsq and _sqsq.get("filas"):
             _sqCOL = {"ARRANCANDO": GRN, "DINERO CALLADO": GRN, "DINERO ENTRANDO": AMB,
                     "SILENCIO": CYN, "CASTIGADO": GRY, "AUN SANGRA": RED}
-            _sqqb = ("<table><tr style='color:#888;font-size:10px'><td>SECTOR</td>"
+            _sqqb = ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'>"
+                   "<table style='min-width:560px'><tr style='color:#888;font-size:10px'><td>SECTOR</td>"
                    "<td>FASE</td><td>1·castigado</td><td>2·silencio</td>"
                    "<td>3·dinero</td><td>4·arranque</td><td>vs máx</td>"
                    "<td>CMF</td><td>vol</td></tr>")
-            for _sqr in _sqsq["filas"]:
+            # v6.9.3: los que solo sangran no se listan uno a uno. Eran 25 filas
+            # identicas que empujaban fuera de pantalla lo que si importa.
+            _vivos = [x for x in _sqsq["filas"] if x["fase"] != "AUN SANGRA"]
+            _sangran = [x for x in _sqsq["filas"] if x["fase"] == "AUN SANGRA"]
+            for _sqr in (_vivos or _sqsq["filas"][:6]):
                 _sqc = _sqCOL.get(_sqr["fase"], GRY)
                 def _tic(b, extra=""):
                     return (f"<span style='color:{GRN};font-weight:700'>✓{extra}</span>"
@@ -12098,7 +12115,12 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                         f"<td style='color:{GRY};font-size:11px'>"
                         + (f"{_sqr['vol_rel']:.2f}×" if _sqr['vol_rel'] is not None else "—")
                         + "</td></tr>")
-            _sqqb += "</table>"
+            _sqqb += "</table></div>"
+            if _vivos and _sangran:
+                _sqqb += (f"<div style='color:{RED};font-size:11px;margin-top:8px'>"
+                        f"AÚN SANGRAN ({len(_sangran)}), no se listan: "
+                        f"{esc(', '.join(x['sym'] for x in _sangran[:24]))}"
+                        + ("…" if len(_sangran) > 24 else "") + "</div>")
             _sqqb += ("<div style='font-size:10px;color:#666;margin-top:10px'>"
                     "<b>La secuencia que buscas, en una tabla.</b> «Lo han vendido, va entrando "
                     "dinero callado, y empieza a despegar» son cuatro pasos, no cuatro indicadores "

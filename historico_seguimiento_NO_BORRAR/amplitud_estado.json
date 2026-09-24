@@ -1,0 +1,17 @@
+[
+{
+"date": "2026-09-24",
+"rsp": "ESTRECHANDO",
+"iwm": "ESTRECHANDO",
+"p50": 27.8,
+"p200": 45.3,
+"nhnl10": -13.3,
+"div": false,
+"lectura": "NARRATIVA",
+"px": {
+"SPY": 767.18,
+"RSP": 210.26,
+"IWM": 281.66
+}
+}
+]

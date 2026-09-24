@@ -1,18 +1,16 @@
 name: Terminal PeVR
 # Cuando se ejecuta:
 #   - a mano, desde la pestana Actions (boton "Run workflow")
-#   - automatico los viernes a las 22:00 UTC (cierre de Nueva York + margen para que
-#     Yahoo consolide los datos del dia). El cierre del viernes es el unico disparador
-#     del sistema, asi que el resto de la semana no hace falta.
+#   - automatico de lunes a viernes a las 23:17 de Madrid: cierre de Nueva York
+#     (22:00 en Madrid) + margen para que Yahoo consolide los datos del dia.
+#     Minuto 17 y no en punto: en las horas en punto GitHub va saturado y retrasa.
 on:
   workflow_dispatch:
   schedule:
     # OJO: GitHub programa SIEMPRE en hora UTC y NO conoce el cambio de hora.
-    # Espana va UTC+2 en verano y UTC+1 en invierno, asi que para que siempre
-    # sean las 22:30 de Madrid hay que poner las DOS horas y luego descartar
-    # la que no toque (lo hace el primer paso del job).
-    - cron: "30 20 * * 1-5"      # 22:30 Madrid en HORARIO DE VERANO
-    - cron: "30 21 * * 1-5"      # 22:30 Madrid en HORARIO DE INVIERNO
+    # Se ponen las DOS citas y el primer trabajo ("hora") descarta la que no toca.
+    - cron: "17 21 * * 1-5"      # 23:17 Madrid en HORARIO DE VERANO
+    - cron: "17 22 * * 1-5"      # 23:17 Madrid en HORARIO DE INVIERNO
 # Permisos: escribir en el repo (para guardar el historico actualizado) y publicar en Pages.
 permissions:
   contents: write
@@ -23,26 +21,48 @@ concurrency:
   group: terminal
   cancel-in-progress: false
 jobs:
-  build:
+  hora:
+    # v2 (2026-09-24) — FALLOS CORREGIDOS del filtro anterior:
+    #   1) Descartaba la cita sobrante saltandose los pasos del build, pero el trabajo
+    #      "publicar" arrancaba igual, no encontraba nada que publicar y acababa en ROJO.
+    #      Una ejecucion roja cada dia laborable aunque todo fuera bien.
+    #   2) Decidia mirando el RELOJ. Si GitHub se retrasaba (pasa en horas punta), la cita
+    #      buena llegaba tarde, el filtro la tomaba por la del otro horario y ese dia NO se
+    #      ejecutaba. Ahora decide por la CITA que ha disparado: da igual cuanto se retrase.
+    # Si esta cita no toca, se saltan build y publicar enteros: nada en rojo.
     runs-on: ubuntu-latest
+    outputs:
+      toca: ${{ steps.decide.outputs.toca }}
     steps:
-      - name: Comprobar que en Madrid son las 22:30
-        # De las dos citas programadas arriba, solo una cae a las 22:xx de Madrid.
-        # La otra se para aqui en 2 segundos y no gasta casi nada.
-        # Si lo lanzas a mano (Run workflow), este paso no filtra: se ejecuta siempre.
+      - name: Decidir si esta cita es la buena
+        id: decide
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "Lanzado a mano: se ejecuta sin comprobar la hora."
+            echo "Lanzado a mano: se ejecuta sin comprobar nada."
+            echo "toca=si" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          hora=$(TZ=Europe/Madrid date +%H)
-          echo "Hora en Madrid: $(TZ=Europe/Madrid date '+%H:%M %Z')"
-          if [ "$hora" != "22" ]; then
-            echo "No son las 22:xx en Madrid. Esta cita es la del otro horario: se omite."
-            echo "OMITIR=si" >> $GITHUB_ENV
+          # +0200 = horario de verano en Madrid, +0100 = de invierno
+          if [ "$(TZ=Europe/Madrid date +%z)" = "+0200" ]; then
+            buena="17 21 * * 1-5"
+          else
+            buena="17 22 * * 1-5"
           fi
+          echo "Madrid: $(TZ=Europe/Madrid date '+%H:%M %Z') · ha disparado: ${{ github.event.schedule }} · la buena hoy: $buena"
+          if [ "${{ github.event.schedule }}" = "$buena" ]; then
+            echo "toca=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "Esta cita es la del otro horario: se omite (sin ejecutar ni publicar nada)."
+            echo "toca=no" >> "$GITHUB_OUTPUT"
+          fi
+  build:
+    needs: hora
+    if: needs.hora.outputs.toca == 'si'
+    runs-on: ubuntu-latest
+    # Sin esto el limite por defecto son 6 horas: un build colgado gastaria minutos a lo tonto.
+    timeout-minutes: 120
+    steps:
       - name: Descargar el repositorio
-        if: env.OMITIR != 'si'
         uses: actions/checkout@v4
         with:
           # CORREGIDO: sin esto el runner se queda "colgado sin rama" (detached HEAD)
@@ -50,20 +70,17 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Preparar Python
-        if: env.OMITIR != 'si'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Ejecutar el terminal
-        if: env.OMITIR != 'si'
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python rotacion.py
       - name: Guardar el historico actualizado
-        if: env.OMITIR != 'si'
         # El programa reescribe historico_seguimiento_NO_BORRAR ENTERO en cada
-        # ejecucion (fichas, marcador, libro). Por eso NO se debe fusionar con la
-        # version del repo: no hay nada que fusionar, el archivo de hoy ya contiene
+        # ejecucion (fichas, marcador, libro, ledgers). Por eso NO se debe fusionar con
+        # la version del repo: no hay nada que fusionar, el archivo de hoy ya contiene
         # todo el historico. Antes se usaba "git pull --rebase", que intentaba
         # mezclar dos JSON completos, chocaba, dejaba el rebase a medias y perdia
         # el historico de esa ejecucion en silencio.
@@ -96,10 +113,9 @@ jobs:
           git push origin HEAD:main
           echo "Historico guardado correctamente."
       - name: Comprobar que la web se ha generado
-        if: env.OMITIR != 'si'
         # Red de seguridad: si el terminal no ha escrito su HTML, es mejor que el
         # circulo se ponga ROJO aqui a que se publique una pagina vacia y te enteres
-        # el viernes mirando el movil. Un HTML de verdad pesa cientos de KB.
+        # mirando el movil. Un HTML de verdad pesa cientos de KB.
         run: |
           test -f site/index.html || { echo "ERROR: no existe site/index.html"; exit 1; }
           tam=$(stat -c%s site/index.html)
@@ -111,10 +127,8 @@ jobs:
           echo "Contenido que se va a publicar:"
           ls -la site/
       - name: Preparar la publicacion
-        if: env.OMITIR != 'si'
         uses: actions/configure-pages@v5
       - name: Empaquetar la web
-        if: env.OMITIR != 'si'
         uses: actions/upload-pages-artifact@v3
         with:
           # site/index.html      -> terminal completo (la raiz)

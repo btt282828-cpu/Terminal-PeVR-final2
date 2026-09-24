@@ -143,7 +143,11 @@ SATELLITES = ["IWM","DIA","TLT","GLD","HYG","UUP","LQD","EMB","RSP"]     # para 
 # cesta que entra al RRG como una bolita mas. Mismo mecanismo que el sintetico
 # de agua (FIW) que ya usas.
 ACCIONES_SINTETICAS = ["WDC", "STX", "SNDK",       # almacenamiento: discos duros y SSD
-                       "ASML", "LRCX", "AMAT", "KLAC"]  # equipos semi: las maquinas que fabrican el chip
+                       "ASML", "LRCX", "AMAT", "KLAC",  # equipos semi: las maquinas que fabrican el chip
+                       "COIN", "MSTR"]                  # v7.0: bitcoin de verdad. IBIT es el unico ETF puro de tu universo,
+                                                        # asi que el peloton de bitcoin se completa con el broker (COIN) y la
+                                                        # tesoreria apalancada (MSTR). OJO: MSTR NO es bitcoin, es bitcoin CON
+                                                        # deuda encima: exagera el movimiento en los dos sentidos.
 
 XTB_CFD_AGUA = set()   # v5.1: vaciado, el panel de agua ya no existe
 
@@ -225,6 +229,105 @@ SINTETICOS = {
                    "desc": "quien tiene que DEVOLVER el dinero: nube y software que venden el servicio. Si esto no tira, el capex no se monetiza"},
 }
 CARTERA_PESO_MAX = 34   # tope de % por posicion en la cartera semanal; lo que no se reparte va a LIQUIDEZ
+
+# ======================================================================
+# PELOTONES (v7.0) — LA BASE DEL TERMINAL
+# ----------------------------------------------------------------------
+# LA IDEA, en cristiano: la mayoria de estos ETF NO son doce apuestas, son UNA.
+# Da igual que entre dinero en hidrogeno si al bloque no le toca subir: no sube.
+# Asi que vigilarlos de uno en uno es trabajo tirado. La decision util es de
+# BLOQUE y es binaria: estar FUERA cuando al bloque le sale el dinero, y estar
+# PREPARADO para entrar cuando gire — porque cuando gira, suben casi todos a la
+# vez y da igual si compras espaciales, litio o solares.
+#
+# Y el aviso temprano observado: despues de una subida, los primeros que aflojan
+# son los de BETA MAS ALTA. Caso de junio de 2026: solares/eolicas/hidrogeno/litio
+# hicieron techo el 1-jun y chips/memoria aguantaron ~15 dias mas. Eso es UN caso;
+# por eso el terminal lo MIDE (backtest_liderazgo) en vez de darlo por cierto.
+#
+# beta = orden de especulacion, 1 (refugio) a 5 (lo que mas se mueve). Es el eje
+# del reloj de techos: si la secuencia del giro va de 5 hacia 1, el aviso es real.
+# bloque = "manada" (la que manda la decision) | "subola" (van a su aire) |
+#          "nucleo" | "tipos" | "refugio".
+# ======================================================================
+PELOTONES = {
+    # ---------- LA MANADA: se mueven como uno; aqui se decide dentro/fuera ----------
+    "PEL-TRANSICION": {"nombre": "Transicion energetica", "corto": "Transicion", "bloque": "manada", "beta": 5,
+                       "members": ["TAN", "ICLN", "FAN", "HYDR", "LIT", "DRIV"],
+                       "desc": "solar, eolica, hidrogeno, litio y electrico: el pelotón mas especulativo y el que suele girarse PRIMERO"},
+    "PEL-INNOVA":     {"nombre": "Innovacion y espacio", "corto": "Innovacion", "bloque": "manada", "beta": 5,
+                       "members": ["ARKK", "ARKF", "ARKX", "UFO", "QTUM", "BOTZ"],
+                       "desc": "ARK, espacio, cuantica y robotica: promesa a futuro, sin beneficios hoy. Se mueve con la transicion"},
+    "PEL-CHIPS":      {"nombre": "Chips e IA", "corto": "Chips/IA", "bloque": "manada", "beta": 4,
+                       "members": ["SMH", "SOXX", "DRAM", "NCLD"],
+                       "desc": "semis, memoria y neocloud: alta beta CON beneficios, por eso aguanta mas que la transicion"},
+    "PEL-MINERAS":    {"nombre": "Mineras y metales", "corto": "Mineras", "bloque": "manada", "beta": 4,
+                       "members": ["GDX", "SIL", "SLV", "COPX", "XME"],
+                       "desc": "oro, plata, cobre y metales: apalancamiento operativo sobre la materia prima"},
+    "PEL-CHINA":      {"nombre": "China", "corto": "China", "bloque": "manada", "beta": 4,
+                       "members": ["KWEB", "FXI"],
+                       "desc": "China tech y China amplia: beta alta con su propio ciclo politico encima"},
+    # ---------- LOS QUE VAN A SU BOLA ----------
+    "PEL-SOFTWARE":   {"nombre": "Software, nube y ciber", "corto": "Software", "bloque": "subola", "beta": 3,
+                       "members": ["IGV", "SKYY", "CIBR"],
+                       "desc": "llevan meses a su aire. Cuando ESTO se debilita, ese dinero suele buscar otro sitio: vigila la rotacion"},
+    "PEL-PETROLEO":   {"nombre": "Petroleo", "corto": "Petroleo", "bloque": "subola", "beta": 3,
+                       "members": ["XLE", "XOP", "OIH"],
+                       "desc": "manda el barril y la geopolitica, no el apetito por riesgo. Separado de materiales a proposito"},
+    "PEL-URANIO":     {"nombre": "Uranio", "corto": "Uranio", "bloque": "subola", "beta": 4,
+                       "members": ["URA"],
+                       "desc": "un solo ETF: esto NO es una media de un bloque, es URA. Su ciclo es el nuclear, no el del mercado"},
+    "PEL-BITCOIN":    {"nombre": "Bitcoin", "corto": "Bitcoin", "bloque": "subola", "beta": 5,
+                       "members": ["IBIT", "COIN", "MSTR"],
+                       "desc": "bitcoin al contado + el broker + la tesoreria apalancada: desde hace un tiempo va a su bola"},
+    "PEL-BANCOS":     {"nombre": "Bancos", "corto": "Bancos", "bloque": "subola", "beta": 3,
+                       "members": ["XLF", "KRE"],
+                       "desc": "los mueven los tipos y la curva, no la beta. Separado de utilities aunque compartan causa"},
+    "PEL-SALUD":      {"nombre": "Salud y biotech", "corto": "Salud", "bloque": "subola", "beta": 3,
+                       "members": ["XLV", "XBI"],
+                       "desc": "ciclo regulatorio y de ensayos propio. Ni refugio ni manada"},
+    "PEL-CONSUMO":    {"nombre": "Retail y vivienda", "corto": "Retail", "bloque": "subola", "beta": 3,
+                       "members": ["XRT", "ITB"],
+                       "desc": "el consumidor y la hipoteca: su termometro es el tipo a 30 anyos, no el apetito por riesgo"},
+    "PEL-CICLICO":    {"nombre": "Industrial y materiales", "corto": "Ciclico", "bloque": "subola", "beta": 3,
+                       "members": ["XLI", "XLB", "XLY", "PAVE", "ITA", "JETS"],
+                       "desc": "la economia real: obra, defensa, aerolineas y materiales. Ciclo economico, no especulacion"},
+    "PEL-INTER":      {"nombre": "Internacional", "corto": "Internacional", "bloque": "subola", "beta": 3,
+                       "members": ["EEM", "EWZ", "INDA", "EWY", "VGK", "EWJ", "EWG", "EWP"],
+                       "desc": "emergentes, Europa y Japon: les pesa el dolar tanto como su propia bolsa"},
+    # ---------- NUCLEO ----------
+    "PEL-NUCLEO":     {"nombre": "Los gigantes", "corto": "Gigantes", "bloque": "nucleo", "beta": 2,
+                       "members": ["MAGS", "XLK", "XLC"],
+                       "desc": "megacaps, tecnologia y comunicaciones: cuando la manada se gira, estos suelen quedarse laterales"},
+    # ---------- SENSIBLES A TIPOS ----------
+    "PEL-TIPOS":      {"nombre": "Sensibles a tipos", "corto": "Tipos", "bloque": "tipos", "beta": 2,
+                       "members": ["XLU", "XLRE"],
+                       "desc": "utilities e inmobiliario: suben y bajan con el bono, no con el riesgo"},
+    # ---------- REFUGIO ----------
+    "PEL-REFUGIO":    {"nombre": "Refugio", "corto": "Refugio", "bloque": "refugio", "beta": 1,
+                       "members": ["XLP", "GLD", "TLT", "UUP"],
+                       "desc": "consumo basico, oro, bono largo y dolar: cuando ESTO lidera, el dinero se esta escondiendo"},
+}
+PEL_BLOQUES = {"manada": ("LA MANADA", "se mueven como uno — aqui se decide dentro o fuera"),
+               "subola": ("VAN A SU BOLA", "tienen ciclo propio: se miran aparte"),
+               "nucleo": ("NUCLEO", "los gigantes: suelen quedarse laterales cuando la manada se gira"),
+               "tipos":  ("SENSIBLES A TIPOS", "los mueve el bono"),
+               "refugio": ("REFUGIO", "si lidera, aviso de que el dinero se esconde")}
+PEL_MIN_MIEMBROS = 2        # menos de esto no es un bloque; con 1 miembro disenyado (URA) se admite y se marca
+OPCIONES_MAX_SYMS = 62      # cadenas de opciones por build. Cada una son varias peticiones a Yahoo: subirlo
+                            # alarga el build. 62 cubre el universo de pelotones + sectores; con 40 se quedaba
+                            # fuera media manada (ver comentario en main()).
+PEL_OPC_MIN_N = 2           # miembros liquidos minimos para dar lectura de opciones de un peloton (1 si es de un solo ETF)
+PEL_OPC_SKEW = 4.0          # puntos de IV: por encima de esto, la proteccion esta claramente demandada
+PEL_OPC_PCR_ALTO = 1.3      # put/call de volumen por encima = mucha actividad en puts
+PEL_OPC_PCR_BAJO = 0.7      # put/call por debajo = la actividad se va a las calls
+PEL_MA_DIAS = 50            # media del sintetico que decide dentro/fuera
+PEL_VENTANA_TECHO = 250     # sesiones en las que se busca el techo de cada peloton (~1 anyo)
+PEL_CORR_VENTANA = 60       # sesiones para medir "se mueven como uno"
+INDICES_PONDERACION = [("SPY", "por capitalizacion", "manda el peso de los gigantes"),
+                       ("RSP", "todas igual", "la accion media del S&P"),
+                       ("DIA", "por precio", "Dow: 30 industriales, pesa el precio de la accion"),
+                       ("IWM", "pequenyas", "small caps: las que primero sufren cuando se cierra el grifo")]
 # --- SECTORES EXPLOSIVOS: los que mas se mueven cuando rebotan (beta alta). El modo cazador de suelos
 #     vigila SOLO estos tras una caida fuerte, para entrar en el giro en vez de estar siempre invertido. ---
 SECTORES_EXPLOSIVOS = ["SMH", "SOXX", "XBI", "ARKK", "ARKF", "KWEB", "FXI", "XME", "COPX", "GDX",
@@ -348,6 +451,7 @@ LEADERS_MIN_RS = 90                              # umbral de "lider" (percentil)
 #   "sp500"  = las ~500 del S&P 500 (percentil de mercado real; mas lento; por defecto)
 #   "sector" = ~164 acciones de SECTOR_STOCKS (mas rapido)
 RS_UNIVERSE = "sp500"
+OPCIONES_ON = True                              # False = no se descargan cadenas de opciones (el MODO VIAJE lo apaga solo)
 LABORATORIO = False                             # True = busca TODAS las caidas y anota el estado del terminal
 VIAJE_A = ""                                    # "2022-04-17" = regenerar el TERMINAL ENTERO de ese dia
 VIAJE_FECHAS = []                               # fechas a las que viajar, p.ej. ["2022-04-17"]
@@ -561,153 +665,14 @@ WATCHLIST = ["RKLB", "PCT", "OPEN", "OKLO", "QUBT", "UBER", "AA", "AMBA", "AUR"]
 WATCH_NAMES = {"RKLB": "Rocket Lab", "PCT": "PureCycle", "OPEN": "Opendoor", "OKLO": "Oklo (nuclear)",
                "QUBT": "Quantum Computing", "UBER": "Uber", "AA": "Alcoa", "AMBA": "Ambarella", "AUR": "Aurora Innovation"}
 
-# === TU CARTERA REAL (para el "Plan de rotacion de mi cartera") ===
-# Cada linea: ("TICKER", "BROKER", importe_en_euros). Acepta ETFs (XLF), acciones (MS), apalancados (TQQQ, SOXL) y los de Europa (EWG, EWP).
-# Si dejas la lista vacia, el panel no aparece. Pegame capturas de XTB/Robinhood/DEGIRO y te las convierto a estas lineas.
-MI_CARTERA = [
-    # Formato: ("TICKER", "BROKER", euros_de_EXPOSICION_actual, apalancamiento_del_producto, "tipo")
-    # - En acciones/ETFs al contado: euros = valor actual de la posicion, apalancamiento 1.
-    # - En CFDs: euros = valor NOCIONAL mostrado por XTB (la exposicion real), apalancamiento 1 (ya es nocional).
-    # - En productos de reset diario (2x/3x/5x): euros = valor de la posicion y el apalancamiento del PRODUCTO,
-    #   porque su variacion diaria es N veces la del indice.
-    # Extraida de capturas del 04-jul-2026. Los sufijos -CFD/-ETF/-ETC/-PERP/-2X/-3L/-5L se ignoran al mapear.
-    #
-    # ============ XTB (~7.172 EUR equity · suma de posiciones ~9.682 EUR por el nocional de los CFD) ============
-    ("RKLB",            "XTB", 612, 1, "etf"),      # Rocket Lab (+611%)
-    ("R2K-UCITS",       "XTB", 1095, 1, "etf"),     # SPDR Russell 2000 US Small Cap UCITS
-    ("OPEN",            "XTB", 130, 1, "etf"),      # Opendoor (4 posiciones consolidadas: 128.13+0.81+0.46+0.40)
-    ("AA",              "XTB", 294, 1, "etf"),      # Alcoa
-    ("ARKG-CFD",        "XTB", 149, 1, "cfd"),      # Genomic Revolution CFD
-    ("CTVA-CFD",        "XTB", 223, 1, "cfd"),      # Corteva CFD
-    ("DRTS",            "XTB", 92, 1, "etf"),       # Alpha Tau Medical
-    ("XLV-CFD",         "XTB", 285, 1, "cfd"),      # Health Care Select Sector CFD
-    ("PAK-ETF",         "XTB", 163, 1, "etf"),      # MSCI Pakistan Swap (+31.7%)
-    ("CCL",             "XTB", 214, 1, "etf"),      # Carnival
-    ("TSLA",            "XTB", 133, 1, "etf"),      # Tesla
-    ("U-CFD",           "XTB", 254, 1, "cfd"),      # Unity Software CFD
-    ("ERO",             "XTB", 227, 1, "etf"),      # Ero Copper
-    ("SEDG",            "XTB", 91, 1, "etf"),       # SolarEdge
-    ("AAPL-CFD",        "XTB", 268, 1, "cfd"),      # Apple CFD
-    ("STOXX600-CONSTR", "XTB", 186, 1, "etf"),      # iShares STOXX Europe 600 Construction & Materials
-    ("GLD-ETC",         "XTB", 41, 1, "etf"),       # iShares Physical Gold (+63.8%)
-    ("RDW",             "XTB", 113, 1, "etf"),      # Redwire
-    ("AUR",             "XTB", 202, 1, "etf"),      # Aurora Innovation
-    ("DAX-2X",          "XTB", 469, 2, "etf_lev"),  # DAX Daily 2x Long (reset diario)
-    ("MAS",             "XTB", 72, 1, "etf"),       # Masco
-    ("MSCI-CHINA",      "XTB", 328, 1, "etf"),      # Xtrackers MSCI China ETF
-    ("XLU-CFD",         "XTB", 199, 1, "cfd"),      # Utilities Select Sector CFD
-    ("VNM-ETF",         "XTB", 104, 1, "etf"),      # Xtrackers FTSE Vietnam Swap
-    ("BCP",             "XTB", 18, 1, "etf"),       # Millennium BCP
-    ("DHI-CFD",         "XTB", 416, 1, "cfd"),      # DR Horton CFD
-    ("TOI",             "XTB", 50, 1, "etf"),       # Oncology Institute
-    ("FSLR",            "XTB", 101, 1, "etf"),      # First Solar
-    ("SOFI",            "XTB", 100, 1, "etf"),      # SoFi
-    ("SHOP",            "XTB", 48, 1, "etf"),       # Shopify
-    ("MTW",             "XTB", 39, 1, "etf"),       # Manitowoc
-    ("AMBA",            "XTB", 97, 1, "etf"),       # Ambarella
-    ("SGL",             "XTB", 22, 1, "etf"),       # SGL Carbon
-    ("VST",             "XTB", 145, 1, "etf"),      # Vistra Energy
-    ("SPCE",            "XTB", 23, 1, "etf"),       # Virgin Galactic
-    ("CRSP-CFD",        "XTB", 105, 1, "cfd"),      # CRISPR CFD (-40%)
-    ("FERG-CFD",        "XTB", 202, 1, "cfd"),      # Ferguson CFD (agua)
-    ("OKLO-CFD",        "XTB", 182, 1, "cfd"),      # Oklo CFD (-20%)
-    ("MSCI-INDIA",      "XTB", 276, 1, "etf"),      # iShares MSCI India
-    ("UBER-CFD",        "XTB", 195, 1, "cfd"),      # Uber CFD (-34.5%)
-    ("CHINA-TECH-ETF",  "XTB", 63, 1, "etf"),       # UBS Solactive China Technology
-    ("U",               "XTB", 76, 1, "etf"),       # Unity Software accion
-    ("LEU",             "XTB", 55, 1, "etf"),       # Centrus Energy (-45%)
-    ("OKLO",            "XTB", 43, 1, "etf"),       # Oklo accion (-51%)
-    ("QUBT",            "XTB", 55, 1, "etf"),       # Quantum Computing (-47%)
-    ("MP-CFD",          "XTB", 187, 1, "cfd"),      # MP Materials CFD (-116% sobre margen)
-    ("MSCI-CHINA-TECH", "XTB", 530, 1, "etf"),      # iShares MSCI China Tech
-    ("MSCI-CHINA-CFD",  "XTB", 534, 1, "cfd"),      # iShares MSCI China CFD (-59.8%)
-    ("TMC",             "XTB", 124, 1, "etf"),      # TMC the metals company (-35.7%)
-    ("WWR",             "XTB", 53, 1, "etf"),       # Westwater (-60.3%)
-    #
-    # ============ ROBINHOOD (~1.573 EUR) — USD convertido a ~0.874 EUR/USD ============
-    ("BTC-PERP",  "Robinhood", 28, 1, "perp"),      # perpetuo BTCUSD Largo 5x, nocional 0.00051 BTC
-    ("TNA",       "Robinhood", 542, 3, "etf_lev"),  # 8.526 uds
-    ("TQQQ",      "Robinhood", 256, 3, "etf_lev"),
-    ("LABU",      "Robinhood", 115, 3, "etf_lev"),
-    ("DPST",      "Robinhood", 102, 3, "etf_lev"),
-    ("FAS",       "Robinhood", 97, 3, "etf_lev"),
-    ("RETL",      "Robinhood", 82, 3, "etf_lev"),
-    ("CURE",      "Robinhood", 66, 3, "etf_lev"),   # salud 3x
-    ("CCJ",       "Robinhood", 57, 1, "etf"),       # Cameco
-    ("AAL",       "Robinhood", 48, 1, "etf"),       # American Airlines
-    ("HOOG",      "Robinhood", 33, 1, "etf"),       # Hooglund
-    ("SPCX-PVT",  "Robinhood", 5, 1, "etf"),        # SpaceX (privada, token)
-    ("OPAI-PVT",  "Robinhood", 6, 1, "etf"),        # OpenAI (privada, token)
-    ("KRE",       "Robinhood", 1, 1, "etf"),
-    ("SOL",       "Robinhood", 91, 1, "cripto"),    # Solana
-    ("CRIPTO-RESTO", "Robinhood", 65, 1, "cripto"), # GRAM+XRP+ETH+AVNT+BTC+RENDER+EURC+ONDO+USDC (polvo)
-    #
-    # ============ DEGIRO (equity ~1.906 EUR · las posiciones suman ~2.262: revisa si hay efectivo NEGATIVO) ============
-    ("AMRQ",   "DEGIRO", 102, 1, "etf"),            # Amaroq (minera oro Groenlandia)
-    ("MNST",   "DEGIRO", 428, 1, "etf"),            # Monster Beverage
-    ("NAS",    "DEGIRO", 78, 1, "etf"),             # Norwegian Air Shuttle
-    ("PCT",    "DEGIRO", 479, 1, "etf"),            # PureCycle
-    ("UBER",   "DEGIRO", 65, 1, "etf"),             # Uber accion
-    ("TLT-5L", "DEGIRO", 269, 5, "bono_lev"),       # Leverage Shares 5x Long 20+Y Treasury
-    ("R2K-UCITS", "DEGIRO", 767, 1, "etf"),         # SPDR Russell 2000 UCITS
-    ("SLV-3L", "DEGIRO", 74, 3, "plata_lev"),       # WisdomTree Silver 3x Daily
-]
-# --- Mapa de alias -> ETF de referencia del terminal (para que el plan de rotacion pueda evaluar cada posicion) ---
-ALIAS2ETF = {
-    # XTB
-    "RKLB": "ITA", "R2K-UCITS": "IWM", "OPEN": "ITB", "AA": "XME", "ARKG": "XBI", "CTVA": "MOO",
-    "DRTS": "XBI", "CCL": "JETS", "U": "IGV", "ERO": "COPX", "SEDG": "TAN",
-    "STOXX600-CONSTR": "VGK", "GLD": "GLD", "RDW": "ITA", "AUR": "BOTZ", "DAX-2X": "EWG",
-    "MAS": "ITB", "MSCI-CHINA": "FXI", "VNM": None, "BCP": "VGK", "DHI": "ITB", "TOI": "XLV",
-    "FSLR": "TAN", "SOFI": "ARKF", "SHOP": "IGV", "MTW": "XLI", "AMBA": "SMH", "SGL": "XLB",
-    "VST": "XLU", "SPCE": "ITA", "CRSP": "XBI", "FERG": "FIW", "OKLO": "URA",
-    "MSCI-INDIA": "INDA", "UBER": "XLY", "CHINA-TECH-ETF": "KWEB", "LEU": "URA", "QUBT": "QTUM",
-    "MP": "XME", "MSCI-CHINA-TECH": "KWEB", "MSCI-CHINA-CFD": "FXI", "TMC": "XME", "WWR": "URA",
-    "PAK": None,
-    # Robinhood
-    "RETL": "XRT", "CCJ": "URA", "AAL": "JETS", "SOL": "IBIT", "BTC": "IBIT",
-    # DEGIRO
-    "AMRQ": "GDX", "NAS": "JETS", "PCT": "XLB", "MNST": "XLP", "TLT": "TLT", "SLV": "SLV",
-}
-# --- Nombres legibles de las posiciones de MI_CARTERA (para el tooltip de tickers) ---
-CARTERA_NOMBRES = {
-    "RKLB": "Rocket Lab (espacio)", "R2K-UCITS": "SPDR Russell 2000 US Small Cap UCITS", "OPEN": "Opendoor Technologies",
-    "AA": "Alcoa (aluminio)", "ARKG-CFD": "ARK Genomic Revolution (CFD)", "CTVA-CFD": "Corteva Agriscience (CFD)",
-    "DRTS": "Alpha Tau Medical", "XLV-CFD": "Health Care Select Sector (CFD)", "PAK-ETF": "MSCI Pakistan Swap",
-    "CCL": "Carnival (cruceros)", "TSLA": "Tesla", "U-CFD": "Unity Software (CFD)", "U": "Unity Software",
-    "ERO": "Ero Copper (cobre)", "SEDG": "SolarEdge", "AAPL-CFD": "Apple (CFD)",
-    "STOXX600-CONSTR": "STOXX Europe 600 Construcción y Materiales", "GLD-ETC": "iShares Physical Gold",
-    "RDW": "Redwire (espacio)", "AUR": "Aurora Innovation (conducción autónoma)", "DAX-2X": "DAX Daily 2x Long",
-    "MAS": "Masco (construcción)", "MSCI-CHINA": "Xtrackers MSCI China UCITS", "XLU-CFD": "Utilities Select Sector (CFD)",
-    "VNM-ETF": "Xtrackers FTSE Vietnam Swap", "BCP": "Millennium BCP", "DHI-CFD": "DR Horton (CFD, vivienda)",
-    "TOI": "Oncology Institute", "FSLR": "First Solar", "SOFI": "SoFi Technologies", "SHOP": "Shopify",
-    "MTW": "Manitowoc (grúas)", "AMBA": "Ambarella (semis visión)", "SGL": "SGL Carbon", "VST": "Vistra Energy",
-    "SPCE": "Virgin Galactic", "CRSP-CFD": "CRISPR Therapeutics (CFD)", "FERG-CFD": "Ferguson (CFD, agua)",
-    "OKLO-CFD": "Oklo (CFD, nuclear)", "OKLO": "Oklo (nuclear)", "MSCI-INDIA": "iShares MSCI India",
-    "UBER-CFD": "Uber (CFD)", "UBER": "Uber", "CHINA-TECH-ETF": "UBS Solactive China Technology",
-    "LEU": "Centrus Energy (uranio)", "QUBT": "Quantum Computing Inc", "MP-CFD": "MP Materials (CFD, tierras raras)",
-    "MSCI-CHINA-TECH": "iShares MSCI China Tech UCITS", "MSCI-CHINA-CFD": "iShares MSCI China (CFD)",
-    "TMC": "TMC the metals company", "WWR": "Westwater Resources",
-    "BTC-PERP": "Perpetuo BTC/USD 5x largo", "TNA": "Small caps Russell 2000 x3", "TQQQ": "Nasdaq-100 x3",
-    "LABU": "Biotech x3", "DPST": "Banca regional x3", "FAS": "Financieras x3", "RETL": "Retail x3",
-    "CURE": "Salud x3", "CCJ": "Cameco (uranio)", "AAL": "American Airlines", "HOOG": "Hooglund",
-    "SPCX-PVT": "SpaceX (token privado)", "OPAI-PVT": "OpenAI (token privado)", "SOL": "Solana",
-    "CRIPTO-RESTO": "Resto cripto (polvo)", "AMRQ": "Amaroq Minerals (oro Groenlandia)", "MNST": "Monster Beverage",
-    "NAS": "Norwegian Air Shuttle", "PCT": "PureCycle Technologies", "TLT-5L": "Treasury 20+ años x5 largo",
-    "SLV-3L": "Plata x3 diario",
-}
-# --- Datos de margen por broker (para el stress-test; actualizalos cuando cambien) ---
-BROKER_INFO = {
-    # equity = valor de la cuenta EUR · margen_libre = capital disponible · nivel_margen = % que muestra el broker (equity/margen requerido)
-    # stopout = nivel de margen al que el broker EMPIEZA A CERRARTE posiciones el solo
-    "XTB":       {"equity": 7172, "margen_libre": 5.94, "nivel_margen": 104.87, "stopout": 50},
-    "Robinhood": {"equity": 1573, "margen_libre": None, "nivel_margen": None,   "stopout": None},
-    "DEGIRO":    {"equity": 1906, "margen_libre": None, "nivel_margen": None,   "stopout": None},
-}
-STRESS_DD = [-5, -10, -20]                       # escenarios de caida del S&P para el stress-test
-# beta aproximada frente al S&P por TIPO de activo (choque de 1 dia; orientativa, no exacta)
-STRESS_BETA = {"etf": 1.0, "etf_lev": 1.0, "cfd": 1.0, "cesta": 1.0, "perp": 1.8, "cripto": 1.8,
-               "bono_lev": -0.2, "plata_lev": 0.8}
+# === CARTERA DE BROKERS: ELIMINADA (v7.0) ===
+# MI_CARTERA, BROKER_INFO, el plan de rotacion de la cartera real, el panel de
+# apalancamiento con stress-test y el PORTFOLIO DESK se han retirado: eran datos
+# escritos A MANO (foto del 04-jul-2026) que dejaron de actualizarse, y un dato de
+# cartera caducado es peor que ninguno porque se lee como si fuera de hoy.
+# La CARTERA_FINAL que monta el propio terminal con los flujos NO se toca: esa es
+# la que sostiene el track record.
+
 # --- Senal contraria 0/3 (tu estadistica: 65% de acierto a 4 semanas, +2.2% de media; muestra 70 sem = IN-SAMPLE) ---
 CONTRARIAN_ON = True                             # activa el modulo de senal contraria (ledger fuera-de-muestra + tamano sugerido)
 CONTRARIAN_SIZE_PCT = 2.0                        # % de cartera por senal mientras la muestra fuera-de-muestra sea corta (<20 casos)
@@ -870,6 +835,8 @@ NAMES = {
     "ARKX":("ARK Space Exploration — el pure-play espacial (RKLB, satélites, defensa-espacio)","Espacio (ARK)","ciclico"),
     "LQD":("Investment Grade Bonds","Crédito IG","defensivo"),
     "EMB":("Emerging Markets Bonds","Crédito emergente","sensible"),
+    "COIN":("Coinbase — el broker de cripto (proxy de actividad, no de precio del bitcoin)","Coinbase","ciclico"),
+    "MSTR":("Strategy (MicroStrategy) — tesoreria en bitcoin CON deuda: exagera el movimiento del BTC","Strategy/BTC","ciclico"),
     "RSP":("S&P 500 Equal Weight — el S&P sin el peso de los gigantes","S&P equiponderado","ciclico"),
     "S-EXPLOSIVO":("Sintético alta beta growth (SMH+XBI+ARKK+KWEB+TAN)","Sint. Explosivo","sintetico"),
     "CE-EQUIPOS":("Cascada IA 1b — Equipos semi (ASML+LRCX+AMAT+KLAC): quien cobra ANTES que nadie","C1b Equipos","cascada"),
@@ -1653,6 +1620,218 @@ def guardar_json_seguro(ruta, datos, backup=None, indent=0):
         return False
 
 
+# ----------------------------------------------------------------------
+# KONCORDE (Blai5, portado del Pine Script de TradingView): ¿quién está comprando y quién vendiendo?
+#   Idea: los paquetes GRANDES los mueven las MANOS FUERTES; los paquetes pequeños, las MANOS DÉBILES.
+#   - NVI (Negative Volume Index) solo se mueve los días de volumen BAJO → dinero "profesional" → AZUL = manos fuertes
+#   - PVI (Positive Volume Index) solo se mueve los días de volumen ALTO → dinero "de la calle" → VERDE = manos débiles
+#   - MARRÓN = media de RSI + MFI + oscilador de Bollinger + estocástico/3 → la tendencia
+#   - MEDIA  = EMA(255) del marrón. Marrón cruzando por encima de la media = giro confirmado (la señal clásica)
+#   En el gráfico, la "zona verde POR DEBAJO del marrón" = verde < marrón = oscp < 0 = las manos débiles
+#   están soltando papel (les han saltado los stops). Si a la vez el AZUL está por encima de cero, las
+#   manos fuertes están recogiendo ese papel: es el TRASPASO de débiles a fuertes, la huella clásica del suelo.
+# ----------------------------------------------------------------------
+KONC_M = 15            # EMA del PVI/NVI (parámetro "m" del original)
+KONC_RANGO = 90        # ventana max/min de las EMAs para normalizar (original: highest/lowest 90)
+KONC_EMA_MEDIA = 15    # EMA del marrón. OJO (corregido 2026-09-22): el original usa 15, la misma "m" del
+                       # PVI/NVI. Aqui ponia 255 por leer mal el parametro lengthEMA del original, y la linea
+                       # roja salia casi plana. Comprobado a ojo contra el Koncorde de Blai5 en TradingView.
+KONC_MIN_SESIONES = 110   # por debajo de esto el indicador no es fiable → None, nunca 0
+# --- DETECTOR DE SUELOS DEL KONCORDE (v7.2) — los MISMOS parametros que el indicador de TradingView ---
+# SUELO = EL PATRON DEL PIQUITO (la observacion de Pe en XBI, septiembre de 2026): el verde asoma por
+# DEBAJO de cero (las debiles venden en panico) y en la vela en que VUELVE A ENTRAR se marca el suelo.
+# Ahi mismo, no tres pasos despues. Solo cuenta si el precio estaba castigado durante el piquito, y
+# despues se vigila KONC_VIDA sesiones: un cierre bajo el minimo del piquito lo invalida.
+# La secuencia capitulacion → absorcion → giro (v7.1) sigue en el indicador como CONFIRMACION
+# opcional y como fila del backtest del grafico, para comparar cual acierta mas. En el terminal
+# puntua el patron, que es lo que se ve y se marca en TradingView por defecto.
+KONC_MIN_CAIDA = 8.0      # % bajo el maximo de 52 semanas (el mismo castigo que usa el terminal)
+KONC_VIDA = 40            # sesiones que se vigila la invalidacion de un suelo
+KONC_PIV_L, KONC_PIV_R, KONC_DIV_MAX = 5, 3, 60   # divergencia de las fuertes: pivotes de precio
+
+
+def _konc_secuencia(close, lo, hi, vol, verde, azul, marron, media):
+    """SUELO = el patron del piquito: el verde baja de cero y vuelve a entrar. Mas la divergencia de
+    las fuertes. Identico, paso a paso, al indicador de TradingView (koncorde_pevr.pine), para que el
+    grafico y el terminal marquen el suelo en la MISMA vela. None si no hay historia para el max 52 sem."""
+    try:
+        n = len(close)
+        if n < 260:
+            return None
+        max52 = hi.rolling(252).max()
+        caida = (close / max52 - 1.0) * 100.0
+        castig = (caida <= -KONC_MIN_CAIDA).fillna(False).values
+        v, c, l, az = verde.values, close.values, lo.values, azul.values
+        en_piq, pq_low, pq_ok, pq_ini = False, np.nan, False, None
+        vig, inv, suelo_bar = False, np.nan, None
+        ult_suelo = ult_inval = None
+        for i in range(n):
+            piq = bool(v[i] < 0)                       # NaN < 0 es False, igual que en Pine
+            # 1) el suelo vivo muere si cierra bajo el minimo del piquito, o caduca
+            if vig:
+                if c[i] < inv:
+                    vig, ult_inval = False, i
+                elif i - suelo_bar >= KONC_VIDA:
+                    vig = False
+            # 2) el piquito: empieza, se alarga o vuelve a entrar
+            if piq and not en_piq:
+                en_piq, pq_low, pq_ini, pq_ok = True, l[i], i, bool(castig[i])
+            elif piq and en_piq:
+                pq_low = min(pq_low, l[i])
+                pq_ok = pq_ok or bool(castig[i])
+            elif (not piq) and en_piq:                  # RE-ENTRADA: el verde recupera el cero
+                en_piq = False
+                pq_low = min(pq_low, l[i])
+                if pq_ok:
+                    vig, inv, suelo_bar, ult_suelo = True, pq_low, i, i
+        # divergencia: minimo de precio mas bajo con minimo de azul mas alto (pivotes confirmados R velas despues)
+        L, R = KONC_PIV_L, KONC_PIV_R
+        cv = caida.values
+        prev, ult_div = None, None
+        for j in range(L + R, n):
+            i = j - R
+            if not (l[i] < l[i - L:i].min() and l[i] <= l[i + 1:i + R + 1].min()):
+                continue
+            if prev is not None:
+                pi, pl, pa = prev
+                if (l[i] < pl and az[i] == az[i] and pa == pa and az[i] > pa
+                        and i - pi <= KONC_DIV_MAX and cv[i] == cv[i] and cv[i] <= -KONC_MIN_CAIDA):
+                    ult_div = j
+            prev = (i, l[i], az[i])
+        hace = lambda k: (n - 1 - k) if k is not None else None
+        if vig:
+            txt = f"SUELO hace {hace(ult_suelo)} ses: vigilando"
+        elif en_piq:
+            txt = f"piquito bajo cero hace {n - 1 - pq_ini} ses: el suelo se marca cuando vuelva a entrar"
+        else:
+            txt = "castigado: esperando un piquito" if castig[-1] else "precio no castigado: no se buscan suelos"
+        return {"suelo_vivo": vig, "suelo_hace": (hace(ult_suelo) if vig else None),
+                "inval_nivel": (round(float(inv), 4) if vig else None), "inval_hace": hace(ult_inval),
+                "piquito": en_piq, "piq_hace": ((n - 1 - pq_ini) if en_piq else None),
+                "piq_min": (round(float(pq_low), 4) if en_piq else None),
+                "div_hace": hace(ult_div), "sec_txt": txt,
+                "castigo": (round(float(cv[-1]), 1) if cv[-1] == cv[-1] else None)}
+    except Exception as _dege:
+        _deg("_konc_secuencia", _dege)
+        return None
+
+
+def compute_koncorde(dd):
+    """Devuelve el estado Koncorde de un OHLCV diario (dd con Open/High/Low/Close/Volume), o None si no hay
+    datos suficientes o faltan columnas. Todo va en None (no en 0.0) cuando no se puede calcular."""
+    try:
+        if dd is None or not {"High", "Low", "Close", "Volume"}.issubset(dd.columns):
+            return None
+        d = dd.dropna(subset=["High", "Low", "Close", "Volume"]).copy()
+        if len(d) < KONC_MIN_SESIONES:
+            return None
+        close = d["Close"].astype(float); hi = d["High"].astype(float); lo = d["Low"].astype(float)
+        vol = d["Volume"].astype(float)
+        op = d["Open"].astype(float) if "Open" in d.columns else close.shift(1).fillna(close)
+        tp = (op + hi + lo + close) / 4.0                               # ohlc4 = "tprice" del original
+        ret = close.pct_change().fillna(0.0)
+        dv = vol.diff().fillna(0.0)
+        # PVI / NVI: índices que solo avanzan en días de volumen alto (PVI) o bajo (NVI). Empiezan en 1000.
+        pvi = (1.0 + ret.where(dv > 0, 0.0)).cumprod() * 1000.0
+        nvi = (1.0 + ret.where(dv < 0, 0.0)).cumprod() * 1000.0
+        pvim = pvi.ewm(span=KONC_M, adjust=False).mean()
+        nvim = nvi.ewm(span=KONC_M, adjust=False).mean()
+        prng = (pvim.rolling(KONC_RANGO).max() - pvim.rolling(KONC_RANGO).min()).replace(0, np.nan)
+        nrng = (nvim.rolling(KONC_RANGO).max() - nvim.rolling(KONC_RANGO).min()).replace(0, np.nan)
+        oscp = (pvi - pvim) * 100.0 / prng                            # manos DÉBILES (verde - marrón)
+        azul = (nvi - nvim) * 100.0 / nrng                            # manos FUERTES
+        # MFI 14 sobre hlc3, como el original (el resto de piezas va sobre ohlc4)
+        tp3 = (hi + lo + close) / 3.0
+        mf = tp3 * vol
+        dtp = tp3.diff()
+        mf_pos = mf.where(dtp > 0, 0.0).rolling(14).sum()
+        mf_neg = mf.where(dtp < 0, 0.0).rolling(14).sum()
+        xmf = 100.0 - 100.0 / (1.0 + mf_pos / mf_neg.replace(0, np.nan))
+        xmf = xmf.fillna(50.0)
+        # Oscilador de Bollinger (25, 2)
+        basis = tp.rolling(25).mean(); dev = 2.0 * tp.rolling(25).std()
+        ob1 = basis; ob2 = (2.0 * dev).replace(0, np.nan)
+        boll = ((tp - ob1) / ob2) * 100.0
+        # RSI 14 (Wilder) sobre tprice
+        dtp2 = tp.diff()
+        up = dtp2.clip(lower=0).ewm(alpha=1 / 14.0, adjust=False).mean()
+        dn = (-dtp2.clip(upper=0)).ewm(alpha=1 / 14.0, adjust=False).mean()
+        xrsi = 100.0 - 100.0 / (1.0 + up / dn.replace(0, np.nan))
+        xrsi = xrsi.fillna(50.0)
+        # Estocástico 21 suavizado 3
+        ll = lo.rolling(21).min(); hh = hi.rolling(21).max()
+        k = 100.0 * (tp - ll) / (hh - ll).replace(0, np.nan)
+        stoc = k.rolling(3).mean()
+        marron = (xrsi + xmf + boll + stoc / 3.0) / 2.0
+        verde = marron + oscp
+        media = marron.ewm(span=KONC_EMA_MEDIA, adjust=False, min_periods=KONC_EMA_MEDIA * 2).mean()
+        _ok = pd.concat([oscp, azul, marron], axis=1).dropna()
+        if len(_ok) < 10:
+            return None
+        o = oscp.dropna(); a = azul.dropna(); m = marron.dropna()
+        deb = float(o.iloc[-1]); fue = float(a.iloc[-1]); mar = float(m.iloc[-1])
+        med = float(media.iloc[-1]) if media.notna().iloc[-1] else None
+
+        def _racha(serie, signo):
+            n = 0
+            for v in reversed(serie.tolist()):
+                if v != v or (v < 0) != (signo < 0) or v == 0:
+                    break
+                n += 1
+            return n
+        deb_dias = _racha(o, -1) if deb < 0 else 0          # sesiones seguidas con las débiles soltando
+        fue_dias = _racha(a, +1) if fue > 0 else 0          # sesiones seguidas con las fuertes comprando
+        # ¿las fuertes vienen SUBIENDO? (azul de hoy vs hace 5 sesiones)
+        fue_sube = bool(len(a) >= 6 and fue > float(a.iloc[-6]))
+        # cruce marrón/media en las últimas 5 sesiones (la señal de giro del propio Koncorde)
+        cruce = None
+        if med is not None and len(m) >= 6 and media.notna().iloc[-6]:
+            _arr = m.iloc[-6:].values; _med = media.dropna().iloc[-6:].values
+            if len(_med) == 6:
+                if _arr[-1] > _med[-1] and any(_arr[i] <= _med[i] for i in range(5)):
+                    cruce = "alcista"
+                elif _arr[-1] < _med[-1] and any(_arr[i] >= _med[i] for i in range(5)):
+                    cruce = "bajista"
+        # ---- DETECTOR DE SUELOS: la misma maquina de estados que el indicador de TradingView ----
+        sq = _konc_secuencia(close, lo, hi, vol, verde, azul, marron, media)
+        # ESTADO (lo que se lee en la columna "manos" del terminal)
+        if fue > 0 and deb < 0:
+            estado, pts = "TRASPASO", 2         # débiles sueltan, fuertes recogen: la huella del suelo
+        elif deb < 0:
+            estado, pts = "DEBILES_SUELTAN", 1  # saltan los stops pero las fuertes aún no compran: vigilar
+        elif fue > 0:
+            estado, pts = "FUERTES_COMPRAN", 1  # acumulan sin que la calle venda todavía
+        elif fue < 0 and deb > 0:
+            estado, pts = "FUERTES_VENDEN", 0   # la calle compra y el dinero grande distribuye: ojo
+        else:
+            estado, pts = "NEUTRO", 0
+        # PUNTOS (v7.1, endurecido): el TRASPASO suelto salia demasiado, tambien en plena caida.
+        # Ahora puntua la SECUENCIA completa, y cuanto mas reciente, mas:
+        #   SUELO vivo de <=10 sesiones = 2 · SUELO vivo mas viejo = 1 · divergencia de <=10 = 1 ·
+        #   TRASPASO sin nada mas = 1 · el resto = 0. Sin datos: None (nunca un 0 inventado).
+        # OJO: nada de (x or 99): un SUELO de HOY tiene suelo_hace = 0, y 0 es falso en Python
+        if sq and sq["suelo_vivo"] and sq["suelo_hace"] is not None and sq["suelo_hace"] <= 10:
+            pts = 2
+        elif sq and sq["suelo_vivo"]:
+            pts = 1
+        elif sq and sq["div_hace"] is not None and sq["div_hace"] <= 10:
+            pts = 1
+        elif estado == "TRASPASO":
+            pts = 1
+        else:
+            pts = 0
+        return {**(sq or {}),
+                "debiles": round(deb, 1), "fuertes": round(fue, 1), "marron": round(mar, 1),
+                "media": (round(med, 1) if med is not None else None), "verde": round(float(verde.dropna().iloc[-1]), 1),
+                "deb_dias": deb_dias, "fue_dias": fue_dias, "fue_sube": fue_sube, "cruce": cruce,
+                "estado": estado, "pts": pts,
+                "azul_spark": [round(float(x), 1) for x in a.iloc[-30:].tolist()],
+                "deb_spark": [round(float(x), 1) for x in o.iloc[-30:].tolist()]}
+    except Exception as _dege:
+        _deg("compute_koncorde", _dege)
+        return None
+
+
 def compute_volume_flow(daily, only=None):
     out = {}
     for sym, d in daily.items():
@@ -1770,7 +1949,9 @@ def compute_volume_flow(daily, only=None):
         # panel diga lo mismo: nunca "Neutro" en un sitio y "-0.06" en otro. El OBV/ADL se sigue usando aparte
         # para la 'distribucion oculta' (diverg), que es la senal fuerte.
         label = ("Acumulacion" if cmf > 0.05 else "Distribucion" if cmf < -0.05 else "Neutro") if cmf is not None else "N/D"
-        out[sym] = {"flow": round(flow, 2), "label": label, "diverg": diverg,
+        # KONCORDE: manos fuertes (azul) vs manos débiles (verde bajo el marrón). None si no es calculable.
+        konc = compute_koncorde(dd)
+        out[sym] = {"flow": round(flow, 2), "label": label, "diverg": diverg, "konc": konc,
                     "cmf": (round(cmf, 3) if cmf is not None else None), "cmf_pos": bool(cmf is not None and cmf > 0),
                     "obv_above": obv_above, "obv_cross": obv_cross,
                     "vol_rel": vol_rel, "vol_break": vol_break, "vol_rel5": vol_rel5,
@@ -1780,6 +1961,433 @@ def compute_volume_flow(daily, only=None):
                     "noct20": noct20, "ses20": ses20, "acum_ext": acum_ext, "cmf_mejora": cmf_mejora,
                     "obv_spark": obv.iloc[-min(40, len(obv)):].tolist()}
     return out
+
+# ----------------------------------------------------------------------
+# MOTOR DE PELOTONES (v7.0)
+# ----------------------------------------------------------------------
+def sintetico_diario(members, daily, min_n=PEL_MIN_MIEMBROS):
+    """Indice diario EQUIPONDERADO del peloton: OHLCV sintetico + metadatos.
+
+    COMO SE MONTA, y por que asi (fallo corregido el 2026-09-20):
+    antes se rebaseaba cada miembro a 100 en la primera fecha comun y se promediaban los
+    PRECIOS. Eso NO es equiponderar: el miembro que mas corre va ganando peso solo, y al cabo
+    de un anyo el "bloque" es en realidad ese miembro. Medido con IBIT/COIN/MSTR, MSTR acababa
+    pesando el 50% del indice en vez del 33%, y la caida del bloque salia -40% cuando la
+    equiponderada de verdad era -29%.
+    Ahora se promedian los RETORNOS DIARIOS y se acumulan: eso es un indice a peso igual
+    rebalanceado cada dia, que es lo que significa "el peloton".
+
+    Segundo arreglo: la interseccion de fechas amputaba el bloque entero al miembro mas joven
+    (un ETF listado hace un anyo dejaba a los otros cinco sin historia). Ahora cada miembro
+    entra el dia que empieza a cotizar, y el indice arranca cuando hay al menos min_n.
+
+    El volumen se agrega como MEDIA de euros negociados por miembro disponible, no como suma:
+    con la suma, el dia que entra un miembro nuevo habria un salto de volumen artificial y el
+    Koncorde (que vive de si el volumen sube o baja) lo leeria como una senyal que no existe.
+
+    Devuelve (DataFrame con Open/High/Low/Close/Volume + atributos, n_miembros_al_final)."""
+    c, o, h, l, dv = {}, {}, {}, {}, {}
+    for m in members:
+        d = (daily or {}).get(m)
+        if d is None or not {"High", "Low", "Close", "Volume"}.issubset(getattr(d, "columns", [])):
+            continue
+        dd = d.dropna(subset=["Close", "Volume"])
+        if len(dd) < 60:
+            continue
+        c[m] = dd["Close"].astype(float); h[m] = dd["High"].astype(float); l[m] = dd["Low"].astype(float)
+        o[m] = (dd["Open"].astype(float) if "Open" in dd.columns else dd["Close"].astype(float).shift(1))
+        dv[m] = dd["Close"].astype(float) * dd["Volume"].astype(float)
+    if not c:
+        return None, 0
+    C = pd.DataFrame(c)                      # union de fechas: NaN donde el miembro aun no existia
+    disp = C.notna().sum(axis=1)
+    ok = disp >= min(min_n, len(c))
+    if not ok.any():
+        return None, len(c)
+    C = C[ok]
+    if len(C) < 120:
+        return None, len(c)
+    idx = C.index
+    H = pd.DataFrame(h).reindex(idx); L = pd.DataFrame(l).reindex(idx); O = pd.DataFrame(o).reindex(idx)
+    DV = pd.DataFrame(dv).reindex(idx)
+    ret = C.pct_change().mean(axis=1).fillna(0.0)          # equiponderado, rebalanceado a diario
+    lvl = (1.0 + ret).cumprod() * 100.0
+    # la vela del bloque: el nivel del indice por el rango medio de sus miembros ese dia
+    out = pd.DataFrame({"Open": lvl * (O / C).mean(axis=1),
+                        "High": lvl * (H / C).mean(axis=1),
+                        "Low":  lvl * (L / C).mean(axis=1),
+                        "Close": lvl,
+                        "Volume": DV.mean(axis=1)}, index=idx).dropna()
+    if len(out) < 120:
+        return None, len(c)
+    out.attrs["n_fin"] = int(disp.reindex(out.index).iloc[-1])   # miembros el ultimo dia
+    out.attrs["n_max"] = len(c)
+    out.attrs["desde"] = str(out.index[0].date())
+    out.attrs["sesiones"] = len(out)
+    return out, len(c)
+
+
+def cohesion_peloton(members, daily, ventana=120):
+    """¿Esto es un peloton de verdad o una lista de cosas que no se parecen? Correlacion media
+    entre TODOS los pares de miembros con los retornos de las ultimas `ventana` sesiones.
+    Por debajo de 0.5 el grupo no se mueve como uno y el panel lo dice: mejor saberlo que
+    seguir leyendo una media de cosas que van cada una por su lado."""
+    cols = {}
+    for m in members:
+        d = (daily or {}).get(m)
+        if d is not None and "Close" in getattr(d, "columns", []):
+            ser = d["Close"].dropna()
+            if len(ser) >= ventana:
+                cols[m] = ser
+    if len(cols) < 2:
+        return None
+    R = pd.DataFrame(cols).dropna().pct_change().dropna()
+    if len(R) < ventana * 0.6:
+        return None
+    cm = R.iloc[-ventana:].corr()
+    vals = [cm.iloc[i, j] for i in range(len(cm)) for j in range(i + 1, len(cm))]
+    vals = [v for v in vals if v == v]
+    if not vals:
+        return None
+    return {"corr": round(sum(vals) / len(vals), 2), "n": len(cols),
+            "min": round(min(vals), 2), "max": round(max(vals), 2)}
+
+
+def _techo_de(serie, ventana=PEL_VENTANA_TECHO):
+    """Techo de la serie dentro de la ventana: fecha, sesiones desde entonces y % por debajo.
+
+    CENSURA (arreglado el 2026-09-20): si el maximo de TODA la historia es mas alto que el de la
+    ventana, el techo de verdad es anterior y el numero que se saca esta cortado por el borde.
+    Eso pasaba en China (241 ses) y Bitcoin (239 ses) con una ventana de 250: se leian como
+    medidas cuando en realidad querian decir "en algun momento antes de hace un anyo". Ahora se
+    marcan con borde=True y el panel escribe >250 en vez de un numero falsamente preciso."""
+    todo = serie.dropna()
+    if len(todo) < 40:
+        return None
+    ser = todo.iloc[-ventana:]
+    if len(ser) < 40:
+        return None
+    i = int(ser.values.argmax())
+    pico = float(ser.iloc[i])
+    dias = len(ser) - 1 - i                       # sesiones, no dias naturales
+    borde = bool(float(todo.max()) > pico * 1.005 or i <= 1)
+    caida = (float(ser.iloc[-1]) / pico - 1) * 100 if pico else None
+    return {"fecha": str(ser.index[i].date()), "dias": dias, "borde": borde,
+            "caida": round(caida, 1) if caida is not None else None}
+
+
+def flujo_del_bloque(members, daily, syn=None):
+    """CMF del PELOTON, agregado como manda la definicion de Chaikin cuando hay varios activos:
+    se suma el money-flow-volume de CADA miembro EN EUROS y se divide por el total de euros
+    negociados. Asi SMH pesa lo que mueve y DRAM lo que mueve, en vez de contar igual.
+
+    OJO (error que se cometio y se corrigio el 2026-09-20): NO vale calcular el CMF sobre la vela
+    del sintetico. Esa vela es un promedio a PESO IGUAL, asi que un miembro diminuto con el cierre
+    arriba del rango cancela a un gigante con el cierre abajo, y el volumen agregado no lo arregla
+    porque llega despues, ya mezclado. El CMF hay que agregarlo por miembro, no por vela.
+
+    Devuelve None si ningun miembro trae High/Low o no hay sesiones suficientes."""
+    try:
+        mfvs, dvs = {}, {}
+        for m in members:
+            d = (daily or {}).get(m)
+            if d is None or not {"High", "Low", "Close", "Volume"}.issubset(getattr(d, "columns", [])):
+                continue
+            dd = d.dropna(subset=["High", "Low", "Close", "Volume"])
+            if len(dd) < 60:
+                continue
+            c, hi, lo = dd["Close"].astype(float), dd["High"].astype(float), dd["Low"].astype(float)
+            rng = (hi - lo).replace(0, np.nan)
+            mfm = (((c - lo) - (hi - c)) / rng).fillna(0)
+            dv = c * dd["Volume"].astype(float)          # euros negociados, lo unico comparable entre ETFs
+            mfvs[m] = mfm * dv
+            dvs[m] = dv
+        if not mfvs:
+            return None
+        MFV = pd.DataFrame(mfvs).dropna(how="all").sum(axis=1)
+        DV = pd.DataFrame(dvs).dropna(how="all").sum(axis=1)
+        idx = MFV.index.intersection(DV.index)
+        MFV, DV = MFV.reindex(idx), DV.reindex(idx)
+        if len(idx) < 40:
+            return None
+        vsum = float(DV.iloc[-20:].sum())
+        if not vsum:
+            return None
+        cmf = float(MFV.iloc[-20:].sum() / vsum)
+        cser = (MFV.rolling(20).sum() / DV.rolling(20).sum()).dropna()
+        mejora = False
+        if len(cser) >= 16:
+            _s = [float(cser.iloc[-k]) for k in (1, 6, 11, 16)]
+            mejora = bool(_s[0] > _s[1] > _s[2] > _s[3])
+        diverg = None
+        if syn is not None and len(syn) >= 40:
+            close = syn["Close"]
+            obv = (np.sign(close.diff().fillna(0)) * syn["Volume"].astype(float)).cumsum()
+            pt, ft = _trend(close), _trend(obv)
+            if pt > 0.5 and ft < -0.5 and cmf < -0.05:
+                diverg = "distribucion oculta"     # el bloque sube pero el dinero grande sale
+            elif pt < -0.5 and ft > 0.5 and cmf > 0.05:
+                diverg = "acumulacion oculta"      # el bloque baja y el dinero grande entra: lo temprano
+        return {"cmf": round(cmf, 3), "mejora": mejora, "diverg": diverg, "n": len(mfvs)}
+    except Exception as _dege:
+        _deg("flujo_del_bloque", _dege)
+        return None
+
+
+def opciones_del_bloque(members, options, cmf_bloque=None, solo=False):
+    """Lectura de opciones de un PELOTON entero, no ETF por ETF.
+
+    LO QUE YAHOO **NO** DICE, y hay que tenerlo claro antes de leer esta columna: la cadena
+    gratuita da volumen, interes abierto y volatilidad implicita por strike, pero NO dice quien
+    fue el agresor. En cada contrato hay un comprador Y un vendedor. Asi que "estan comprando
+    opciones" NO es deducible de este dato, por mucho que se quiera. Lo que SI es deducible es
+    si la PROTECCION esta cara y demandada:
+      - skew = IV de la put fuera de dinero menos IV de la call fuera de dinero. Si las puts
+        cotizan mucho mas caras, alguien esta pagando por cubrirse. Eso si se mide.
+      - put/call de volumen y de interes abierto: hacia donde se va la actividad.
+    Por eso la columna dice PROTECCION / ALCISTA / NEUTRO, que es lo que el dato aguanta, y no
+    "compran" / "venden", que seria inventarselo.
+
+    Se agrega por MEDIANA de los miembros liquidos (la mediana no se la lleva un ETF con una
+    cadena rara) y se devuelve n para que se vea sobre cuantos se ha leido."""
+    try:
+        if not options or not members:
+            return None
+        pcs, pos, sks, ivr = [], [], [], []
+        n_liq, n_proxy, n_ili = 0, 0, 0
+        for m in members:
+            o = (options or {}).get(m)
+            if not o:
+                continue
+            if o.get("iliquido"):
+                n_ili += 1
+                continue
+            if o.get("proxy"):
+                n_proxy += 1          # leido en sus acciones grandes: senyal de apoyo, se cuenta aparte
+            n_liq += 1
+            if o.get("pcr_vol") is not None:
+                pcs.append(o["pcr_vol"])
+            if o.get("pcr_oi") is not None:
+                pos.append(o["pcr_oi"])
+            if o.get("skew") is not None:
+                sks.append(o["skew"])
+            if o.get("iv_rank") is not None:
+                ivr.append(o["iv_rank"])
+        minimo = 1 if solo else PEL_OPC_MIN_N
+        if n_liq < minimo or (not pcs and not sks):
+            return {"n": n_liq, "n_ili": n_ili, "estado": None,
+                    "motivo": f"solo {n_liq} miembro(s) con cadena liquida: no da para leer el bloque"}
+        _med = lambda a: (round(float(pd.Series(a).median()), 2) if a else None)
+        pcr, pcr_oi, skew, ivrk = _med(pcs), _med(pos), _med(sks), _med(ivr)
+        # ESTADO de las opciones del bloque (lo que el dato aguanta decir)
+        if (skew is not None and skew >= PEL_OPC_SKEW) or (pcr is not None and pcr >= PEL_OPC_PCR_ALTO):
+            estado = "PROTECCION"
+        elif (pcr is not None and pcr <= PEL_OPC_PCR_BAJO) and (skew is None or skew <= PEL_OPC_SKEW / 2):
+            estado = "ALCISTA"
+        else:
+            estado = "NEUTRO"
+        # CRUCE con el flujo del bloque: aqui esta lo que pediste, que el volumen no te enganye
+        lectura, lcol, alerta = None, "#9FB0C8", False
+        if cmf_bloque is not None:
+            if cmf_bloque > 0.05 and estado == "PROTECCION":
+                lectura = "entra dinero PERO pagan por cubrirse: el volumen no es conviccion"
+                lcol, alerta = "#F4B740", True
+            elif cmf_bloque > 0.05 and estado == "ALCISTA":
+                lectura = "entra dinero y la actividad se va a las calls: unanimidad alcista (ojo a la complacencia)"
+                lcol = "#2FD08A"
+            elif cmf_bloque < -0.05 and estado == "PROTECCION":
+                lectura = "sale dinero y la proteccion ya esta cara: el miedo ya esta pagado, cubrirse ahora es tarde"
+                lcol = "#F4607A"
+            elif cmf_bloque < -0.05 and estado == "ALCISTA":
+                lectura = "sale dinero pero la actividad se va a las calls: discrepan — a veces es suelo, vigilar sin perseguir"
+                lcol = "#4CC2E0"
+            else:
+                lectura = "flujo y opciones sin nada que contar"
+        return {"n": n_liq, "n_proxy": n_proxy, "n_ili": n_ili, "pcr": pcr, "pcr_oi": pcr_oi,
+                "skew": skew, "iv_rank": ivrk, "estado": estado, "lectura": lectura,
+                "lcol": lcol, "alerta": alerta}
+    except Exception as _dege:
+        _deg("opciones_del_bloque", _dege)
+        return None
+
+
+def compute_pelotones(daily, flow, df=None, options=None):
+    """Una fila por peloton: donde esta su techo, cuanto lleva girado, cuantos de sus miembros
+    siguen vivos, que flujo tiene y QUIEN esta comprando (Koncorde del sintetico del bloque).
+    Todo lo que no se puede calcular sale como None; aqui no se inventa un neutro."""
+    if not daily:
+        return None
+    out = []
+    for key, cfg in PELOTONES.items():
+        try:
+            disenyado_solo = len(cfg["members"]) == 1
+            syn, n = sintetico_diario(cfg["members"], daily, min_n=(1 if disenyado_solo else PEL_MIN_MIEMBROS))
+            if syn is None:
+                continue
+            close = syn["Close"]
+            ma = close.rolling(PEL_MA_DIAS).mean()
+            sobre_ma = bool(close.iloc[-1] > ma.iloc[-1]) if ma.notna().iloc[-1] else None
+            vs_ma = round(float(close.iloc[-1] / ma.iloc[-1] - 1) * 100, 1) if ma.notna().iloc[-1] else None
+            techo = _techo_de(close)
+            r5 = round(float(close.iloc[-1] / close.iloc[-6] - 1) * 100, 1) if len(close) > 6 else None
+            r20 = round(float(close.iloc[-1] / close.iloc[-21] - 1) * 100, 1) if len(close) > 21 else None
+            konc = compute_koncorde(syn)
+            # miembros vivos: cuantos siguen por encima de SU media de 50 sesiones
+            vivos, total_ma, cmfs = 0, 0, []
+            for m in cfg["members"]:
+                d = (daily or {}).get(m)
+                if d is not None and "Close" in getattr(d, "columns", []):
+                    cser = d["Close"].dropna()
+                    if len(cser) >= PEL_MA_DIAS:
+                        total_ma += 1
+                        if float(cser.iloc[-1]) > float(cser.iloc[-PEL_MA_DIAS:].mean()):
+                            vivos += 1
+                cmf_m = ((flow or {}).get(m) or {}).get("cmf")
+                if cmf_m is not None:
+                    cmfs.append(cmf_m)
+            cmf_medio = round(sum(cmfs) / len(cmfs), 3) if cmfs else None   # promedio de miembros (a peso igual)
+            fb = flujo_del_bloque(cfg["members"], daily, syn)
+            cmf = (fb["cmf"] if fb else cmf_medio)                            # el que MANDA: el del bloque
+            # ¿discrepan? entonces el dinero se mueve por donde esta el volumen grande, no a partes iguales
+            _cubo = lambda v: (1 if v > 0.05 else -1 if v < -0.05 else 0)   # entra / plano / sale
+            discrepa = bool(fb and cmf_medio is not None
+                            and _cubo(fb["cmf"]) != _cubo(cmf_medio)
+                            and abs(fb["cmf"] - cmf_medio) >= 0.06)
+            # SEMAFORO del peloton: dentro / preparado / fuera. Sin flujo medible no se pinta verde.
+            if sobre_ma and (cmf is not None and cmf > -0.05) and (not konc or konc["estado"] != "FUERTES_VENDEN"):
+                estado, ecol = "DENTRO", "#2FD08A"
+            elif (sobre_ma is False) and ((cmf is not None and cmf < -0.05)
+                                          or (total_ma and vivos <= total_ma * 0.25)
+                                          or (konc and konc["estado"] == "FUERTES_VENDEN")):
+                estado, ecol = "FUERA", "#F4607A"
+            else:
+                estado, ecol = "PREPARADO", "#F4B740"
+            opc = opciones_del_bloque(cfg["members"], options, cmf, solo=disenyado_solo)
+            coh = cohesion_peloton(cfg["members"], daily) if not disenyado_solo else None
+            out.append({"opc": opc, "coh": coh,
+                        "desde": syn.attrs.get("desde"), "sesiones": syn.attrs.get("sesiones"),
+                        "n_fin": syn.attrs.get("n_fin"),
+                        "key": key, "nombre": cfg["nombre"], "corto": cfg["corto"], "bloque": cfg["bloque"],
+                        "beta": cfg["beta"], "desc": cfg["desc"], "n": n, "n_dis": len(cfg["members"]),
+                        "solo": disenyado_solo, "sobre_ma": sobre_ma, "vs_ma": vs_ma, "techo": techo,
+                        "r5": r5, "r20": r20, "cmf": cmf, "cmf_medio": cmf_medio, "n_cmf": len(cmfs),
+                        "flujo_bloque": fb, "discrepa": discrepa, "konc": konc,
+                        "vivos": vivos, "total_ma": total_ma, "estado": estado, "ecol": ecol,
+                        "spark": [round(float(x), 1) for x in close.iloc[-40:].tolist()]})
+        except Exception as _dege:
+            _deg(f"compute_pelotones:{key}", _dege)
+            continue
+    if not out:
+        return None
+    orden = {"manada": 0, "subola": 1, "nucleo": 2, "tipos": 3, "refugio": 4}
+    out.sort(key=lambda r: (orden.get(r["bloque"], 9), -r["beta"], -(r["techo"]["dias"] if r["techo"] else 0)))
+    return out
+
+
+def correlacion_manada(daily, ventana=PEL_CORR_VENTANA, hist=12):
+    """¿Se mueven como UNO? Correlacion media entre TODOS los pares de ETFs de la manada
+    con los retornos diarios de las ultimas `ventana` sesiones. 0.85+ = ya no son cinco
+    apuestas, es una sola, y el tamanyo de posicion tiene que reflejarlo."""
+    syms = []
+    for k, cfg in PELOTONES.items():
+        if cfg["bloque"] == "manada":
+            syms.extend(cfg["members"])
+    cols = {}
+    for m in dict.fromkeys(syms):
+        d = (daily or {}).get(m)
+        if d is not None and "Close" in getattr(d, "columns", []):
+            ser = d["Close"].dropna()
+            if len(ser) >= ventana + hist * 5 + 5:
+                cols[m] = ser
+    if len(cols) < 4:
+        return None
+    R = pd.DataFrame(cols).dropna().pct_change().dropna()
+    if len(R) < ventana:
+        return None
+
+    def _media_par(sub):
+        cm = sub.corr()
+        vals = [cm.iloc[i, j] for i in range(len(cm)) for j in range(i + 1, len(cm))]
+        vals = [v for v in vals if v == v]
+        return round(sum(vals) / len(vals), 2) if vals else None
+    ahora = _media_par(R.iloc[-ventana:])
+    serie = []
+    for k in range(hist, 0, -1):
+        sub = R.iloc[-(ventana + k * 5):-(k * 5)]
+        if len(sub) >= ventana - 5:
+            v = _media_par(sub)
+            if v is not None:
+                serie.append(v)
+    if ahora is None:
+        return None
+    return {"corr": ahora, "n_etfs": len(cols), "serie": serie + [ahora],
+            "subiendo": bool(len(serie) >= 3 and ahora > serie[0])}
+
+
+def backtest_liderazgo(daily, min_caida=7.0, sep=120, ventana_pico=60):
+    """¿DE VERDAD se giran antes los de beta alta? Busca los techos del indice que fueron
+    seguidos de una caida de al menos `min_caida`% y, en cada uno, mira cuantas sesiones ANTES
+    (o despues) hizo techo cada bloque de beta respecto al indice. Devuelve N visible: con
+    ~3 anyos de datos diarios salen POQUISIMOS episodios, y eso hay que verlo, no esconderlo."""
+    try:
+        b = (daily or {}).get(BENCH)
+        if b is None or "Close" not in getattr(b, "columns", []):
+            return None
+        bench = b["Close"].dropna()
+        if len(bench) < 300:
+            return None
+        # sintetico por nivel de beta (5 = lo mas especulativo, 4 = alta beta con beneficios)
+        grupos = {}
+        for niv in (5, 4, 2):
+            mem = [m for k, c in PELOTONES.items() if c["beta"] == niv and c["bloque"] in ("manada", "nucleo")
+                   for m in c["members"]]
+            syn, _n = sintetico_diario(mem, daily, min_n=2)
+            if syn is not None:
+                # reindex SIN dropna: las posiciones tienen que seguir siendo las mismas que las de
+                # bench, o el "hizo techo N sesiones antes" se calcula contra otra fecha sin avisar.
+                grupos[niv] = syn["Close"].reindex(bench.index)
+        if len(grupos) < 2:
+            return None
+        # techos del indice: maximo local que luego pierde min_caida%
+        picos, i = [], ventana_pico
+        vals = bench.values
+        while i < len(vals) - 20:
+            if vals[i] == max(vals[max(0, i - ventana_pico):i + ventana_pico + 1]):
+                fondo = min(vals[i:i + ventana_pico * 2])
+                if (fondo / vals[i] - 1) * 100 <= -min_caida:
+                    if not picos or (i - picos[-1]) >= sep:
+                        picos.append(i)
+                    i += sep
+                    continue
+            i += 1
+        if not picos:
+            return {"n": 0, "episodios": [], "aviso": "sin episodios en la historia descargada"}
+        eps = []
+        for p in picos:
+            fecha = str(bench.index[p].date())
+            fila = {"fecha": fecha, "caida": round((min(vals[p:p + ventana_pico * 2]) / vals[p] - 1) * 100, 1)}
+            for niv, ser in grupos.items():
+                ini = max(0, p - ventana_pico)
+                sub = ser.iloc[ini:p + ventana_pico + 1]
+                if sub.notna().sum() < 20:
+                    continue
+                j = int(np.nanargmax(sub.values))
+                # negativo = hizo techo ANTES que el indice (misma rejilla de sesiones que bench)
+                fila[f"b{niv}"] = int(j - (p - ini))
+            eps.append(fila)
+        # ¿la beta 5 se gira antes que la beta 2? cuantas veces y cuantas sesiones de media
+        adelantos = [e["b5"] - e.get("b2", 0) for e in eps if "b5" in e and "b2" in e]
+        antes = sum(1 for a in adelantos if a < 0)
+        n = len(adelantos)
+        med = round(sum(adelantos) / n, 1) if n else None
+        lo = hi = None
+        if n:
+            lo, hi = _bt_wilson(antes / n, n)
+        return {"n": n, "antes": antes, "media": med, "lo": lo, "hi": hi, "episodios": eps}
+    except Exception as _dege:
+        _deg("backtest_liderazgo", _dege)
+        return None
+
 
 # ----------------------------------------------------------------------
 # Heatmap de fuerza relativa temporal (sector vs indice en varios plazos)
@@ -1898,196 +2506,7 @@ def compute_early(df, rrg):
     rows.sort(key=lambda r: -r["score"])
     return rows
 
-def compute_mi_cartera_plan(holdings, rrg, scores, flow, chosen, df=None):
-    # Compara TU cartera real con las señales y da acciones concretas por posicion.
-    if not holdings:
-        return None
-    universe = set(SECTORS + THEMATIC + EXTRA + SATELLITES)
-    # acciones -> su ETF de sector
-    stock2etf = {}
-    for etf, sts in SECTOR_STOCKS.items():
-        for st in sts:
-            stock2etf.setdefault(st.upper(), etf)
-    # apalancados -> su subyacente (prefiriendo lo que seguimos)
-    lev2base = {}
-    for base, lev in LEV3X.items():
-        for l in lev.replace("*", "").split("/"):
-            l = l.strip().upper()
-            if l and (l not in lev2base or base in universe):
-                lev2base[l] = base
-
-    def resolve(t):
-        t = t.upper()
-        # limpiar sufijos de instrumento: AAPL-CFD -> AAPL, GLD-ETC -> GLD, TLT-5L -> TLT...
-        base_t = t
-        for suf in ("-CFD", "-ETF", "-ETC", "-PERP", "-PVT", "-5L", "-3L", "-2X"):
-            if base_t.endswith(suf):
-                base_t = base_t[: -len(suf)]
-                break
-        # 1) alias explicito (acciones/ETFs UCITS mapeados a su ETF de referencia del terminal)
-        for key in (t, base_t):
-            if key in ALIAS2ETF:
-                al = ALIAS2ETF[key]
-                if al is None:
-                    return None, "no seguido"
-                return al, ("vía alias" if al != key else "ETF")
-        # 2) universo directo, apalancados y acciones de SECTOR_STOCKS
-        for key in (t, base_t):
-            if key in universe:
-                return key, "ETF"
-            if key in lev2base:
-                return lev2base[key], "apalancado"
-            if key in stock2etf:
-                return stock2etf[key], "acción"
-        return None, "no seguido"
-
-    sc_map = {r["sym"]: r for r in scores} if scores else {}
-    rows = []
-    held_bases = set()
-    for row in holdings:
-        tk, broker, eur = row[0], row[1], row[2]
-        tipo = row[4] if len(row) >= 5 else "etf"
-        if tipo == "cesta":
-            rows.append({"tk": tk, "broker": broker, "eur": eur, "base": None, "kind": "cesta",
-                         "act": "detallar", "col": "#5B8CFF",
-                         "why": "cesta agregada: pega las posiciones una a una en MI_CARTERA para evaluarlas."})
-            continue
-        base, kind = resolve(tk)
-        if base is None or base not in rrg:
-            rows.append({"tk": tk, "broker": broker, "eur": eur, "base": None, "kind": kind,
-                         "act": "no seguido", "col": "#5E708A",
-                         "why": "no está en el universo del panel; el tool no puede evaluarlo."})
-            continue
-        held_bases.add(base)
-        quad = rrg[base]["quad"]
-        sc = sc_map.get(base, {}).get("score")
-        distrib = sc_map.get(base, {}).get("distrib", False)
-        qn = QUAD.get(quad, (quad, "#888"))[0]
-        if distrib:
-            act, col, why = "VENDER / ROTAR", "#F4607A", f"distribución oculta (sale dinero) en {base}."
-        elif quad == "lagging" or (sc is not None and sc <= 2):
-            act, col, why = "VENDER / ROTAR", "#F4607A", f"{base} en {qn}" + (f", scoring {sc}/5" if sc is not None else "") + " → fuera."
-        elif quad == "weakening":
-            act, col, why = "REDUCIR / VIGILAR", "#F4B740", f"{base} en {qn}: impulso girándose, recoger beneficios / poner stop."
-        elif quad in ("leading", "improving") and (sc is None or sc >= 3):
-            act, col, why = "MANTENER", "#2FD08A", f"{base} en {qn}" + (f", scoring {sc}/5" if sc is not None else "") + ": sigue fuerte."
-        else:
-            act, col, why = "VIGILAR", "#9FB0C8", f"{base} en {qn}, scoring {sc}/5."
-        via = "" if (base == tk.upper()) else f" (vía {base})"
-        # --- VEREDICTO DE CORTE vs AGUANTE + trampa de esperanza ---
-        # ¿Cuánto ha caído esta posición desde su máximo reciente? ¿El flujo aún sale (trampa) o ya frena (base)?
-        corte = None
-        f = (flow or {}).get(base, {}) or {}
-        cmf = f.get("cmf")
-        dd_pos = None
-        if df is not None and base in getattr(df, "columns", []):
-            try:
-                ser = df[base].dropna()
-                if len(ser) >= 10:
-                    dd_pos = float(ser.iloc[-1] / ser.iloc[-min(52, len(ser)):].max() * 100) - 100
-            except Exception:
-                dd_pos = None
-        _sale = (cmf is not None and cmf < -0.05)
-        _frena = (cmf is not None and cmf >= -0.05)
-        if act.startswith("VENDER") or act.startswith("REDUCIR"):
-            if _sale and dd_pos is not None and dd_pos <= -8:
-                corte = ("trampa", "#F4607A", f"⛔ El sistema dice CORTAR: cae {dd_pos:.0f}% y el dinero SIGUE saliendo (CMF {cmf:+.2f}). "
-                         "Aguantar aquí es «esperar a recuperar» — la trampa de esperanza que hace grandes las pérdidas pequeñas.")
-            elif _frena and dd_pos is not None and dd_pos <= -8:
-                corte = ("base", "#F4B740", f"⚠ Señal de salida PERO el flujo ha dejado de sangrar (CMF {cmf:+.2f}) tras caer {dd_pos:.0f}%. "
-                         "Zona de posible suelo: si vas a darle margen, ponle un stop concreto — no lo dejes «a ver si sube».")
-            elif _sale:
-                corte = ("trampa", "#F4607A", f"El dinero sale (CMF {cmf:+.2f}) — la señal de salida está confirmada por flujo.")
-        # 🌏 divergencia señalada, no reconciliada: en internacionales el CMF americano no ve la compra
-        # de la bolsa local (gap nocturno). No cambia la ACCIÓN — pero se avisa para decidir con criterio.
-        try:
-            _fb2 = (flow or {}).get(base, {}) or {}
-            if _fb2.get("acum_ext") and corte and corte[0] == "trampa":
-                corte = (corte[0], corte[1], corte[2] + f" ⚠ PERO 🌏 su gap nocturno es {_fb2.get('noct20', 0):+.1f}% en 20 sesiones: "
-                         "en este internacional la compra ocurre en su bolsa local y el CMF americano la infravalora — divergencia señalada; decide con el cierre del viernes.")
-        except Exception:
-            pass
-        rows.append({"tk": tk, "broker": broker, "eur": eur, "base": base, "kind": kind,
-                     "act": act, "col": col, "why": why, "quad": qn, "sc": sc, "via": via,
-                     "dd_pos": dd_pos, "cmf": cmf, "corte": corte})
-    # ROTAR HACIA: lo que recomienda la cartera y aún no tienes
-    rec = []
-    for s, d in (chosen or []):
-        if s not in held_bases:
-            sc = sc_map.get(s, {}).get("score")
-            rec.append({"sym": s, "quad": QUAD.get(d["quad"], (d["quad"], "#888"))[0], "sc": sc})
-    total = sum(r[2] for r in holdings if isinstance(r[2], (int, float)))
-    return {"rows": rows, "rotar_hacia": rec, "total": total,
-            "n_vender": sum(1 for r in rows if r["act"].startswith("VENDER")),
-            "n_mantener": sum(1 for r in rows if r["act"] == "MANTENER")}
-
-
-def compute_apalancamiento(holdings, broker_info):
-    """Consolida la exposicion REAL (importe x apalancamiento) de los 3 brokers y simula
-    el impacto de caidas del S&P (STRESS_DD) sobre el equity de cada broker.
-    Aproximacion de choque de 1 dia: perdida = importe x apalancamiento x beta_tipo x caida.
-    OJO: los productos de reset diario en un tramo de varios dias con volatilidad pierden MAS
-    que esto (decay); el escenario es el suelo optimista, no el pesimista."""
-    if not holdings:
-        return None
-    rows, por_broker = [], {}
-    for row in holdings:
-        tk, broker, eur = row[0], row[1], row[2]
-        lev = row[3] if len(row) >= 4 else 1
-        tipo = row[4] if len(row) >= 5 else "etf"
-        if not isinstance(eur, (int, float)) or eur <= 0:
-            continue
-        beta = STRESS_BETA.get(tipo, 1.0)
-        expo = eur * lev
-        stress = {dd: eur * lev * beta * (dd / 100.0) for dd in STRESS_DD}
-        rows.append({"tk": tk, "broker": broker, "eur": eur, "lev": lev, "tipo": tipo,
-                     "beta": beta, "expo": expo, "stress": stress})
-        b = por_broker.setdefault(broker, {"eur": 0.0, "expo": 0.0,
-                                           "stress": {dd: 0.0 for dd in STRESS_DD}})
-        b["eur"] += eur
-        b["expo"] += expo
-        for dd in STRESS_DD:
-            b["stress"][dd] += stress[dd]
-    tot_eur = sum(b["eur"] for b in por_broker.values()) or 1.0
-    tot_expo = sum(b["expo"] for b in por_broker.values())
-    tot_stress = {dd: sum(b["stress"][dd] for b in por_broker.values()) for dd in STRESS_DD}
-    # por broker: equity tras el choque y, si hay datos de margen, el nivel de margen estimado
-    brokers = []
-    for name, b in por_broker.items():
-        info = (broker_info or {}).get(name, {}) or {}
-        equity = info.get("equity") or b["eur"]
-        esc = {}
-        for dd in STRESS_DD:
-            loss = b["stress"][dd]
-            eq_after = equity + loss
-            nivel = info.get("nivel_margen")
-            # aprox.: el margen requerido no cambia -> el nivel cae en proporcion al equity
-            nivel_after = (nivel * eq_after / equity) if (nivel and equity) else None
-            stopout = info.get("stopout")
-            estado = "ok"
-            pct_loss = (loss / equity * 100) if equity else 0
-            if nivel_after is not None and stopout is not None:
-                if nivel_after <= stopout:
-                    estado = "STOP-OUT"
-                elif nivel_after <= stopout * 1.6:
-                    estado = "margin call"
-                elif nivel_after <= 100:
-                    estado = "sin margen libre"
-            elif eq_after <= 0 or pct_loss <= -95:
-                estado = "cuenta a cero"
-            elif pct_loss <= -70:
-                estado = "riesgo de liquidación"       # perpetuos/apalancados: el broker liquida mucho antes de llegar aqui
-            elif pct_loss <= -45:
-                estado = "pérdida severa"
-            esc[dd] = {"loss": loss, "eq_after": eq_after, "pct": (loss / equity * 100 if equity else 0),
-                       "nivel_after": nivel_after, "estado": estado}
-        brokers.append({"broker": name, "eur": b["eur"], "expo": b["expo"],
-                        "lev_ef": (b["expo"] / equity if equity else 0),
-                        "equity": equity, "info": info, "esc": esc})
-    brokers.sort(key=lambda x: -x["expo"])
-    tot_equity = sum(x["equity"] for x in brokers) or tot_eur
-    return {"rows": rows, "brokers": brokers, "tot_eur": tot_equity, "tot_expo": tot_expo,
-            "lev_ef": tot_expo / tot_equity, "tot_stress": tot_stress}
+# (compute_mi_cartera_plan y compute_apalancamiento eliminados en v7.0 junto con la cartera de brokers)
 
 
 def compute_candidato(cartera_syms, leaders, flow, scores, rrg):
@@ -2925,7 +3344,7 @@ def comparar_scores(df, daily, horizonte=8, umbral=5.0, **kw):
     sube. La que decide es BATE AL INDICE, porque comprar SPY sin pensar es la
     alternativa real que tiene cualquiera."""
     out = {}
-    for nombre, campo in (("ORIGINAL (suma)", "pts"), ("V2 (flujo multiplica)", "pts2")):
+    for nombre, campo in (("SIN MANOS (base)", "pts_base"), ("CON MANOS (Koncorde)", "pts"), ("V2 (flujo multiplica)", "pts2")):
         r = backtest_suelo(df, daily, umbral=umbral, horizontes=(horizonte,),
                            verbose=False, campo=campo, **kw)
         if r and r.get("filas") and r["filas"][0].get("n"):
@@ -4075,6 +4494,27 @@ COMPOSICION = {
             ("Salud",              "XLV",   6),
         ],
     },
+    # v7.0 — DOW JONES. AVISO QUE NO ES EL MISMO QUE EN LOS OTROS TRES: el Dow se pondera
+    # POR PRECIO, no por capitalizacion. Consecuencias reales al leer esta tabla:
+    #   1) el peso de cada bloque se mueve solo con que suba o baje el precio de una accion;
+    #   2) un SPLIT cambia el peso de la noche a la manana sin que la empresa haya cambiado;
+    #   3) son 30 valores, asi que una sola accion cara pesa mas que un sector entero.
+    # Por eso estos pesos envejecen mas rapido que los de QQQ/SPY/IWM. Revisalos un par de
+    # veces al anyo; si un bloque te canta mucho, es que toca actualizarlos.
+    "DOW JONES (DIA)": {
+        "bench": "DIA",
+        "bloques": [
+            ("Financiero",         "XLF",  21),
+            ("Tecnologia",         "XLK",  20),
+            ("Salud",              "XLV",  15),
+            ("Industriales",       "XLI",  14),
+            ("Consumo discrec.",   "XLY",  13),
+            ("Consumo basico",     "XLP",   6),
+            ("Comunicaciones",     "XLC",   3),
+            ("Energia",            "XLE",   3),
+            ("Materiales",         "XLB",   2),
+        ],
+    },
 }
 
 
@@ -4209,15 +4649,30 @@ def secuencia_del_suelo(rrg, flow, scores, suelo=None, cockpit=None,
             nocturno = bool(f.get("aext") or ck.get("aext"))
             dinero = ((cmf is not None and cmf > 0.05) or oculta or nocturno
                       or (mejora and cmf is not None and cmf > -0.05))
-            sale = (f.get("diverg") == "distribucion oculta"
-                    or (cmf is not None and cmf < -0.05))
+            # v6.9.4 — ARREGLO DE DISENO. "Aun sangra" estaba el PRIMERO en la
+            # cadena, asi que cualquier CMF por debajo de -0.05 iba al fondo
+            # aunque cumpliera los otros tres pasos. Resultado en pantalla:
+            # 47 sangrando y CERO arriba. Enterraba justo lo que se busca.
+            #
+            # Contradecia la regla del propio cockpit: "flujo que al menos haya
+            # DEJADO de salir". Un CMF en -0.06 mejorando tres tramos no es lo
+            # mismo que uno en -0.20 hundiendose: el primero es la senal.
+            #
+            # Ahora solo sangra de verdad lo que cae Y no mejora. Y se anade
+            # una fase intermedia, "DEJO DE SANGRAR", que es la que faltaba.
+            sangra_fuerte = (cmf is not None and cmf < -0.12)
+            freno = (mejora or oculta or nocturno)
+            sale = ((f.get("diverg") == "distribucion oculta" and not freno)
+                    or (sangra_fuerte and not freno)
+                    or (cmf is not None and cmf < -0.05 and not freno))
+            dejo_de_sangrar = (cmf is not None and -0.12 <= cmf <= 0.05 and freno)
             # ---- PASO 4: arranque
             quad = d.get("quad")
             dmom = d.get("dmom") or 0
             arranque = (quad in ("improving", "leading") and dmom > 0.5)
             # ---- fase de la secuencia
             if sale:
-                fase, orden = "AUN SANGRA", 5
+                fase, orden = "AUN SANGRA", 6
             elif castigado and silencio and dinero and arranque:
                 fase, orden = "ARRANCANDO", 0
             elif castigado and dinero and arranque:
@@ -4226,10 +4681,12 @@ def secuencia_del_suelo(rrg, flow, scores, suelo=None, cockpit=None,
                 fase, orden = "DINERO CALLADO", 1
             elif castigado and dinero:
                 fase, orden = "DINERO ENTRANDO", 2
+            elif castigado and dejo_de_sangrar:
+                fase, orden = "DEJÓ DE SANGRAR", 3
             elif castigado and silencio:
-                fase, orden = "SILENCIO", 3
+                fase, orden = "SILENCIO", 4
             elif castigado:
-                fase, orden = "CASTIGADO", 4
+                fase, orden = "CASTIGADO", 5
             else:
                 continue          # sin castigo no hay suelo que cazar
             pasos = sum([castigado, silencio, dinero, arranque])
@@ -4589,6 +5046,385 @@ def compute_scores(df, rrg, daily, flow):
                      "obv_cross": bool(f.get("obv_cross")), "abs_mom": round(abs_mom * 100, 1)})
     rows.sort(key=lambda r: (-r["score"], -r["abs_mom"]))
     return rows
+
+def _corr_chart_svg(serie, paso=5):
+    """¿SE MUEVEN COMO UNO? como grafico legible.
+
+    Por que no una sparkline (fallo corregido el 2026-09-22): el CSS global del terminal estira
+    TODOS los svg al 100% de ancho, asi que una mini-linea de 80x18 salia diez veces mas grande
+    con el trazo igual de engordado. Y ademas estaba AUTOESCALADA: una bajada de 0,58 a 0,51
+    llenaba todo el alto como si fuera un derrumbe. Aqui la escala es FIJA de 0 a 1, para que
+    un cambio pequenyo parezca pequenyo, y las bandas dicen que significa cada zona."""
+    vals = [float(v) for v in (serie or []) if v is not None and v == v]
+    if len(vals) < 3:
+        return ""
+    W, H = 720, 170
+    x0, x1, y0, y1 = 44, W - 190, 14, H - 26          # area del grafico (derecha reservada a etiquetas)
+    YMIN = 0.2                                        # escala FIJA 0,2-1,0: no cambia de un dia a otro, asi que no
+    ymap = lambda v: y1 - ((max(YMIN, min(1.0, v)) - YMIN) / (1.0 - YMIN)) * (y1 - y0)   # exagera; debajo de 0,2 se aplana
+    n = len(vals)
+    xmap = lambda i: x0 + (x1 - x0) * (i / (n - 1))
+    bandas = [(0.85, 1.00, "#F4607A", "una sola apuesta"),
+              (0.70, 0.85, "#F4B740", "casi una"),
+              (0.50, 0.70, "#8FA3C0", "bastante juntos"),
+              (0.20, 0.50, "#2FD08A", "dispersion: elegir sirve")]
+    p = [f"<svg class='corr-chart' viewBox='0 0 {W} {H}' role='img' "
+         "style='width:100%;max-width:720px;height:auto;background:transparent;border-radius:0'>"
+         "<title>Correlacion media de la manada</title>"]
+    for lo, hi, col, lab in bandas:
+        p.append(f"<rect x='{x0}' y='{ymap(hi):.1f}' width='{x1 - x0}' height='{ymap(lo) - ymap(hi):.1f}' "
+                 f"fill='{col}' opacity='.07'/>")
+        yc = (ymap(lo) + ymap(hi)) / 2
+        p.append(f"<text x='{x1 + 10}' y='{yc + 3:.1f}' font-size='10.5' style='fill:{col}' opacity='.9'>{esc(lab)}</text>")
+    for v in (0.2, 0.5, 0.7, 0.85, 1.0):
+        y = ymap(v)
+        # OJO Python 3.11 (GitHub Actions): dentro de las llaves de un f-string no puede ir ni una
+        # barra invertida ni el MISMO tipo de comilla que abre el string. El atributo se prepara fuera.
+        dash = "" if v in (0.2, 1.0) else "stroke-dasharray='3 4'"
+        p.append(f"<line x1='{x0}' y1='{y:.1f}' x2='{x1}' y2='{y:.1f}' style='stroke:var(--line2)' stroke-width='1' {dash}/>")
+        p.append(f"<text x='{x0 - 8}' y='{y + 3.5:.1f}' font-size='10' text-anchor='end' style='fill:var(--txt3)'>{v:.2f}</text>")
+    pts = " ".join(f"{xmap(i):.1f},{ymap(v):.1f}" for i, v in enumerate(vals))
+    col_fin = next((c for lo, hi, c, _ in bandas if lo <= vals[-1] <= hi + 1e-9), bandas[-1][2])
+    p.append(f"<polyline points='{pts}' fill='none' style='stroke:var(--txt2)' stroke-width='1.6' "
+             "stroke-linejoin='round' stroke-linecap='round' vector-effect='non-scaling-stroke'/>")
+    for i, v in enumerate(vals[:-1]):
+        p.append(f"<circle cx='{xmap(i):.1f}' cy='{ymap(v):.1f}' r='2.4' style='fill:var(--txt3)'/>")
+    xf, yf = xmap(n - 1), ymap(vals[-1])
+    p.append(f"<circle cx='{xf:.1f}' cy='{yf:.1f}' r='6' fill='{col_fin}' opacity='.25'/>")
+    p.append(f"<circle cx='{xf:.1f}' cy='{yf:.1f}' r='3.8' fill='{col_fin}'/>")
+    # la cifra de hoy a la IZQUIERDA del punto: a la derecha estan las etiquetas de las bandas
+    p.append(f"<text x='{xf - 11:.1f}' y='{yf - 9:.1f}' font-size='13' font-weight='700' text-anchor='end' "
+             f"style='fill:{col_fin}'>hoy {vals[-1]:.2f}</text>")
+    p.append(f"<text x='{x0}' y='{H - 8}' font-size='10' style='fill:var(--txt3)'>hace {paso * (n - 1)} sesiones</text>")
+    p.append(f"<text x='{x1}' y='{H - 8}' font-size='10' text-anchor='end' style='fill:var(--txt3)'>hoy</text>")
+    p.append("</svg>")
+    return "".join(p)
+
+
+def _opc_celda(o):
+    """Celda de la columna 'opciones' del peloton. Dice lo que el dato de Yahoo aguanta decir."""
+    if not o or not o.get("estado"):
+        _m = ((o or {}).get("motivo")
+              or ("modo viaje: las opciones se apagan porque las cadenas son de hoy, no de la fecha del viaje"
+                  if VIAJE_A else "sin cadenas de opciones liquidas en este bloque"))
+        return f"<span style='color:var(--txt3)' title='{esc(_m)}'>—</span>"
+    txt, col = {"PROTECCION": ("🛡 protección", "#F4B740"),
+                "ALCISTA": ("📈 alcista", "#2FD08A"),
+                "NEUTRO": ("· neutro", "#9FB0C8")}.get(o["estado"], ("—", "#9FB0C8"))
+    tip = ("OPCIONES DEL BLOQUE — mediana de sus " + str(o["n"]) + " miembro(s) con cadena líquida"
+           + (f", {o['n_ili']} ilíquido(s) fuera" if o.get("n_ili") else "")
+           + (f", {o['n_proxy']} leído(s) en sus acciones grandes" if o.get("n_proxy") else "")
+           + (f" · put/call vol {o['pcr']:.2f}" if o.get("pcr") is not None else "")
+           + (f" · put/call OI {o['pcr_oi']:.2f}" if o.get("pcr_oi") is not None else "")
+           + (f" · skew {o['skew']:+.1f} pts de IV (put OTM menos call OTM)" if o.get("skew") is not None else "")
+           + (f" · IV rank {o['iv_rank']:.0f}" if o.get("iv_rank") is not None else "")
+           + (f" — LECTURA: {o['lectura']}" if o.get("lectura") else "")
+           + " · OJO: Yahoo NO dice quién compró y quién vendió (todo contrato tiene las dos partes); "
+             "esto mide si la PROTECCIÓN está cara y demandada, no quién fue el agresor")
+    alerta = (" <span style='color:#F4B740;font-size:9px' title='entra dinero al contado pero pagan por cubrirse: "
+              "ese volumen positivo no es convicción'>⚠</span>" if o.get("alerta") else "")
+    return f"<span style='color:{col};font-weight:700' title='{esc(tip)}'>{txt}</span>{alerta}"
+
+
+def _pel_reloj_svg(filas, w=690, h=None):
+    """RELOJ DE TECHOS: una linea por peloton con el dia en que hizo su techo. Se lee de un
+    vistazo quien se giro primero y cuantas sesiones de ventaja lleva sobre el ultimo."""
+    fil = [r for r in filas if r.get("techo")]
+    if len(fil) < 3:
+        return ""
+    fil = sorted(fil, key=lambda r: (not r["techo"].get("borde"), -r["techo"]["dias"]))
+    _medidos = [r["techo"]["dias"] for r in fil if not r["techo"].get("borde")]
+    maxd = (max(_medidos) if _medidos else max(r["techo"]["dias"] for r in fil)) or 1
+    if maxd <= 0:
+        return ""
+    fh = 19
+    h = h or (len(fil) * fh + 34)
+    x0, x1 = 118, w - 54
+    p = [f"<svg viewBox='0 0 {w} {h}' style='width:100%;height:auto;background:transparent'>"]
+    _hay_cens = any(r["techo"].get("borde") for r in fil)
+    for frac, lab in ((0, f"hace {maxd} ses." + ("  (huecos: techo anterior)" if _hay_cens else "")), (0.5, ""), (1, "hoy")):
+        x = x0 + (x1 - x0) * frac
+        p.append(f"<line x1='{x:.0f}' y1='16' x2='{x:.0f}' y2='{h - 14}' style='stroke:var(--line2)' stroke-width='1'/>")
+        if lab:
+            p.append(f"<text x='{x:.0f}' y='11' style='fill:var(--txt3)' font-size='9' text-anchor='middle'>{esc(lab)}</text>")
+    for i, r in enumerate(fil):
+        y = 30 + i * fh
+        d = r["techo"]["dias"]
+        x = x0 + (x1 - x0) * (1 - d / maxd)
+        col = {"manada": "#F4607A", "subola": "#4CC2E0", "nucleo": "#9FB0C8", "tipos": "#B980FF", "refugio": "#7BD88F"}.get(r["bloque"], "#9FB0C8")
+        p.append(f"<text x='0' y='{y + 3}' style='fill:var(--txt)' font-size='10.5'>{esc(r['corto'])}</text>")
+        p.append(f"<text x='104' y='{y + 3}' style='fill:var(--txt3)' font-size='9' text-anchor='end'>b{r['beta']}</text>")
+        if r["techo"].get("borde"):
+            # techo CENSURADO: el de verdad es anterior a la ventana. Punto hueco en el borde y ">N",
+            # igual que en la tabla: ni aqui ni alli se dibuja como una medida lo que es un minimo.
+            p.append(f"<line x1='{x0}' y1='{y}' x2='{x1}' y2='{y}' stroke='{col}' stroke-width='2' opacity='.18' stroke-dasharray='3 3'/>")
+            p.append(f"<circle cx='{x0}' cy='{y}' r='4' fill='none' stroke='{col}' stroke-width='1.6'/>")
+            p.append(f"<text x='{x1 + 5}' y='{y + 3}' fill='{col}' font-size='9.5'>&gt;{PEL_VENTANA_TECHO} ses</text>")
+        else:
+            p.append(f"<line x1='{x:.0f}' y1='{y}' x2='{x1}' y2='{y}' stroke='{col}' stroke-width='2' opacity='.35'/>")
+            p.append(f"<circle cx='{x:.0f}' cy='{y}' r='4' fill='{col}'/>")
+            p.append(f"<text x='{x1 + 5}' y='{y + 3}' fill='{col}' font-size='9.5'>{d} ses</text>")
+    p.append("</svg>")
+    return "".join(p)
+
+
+def _pelotones_html(pel, corr=None, lider=None, daily=None):
+    """El panel que manda: primero LA MANADA, dentro o fuera; luego los que van a su bola."""
+    if not pel:
+        return ""
+    manada = [r for r in pel if r["bloque"] == "manada"]
+    # ---- titular: dentro / fuera de la manada
+    n_dentro = sum(1 for r in manada if r["estado"] == "DENTRO")
+    n_fuera = sum(1 for r in manada if r["estado"] == "FUERA")
+    if manada and n_dentro >= len(manada) - 1:
+        tit, tcol, tsub = "LA MANADA ESTA DENTRO", "#2FD08A", "el bloque sube y el dinero no sale: da igual cual compres, casi todos tiran"
+    elif manada and n_fuera >= len(manada) - 1:
+        tit, tcol, tsub = "LA MANADA ESTA FUERA", "#F4607A", "le sale el dinero al bloque entero: ninguno va a subir por su cuenta. Liquidez y lista preparada"
+    else:
+        tit, tcol, tsub = "LA MANADA ESTA PARTIDA", "#F4B740", f"{n_dentro} de {len(manada)} pelotones dentro: no es un giro del bloque, es rotacion entre ellos"
+    # ---- aviso de OPCIONES: el volumen que enganya (entra dinero y a la vez se cubren)
+    avopc = ""
+    _trampa = [r for r in manada if (r.get("opc") or {}).get("alerta")]
+    if _trampa:
+        _l = ", ".join(f"<b>{esc(r['corto'])}</b>" for r in _trampa[:5])
+        avopc = ("<div style='margin:8px 0;padding:9px 12px;background:rgba(244,183,64,.10);border:1px solid #F4B74055;border-radius:8px'>"
+                 f"<div style='color:#F4B740;font-weight:700;font-size:12px'>VOLUMEN CON EL SEGURO PUESTO — {len(_trampa)} peloton(es)</div>"
+                 f"<div style='font-size:11.5px;color:var(--txt);margin-top:3px'>{_l}</div>"
+                 "<div style='font-size:11px;color:var(--txt2);margin-top:3px'>Les <b>entra dinero al contado</b> y a la vez la <b>proteccion se paga cara</b>. "
+                 "No es que el flujo sea falso: es que quien compra no lo hace con conviccion, viene cubierto. "
+                 "Trata ese CMF positivo como medio CMF positivo.</div></div>")
+
+    # ---- aviso de alta beta enfriandose (el canario de tu patron de junio)
+    aviso = ""
+    b5 = [r for r in manada if r["beta"] == 5]
+    b4 = [r for r in manada if r["beta"] == 4]
+    if b5 and b4:
+        d5 = sum(r["techo"]["dias"] for r in b5 if r["techo"]) / max(1, sum(1 for r in b5 if r["techo"]))
+        d4 = sum(r["techo"]["dias"] for r in b4 if r["techo"]) / max(1, sum(1 for r in b4 if r["techo"]))
+        if d5 - d4 >= 8 and any(r["estado"] != "DENTRO" for r in b5):
+            aviso = ("<div style='margin:8px 0;padding:9px 12px;background:rgba(244,183,64,.10);border:1px solid #F4B74055;border-radius:8px'>"
+                     f"<div style='color:#F4B740;font-weight:700;font-size:12px'>🚩 LOS DE MAS BETA YA AFLOJARON — ventaja de {d5 - d4:.0f} sesiones</div>"
+                     "<div style='font-size:11px;color:var(--txt2);margin-top:3px'>Transicion e innovacion hicieron techo antes que chips y mineras, y el nucleo aun aguanta. "
+                     "Es exactamente la secuencia que se vio en junio de 2026. <b>Aviso de atencion, no orden de venta</b>: la decision sigue siendo del cierre del viernes.</div></div>")
+    # ---- tabla por bloques
+    tabla = ""
+    for bl, (titulo, sub) in PEL_BLOQUES.items():
+        filas = [r for r in pel if r["bloque"] == bl]
+        if not filas:
+            continue
+        tabla += (f"<tr><td colspan='10' style='padding:9px 4px 3px'><b style='color:var(--txt2);font-size:11px;letter-spacing:1px'>{esc(titulo)}</b>"
+                  f"<span style='color:var(--txt3);font-size:10px'> — {esc(sub)}</span></td></tr>")
+        for r in filas:
+            t = r["techo"] or {}
+            if t.get("dias") is None:
+                tdias = "—"
+            elif t.get("borde"):
+                tdias = (f"<span title='El maximo de la ventana de {PEL_VENTANA_TECHO} sesiones esta pegado al borde y la "
+                         f"serie tiene un maximo mas alto antes: el techo de verdad es anterior. No es una medida, es un minimo.'>"
+                         f"<b>&gt;{PEL_VENTANA_TECHO}</b> ses</span>")
+            else:
+                tdias = f"<b>{t['dias']}</b> ses"
+            tcaida = (f"{t['caida']:+.1f}%" if t.get("caida") is not None else "—")
+            ccol = "#F4607A" if (t.get("caida") or 0) <= -10 else "#F4B740" if (t.get("caida") or 0) <= -4 else "#9FB0C8"
+            viv = (f"{r['vivos']}/{r['total_ma']}" if r["total_ma"] else "—")
+            vcol = "#2FD08A" if (r["total_ma"] and r["vivos"] >= r["total_ma"] * 0.7) else "#F4607A" if (r["total_ma"] and r["vivos"] <= r["total_ma"] * 0.3) else "#F4B740"
+            if r["cmf"] is None:
+                fl = "—"
+            else:
+                _fb = r.get("flujo_bloque") or {}
+                _tip = (f"CMF del BLOQUE {r['cmf']:+.2f} (volumen agregado en euros: cada ETF pesa por el dinero que mueve)"
+                        + (f" · promedio de sus {r['n_cmf']} miembros a peso igual {r['cmf_medio']:+.2f}" if r.get("cmf_medio") is not None else "")
+                        + (" · DISCREPAN: el dinero se mueve por donde esta el volumen grande, no a partes iguales" if r.get("discrepa") else ""))
+                fl = (f"<span style='color:#2FD08A' title='{esc(_tip)}'>entra</span>" if r["cmf"] > 0.05 else
+                      f"<span style='color:#F4607A' title='{esc(_tip)}'>sale</span>" if r["cmf"] < -0.05 else
+                      f"<span style='color:var(--txt2)' title='{esc(_tip)}'>plano</span>")
+                if _fb.get("diverg") == "acumulacion oculta":
+                    fl += " <span style='color:#4CC2E0;font-size:9px' title='el bloque BAJA pero el dinero grande ENTRA: la huella temprana'>↘$↗</span>"
+                elif _fb.get("diverg") == "distribucion oculta":
+                    fl += " <span style='color:#F4607A;font-size:9px' title='el bloque SUBE pero el dinero grande SALE: aviso'>↗$↘</span>"
+                if _fb.get("mejora"):
+                    fl += " <span style='color:#7BD88F;font-size:9px' title='CMF del bloque mejorando 3 tramos — tu regla de tramos: justifica manga pequena, no posicion completa'>↗3t</span>"
+                if r.get("discrepa"):
+                    fl += " <span style='color:#F4B740;font-size:9px' title='el CMF del bloque y el promedio de sus miembros dicen cosas distintas: manda el del bloque, pero mira el detalle antes de moverte'>≠</span>"
+            solo = (" <span style='color:#F4B740;font-size:9px;border:1px solid #F4B74055;border-radius:3px;padding:0 3px' "
+                    "title='Un solo ETF: esto NO es la media de un bloque, es ese ticker'>1 ETF</span>" if r["solo"] else "")
+            _c = r.get("coh")
+            if _c:
+                _ct = (f"Cohesión: correlación media {_c['corr']:.2f} entre sus {_c['n']} miembros (120 sesiones), "
+                       f"del {_c['min']:.2f} al {_c['max']:.2f}. Por debajo de 0,50 el grupo NO se mueve como uno "
+                       "y su media describe cosas que van cada una por su lado.")
+                if _c["corr"] < 0.5:
+                    solo += (f" <span style='color:#F4607A;font-size:9px;border:1px solid #F4607A55;border-radius:3px;padding:0 3px' "
+                             f"title='{esc(_ct)}'>no es bloque {_c['corr']:.2f}</span>")
+                else:
+                    solo += f" <span style='color:var(--txt3);font-size:9px' title='{esc(_ct)}'>ρ{_c['corr']:.2f}</span>"
+            _ft = (f"{r['n']} de {r['n_dis']} miembros con datos" + (f", {r.get('n_fin')} el ultimo dia" if r.get("n_fin") else "")
+                   + (f" · el indice del bloque arranca el {r['desde']} ({r.get('sesiones')} sesiones)" if r.get("desde") else ""))
+            faltan = ("" if r["n"] >= r["n_dis"] else
+                      f" <span style='color:var(--txt3);font-size:9px' title='{esc(_ft)}'>{r['n']}/{r['n_dis']}</span>")
+            spk = _spark(r["spark"], w=58, h=16, color=("#2FD08A" if (r["r20"] or 0) > 0 else "#F4607A"))
+            tabla += (f"<tr><td class='se-l'><b>{esc(r['corto'])}</b>{solo}{faltan} "
+                      f"<span style='color:var(--txt3);font-size:10.5px' title='{esc(r['desc'])}'>{esc(r['nombre'])}</span></td>"
+                      f"<td class='r' style='color:var(--txt3)'>b{r['beta']}</td>"
+                      f"<td class='r'>{spk}</td>"
+                      f"<td class='r' style='white-space:nowrap'>{tdias}</td>"
+                      f"<td class='r' style='color:{ccol}'>{tcaida}</td>"
+                      f"<td class='r' style='color:{vcol}'>{viv}</td>"
+                      f"<td class='r' style='font-size:11px'>{fl}</td>"
+                      f"<td class='r' style='font-size:11px;white-space:nowrap'>{_konc_celda(r['konc'])}</td>"
+                      f"<td class='r' style='font-size:11px;white-space:nowrap'>{_opc_celda(r.get('opc'))}</td>"
+                      f"<td class='r' style='color:{r['ecol']};font-weight:700;font-size:11px'>{r['estado']}</td></tr>")
+    # ---- correlacion
+    cbox = ""
+    if corr:
+        c = corr["corr"]
+        ccol2 = "#F4607A" if c >= 0.85 else "#F4B740" if c >= 0.7 else "#2FD08A"
+        lect = ("ya NO son varios pelotones: es UNA sola apuesta. Si entras en tres, estas triplicando la misma posicion"
+                if c >= 0.85 else "se mueven bastante juntos: cuenta la manada como una apuesta y media" if c >= 0.7 else
+                "hay dispersion real: aqui si tiene sentido elegir dentro del bloque")
+        cbox = (f"<div style='margin:10px 0;padding:9px 12px;background:rgba(91,140,255,.07);border:1px solid #5B8CFF33;border-radius:8px'>"
+                f"<span style='font-size:11px;color:var(--txt2)'>¿SE MUEVEN COMO UNO?</span> "
+                f"<b style='color:{ccol2};font-size:15px'>{c:.2f}</b> "
+                f"<span style='color:var(--txt3);font-size:10.5px'>correlacion media entre los {corr['n_etfs']} ETFs de la manada, {PEL_CORR_VENTANA} sesiones</span> "
+                + f"<div style='font-size:11.5px;color:var(--txt2);margin:4px 0 6px'>{esc(lect)}</div>"
+                + _corr_chart_svg(corr.get("serie")) + "</div>")
+    # ---- indices por ponderacion
+    ibox = ""
+    if daily:
+        cel = ""
+        for sym, como, nota in INDICES_PONDERACION:
+            d = (daily or {}).get(sym)
+            if d is None or "Close" not in getattr(d, "columns", []):
+                continue
+            ser = d["Close"].dropna()
+            if len(ser) < 60:
+                continue
+            r20 = float(ser.iloc[-1] / ser.iloc[-21] - 1) * 100 if len(ser) > 21 else None
+            t = _techo_de(ser)
+            col = "#2FD08A" if (r20 or 0) > 0 else "#F4607A"
+            cel += (f"<td style='padding:6px 10px;vertical-align:top'><div style='font-size:11px;color:var(--txt2)'>{esc(sym)} "
+                    f"<span style='color:var(--txt3);font-size:9.5px'>{esc(como)}</span></div>"
+                    f"<div style='font-size:15px;font-weight:700;color:{col}'>{r20:+.1f}%</div>"
+                    f"<div style='font-size:9.5px;color:var(--txt3)'>20 ses · techo hace {t['dias'] if t else '—'} ses</div></td>")
+        if cel:
+            ibox = ("<div style='margin:10px 0;padding:8px 10px;background:rgba(255,255,255,.02);border:1px solid #23314A;border-radius:8px'>"
+                    "<div style='font-size:11px;color:var(--txt2);font-weight:700;margin-bottom:2px'>EL MISMO MERCADO PESADO DE CUATRO FORMAS</div>"
+                    "<div style='font-size:10.5px;color:var(--txt3);margin-bottom:4px'>Si solo sube el de capitalizacion, suben cuatro gigantes y no el mercado. "
+                    "Si el Dow y las pequenyas acompanyan, la subida tiene suelo debajo.</div>"
+                    "<table style='width:100%'><tr>" + cel + "</tr></table></div>")
+    # ---- backtest del liderazgo
+    lbox = ""
+    if lider:
+        if not lider.get("n"):
+            lbox = ("<div class='note' style='margin-top:8px;color:var(--txt3)'>Liderazgo aun sin medir: no hay episodios de techo + caida "
+                    "suficientes en la historia diaria descargada. Se mostrara cuando los haya — mientras tanto, la secuencia de arriba "
+                    "es <b>descripcion, no señal</b>.</div>")
+        else:
+            ok = lider["antes"]; n = lider["n"]
+            lbox = (f"<div class='note' style='margin-top:8px'><b>¿Se giran antes los de beta alta?</b> Medido en los techos del indice "
+                    f"que acabaron en caida: <b>{ok} de {n}</b> veces la beta alta hizo techo antes"
+                    + (f" (95%: {lider['lo']:.0f}–{lider['hi']:.0f}%)" if lider.get("lo") is not None else "")
+                    + ((f", y de media se giro <b>{abs(lider['media']):.0f} sesiones ANTES</b>" if lider["media"] < 0
+                        else f", aunque de media se giro <b>{lider['media']:.0f} sesiones DESPUES</b> (o sea: la media dice lo contrario que tu caso de junio)")
+                       if lider.get("media") is not None else "")
+                    + f". <b>N={n}</b>: con ~3 anyos de historia diaria hay poquisimos episodios, asi que esto es una pista, "
+                    "no una probabilidad. Frecuencia historica, no prediccion.</div>")
+    # ---- pelotones que NO se mueven como uno: si la correlacion interna es baja, la media
+    #      del bloque describe cosas que van cada una por su lado y hay que decirlo arriba
+    nobloq = [r for r in pel if (r.get("coh") or {}).get("corr") is not None and r["coh"]["corr"] < 0.5]
+    nbox = ""
+    if nobloq:
+        _l = ", ".join(f"<b>{esc(r['corto'])}</b> ({r['coh']['corr']:.2f})" for r in nobloq)
+        nbox = ("<div class='note' style='margin-top:8px;color:#F4607A'>⚠ <b>Estos no son pelotones</b>: " + _l +
+                ". Sus miembros tienen una correlacion media por debajo de 0,50 en 120 sesiones, o sea que NO se mueven "
+                "como uno. Su fila sigue calculandose, pero leerla como un bloque es leer la media de cosas distintas. "
+                "O se parten en grupos mas finos, o se sacan del panel.</div>")
+
+    # ---- pelotones que HOY no se han podido montar: se declaran, no desaparecen sin avisar
+    _hay = {r["key"] for r in pel}
+    _falta = [PELOTONES[k]["corto"] for k in PELOTONES if k not in _hay]
+    fbox = ""
+    if _falta:
+        fbox = ("<div class='note' style='margin-top:8px;color:#F4B740'>⚠ Sin datos suficientes para montar: <b>"
+                + esc(", ".join(_falta)) + "</b>. No es que esten planos: es que a sus miembros les falta historia diaria u "
+                "OHLCV completo. Un peloton que desaparece sin avisar es peor que uno vacio.</div>")
+    reloj = _pel_reloj_svg(pel)
+    estilo = ("<style>#pelotones td svg{width:auto!important;height:auto;display:inline-block;background:transparent;"
+              "border-radius:0;vertical-align:middle}"
+              "#pelotones .corr-chart text{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}</style>")
+    return (estilo + "<div class='panel full' id='pelotones'>"
+            "<h2>🐎 PELOTONES — la manada manda</h2>"
+            f"<div style='padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,.03);border:1px solid {tcol}55;border-radius:8px'>"
+            f"<div style='font-size:15px;font-weight:700;color:{tcol}'>{tit}</div>"
+            f"<div style='font-size:11.5px;color:var(--txt2);margin-top:2px'>{esc(tsub)}</div></div>"
+            + aviso + avopc + cbox +
+            "<div class='note'>La idea: estos ETF <b>no son doce apuestas, son una</b>. Da igual que entre dinero en hidrogeno si al bloque "
+            "no le toca subir. Por eso aqui no se elige ETF: se decide <b>dentro o fuera del bloque</b>, y cuando toca entrar, da casi igual "
+            "cual compres. <b>Techo</b> = cuantas sesiones lleva desde su maximo del ultimo anyo. <b>Vivos</b> = miembros aun por encima de su "
+            f"media de {PEL_MA_DIAS} sesiones. <b>Flujo</b> = CMF de Chaikin del <b>bloque</b> (el sintetico, con el volumen sumado en euros: cada ETF "
+            "pesa por el dinero que mueve, no a partes iguales); el simbolo <b>≠</b> avisa de que el promedio de sus miembros dice otra cosa. "
+            "<b>Manos</b> = Koncorde calculado sobre ese mismo sintetico, no sobre un ETF suelto. "
+            "<b>Opciones</b> = mediana de las cadenas liquidas del bloque. <b>Aviso que no se puede saltar</b>: la cadena gratuita de Yahoo "
+            "NO dice quien compro y quien vendio — en cada contrato hay las dos partes. Lo que si mide es si la <b>proteccion esta cara</b> "
+            "(las puts fuera de dinero cotizando por encima de las calls) y hacia donde se va la actividad. Por eso pone 🛡 proteccion / "
+            "📈 alcista / neutro, y no «compran» o «venden», que seria inventarselo. El <span style=\'color:#F4B740\'>⚠</span> es el caso que "
+            "te interesa: <b>entra dinero al contado pero a la vez pagan por cubrirse</b> — ese volumen positivo no es conviccion, es alguien "
+            "comprando con el seguro puesto.</div>"
+            "<div class='scrollx'><table class='se'><tr><th class='se-l'>peloton</th><th class='r' title='1 = refugio · 5 = lo mas especulativo'>beta</th>"
+            "<th class='r'>40 ses</th><th class='r'>techo hace</th><th class='r'>desde el techo</th><th class='r'>vivos</th>"
+            "<th class='r'>flujo</th><th class='r'>manos</th>"
+            "<th class='r' title='Opciones del bloque entero (mediana de sus miembros liquidos). Proteccion = las puts fuera de dinero cotizan caras o la actividad se va a puts. Alcista = la actividad se va a las calls. Yahoo NO permite saber quien compro y quien vendio.'>opciones</th>"
+            "<th class='r'>estado</th></tr>"
+            + tabla + "</table></div>"
+            + (("<div style='margin-top:12px'><div style='font-size:11px;color:var(--txt2);font-weight:700;margin-bottom:2px'>⏱ RELOJ DE TECHOS — quien se giro primero</div>"
+                "<div style='font-size:10.5px;color:var(--txt3);margin-bottom:4px'>Cada punto es el maximo de ese peloton en el ultimo anyo. "
+                "Cuando los de arriba (beta 5) se giran y los de abajo aguantan, el reloj ya esta corriendo.</div>" + reloj + "</div>") if reloj else "")
+            + ibox + lbox + nbox + fbox +
+            "<div class='note' style='margin-top:8px'>Se observa entre semana y se ejecuta con el <b>cierre del viernes</b>. "
+            "Esto describe donde esta el dinero, no predice donde estara. No es asesoramiento.</div></div>")
+
+
+def _konc_celda(k):
+    """Celda HTML de la columna 'manos' (Koncorde). k = flow[sym]['konc'] o None."""
+    if not k:
+        return "<span style='color:#5E708A' title='Koncorde no calculable: faltan sesiones o columnas OHLCV'>—</span>"
+    est = k.get("estado")
+    tip = (f"Koncorde · débiles (verde−marrón) {k['debiles']:+.0f} · fuertes (azul) {k['fuertes']:+.0f} · "
+           f"marrón {k['marron']:.0f}" + (f" vs media {k['media']:.0f}" if k.get("media") is not None else "")
+           + (f" · débiles soltando {k['deb_dias']} sesiones" if k.get("deb_dias") else "")
+           + (f" · fuertes comprando {k['fue_dias']} sesiones" if k.get("fue_dias") else ""))
+    if est == "TRASPASO":
+        txt, col = "🤝 TRASPASO", "#2FD08A"
+    elif est == "DEBILES_SUELTAN":
+        txt, col = "🩸 débiles sueltan", "#B980FF"
+    elif est == "FUERTES_COMPRAN":
+        txt, col = "🧲 fuertes compran", "#4CC2E0"
+    elif est == "FUERTES_VENDEN":
+        txt, col = "⚠ fuertes venden", "#F4607A"
+    else:
+        txt, col = "neutro", "#9FB0C8"
+    sub = f"<span style='color:#5E708A;font-size:9.5px'> {k['fuertes']:+.0f}/{k['debiles']:+.0f}</span>"
+    cr = ""
+    if k.get("cruce") == "alcista":
+        cr = " <span style='color:#7BD88F;font-size:9px;border:1px solid #7BD88F55;border-radius:3px;padding:0 3px' title='marrón cruza su media corta (15) al alza: giro de corto plazo, pasa a menudo'>↗cruce</span>"
+    elif k.get("cruce") == "bajista":
+        cr = " <span style='color:#F4607A;font-size:9px;border:1px solid #F4607A55;border-radius:3px;padding:0 3px' title='marrón cruza su media a la baja'>↘cruce</span>"
+    if est == "TRASPASO" and k.get("fue_sube"):
+        cr += " <span style='color:#2FD08A;font-size:9px' title='el azul viene subiendo en las últimas 5 sesiones'>▲</span>"
+    # detector de suelos del Koncorde (la misma secuencia que el indicador de TradingView)
+    if k.get("suelo_vivo"):
+        cr += (f" <span style='color:#0A0E17;background:#2FD08A;font-size:9px;font-weight:700;border-radius:3px;padding:0 4px' "
+               f"title='{esc('SUELO: el verde volvio a entrar tras bajar de cero hace ' + str(k.get('suelo_hace')) + ' sesiones. Se invalida con un cierre bajo ' + str(k.get('inval_nivel')))}'>SUELO {k.get('suelo_hace')}s</span>")
+    elif k.get("piquito"):
+        cr += (f" <span style='color:#B980FF;font-size:9px;border:1px solid #B980FF55;border-radius:3px;padding:0 3px' "
+               f"title='{esc('El verde esta bajo cero desde hace ' + str(k.get('piq_hace')) + ' sesiones: el suelo se marca en la vela en que vuelva a entrar')}'>◆ piquito</span>")
+    elif k.get("inval_hace") is not None and k["inval_hace"] <= 10:
+        cr += (f" <span style='color:#F4607A;font-size:9px' title='el último suelo del Koncorde se invalidó hace {k['inval_hace']} sesiones'>✗suelo</span>")
+    if k.get("div_hace") is not None and k["div_hace"] <= 10:
+        cr += (f" <span style='color:#4CC2E0;font-size:9px;border:1px solid #4CC2E055;border-radius:3px;padding:0 3px' "
+               f"title='divergencia de las fuertes hace {k['div_hace']} sesiones: el precio hizo un mínimo más bajo y el azul uno más alto'>▲div</span>")
+    return f"<span style='color:{col};font-weight:700' title='{esc(tip)}'>{txt}</span>{sub}{cr}"
+
 
 def heatmap_color(v):
     if v is None:
@@ -7663,6 +8499,33 @@ def compute_suelo(df, rrg, scores, flow, meanrev):
         if pre >= 3:
             pts += 1                     # patrón casi completo: suma al score (el tope /10 se mantiene)
         det.extend(pdet)
+        pts_base = min(pts, 10)          # score SIN manos (para comparar en el backtest: campo="pts_base")
+        # --- 8) MANOS (Koncorde de Blai5, max 2): ¿quién vende y quién compra? La zona verde por debajo del
+        #     marrón = las manos DÉBILES sueltan (les han saltado los stops); el azul por encima de cero = las
+        #     manos FUERTES recogen. Las dos a la vez = TRASPASO de débiles a fuertes: la huella clásica del suelo.
+        #     Sin datos suficientes queda en None y no puntúa (nunca se inventa un 0 "neutro"). ---
+        konc = f.get("konc")
+        if konc:
+            pts += konc["pts"]
+            if konc.get("suelo_vivo"):
+                det.append(f"MANOS: SUELO del Koncorde hace {konc['suelo_hace']}s (el verde volvió a entrar tras bajar de cero), "
+                           f"vivo mientras no cierre bajo {konc['inval_nivel']}")
+            elif konc.get("inval_hace") is not None and konc["inval_hace"] <= 10:
+                det.append(f"MANOS: ✗ el suelo del Koncorde se invalidó hace {konc['inval_hace']}s (cerró bajo el mínimo del piquito)")
+            elif konc.get("piquito"):
+                det.append(f"MANOS: piquito verde bajo cero hace {konc['piq_hace']}s — el suelo se marca cuando vuelva a entrar")
+            if konc.get("div_hace") is not None and konc["div_hace"] <= 10:
+                det.append(f"MANOS: divergencia de las fuertes hace {konc['div_hace']}s (precio con mínimo más bajo, azul con mínimo más alto)")
+            if konc["estado"] == "TRASPASO":
+                det.append(f"MANOS: débiles sueltan ({konc['deb_dias']}s) y fuertes recogen (azul {konc['fuertes']:+.0f}) — traspaso de papel")
+            elif konc["estado"] == "DEBILES_SUELTAN":
+                det.append(f"MANOS: saltan los stops de las débiles ({konc['deb_dias']}s) — las fuertes aún no compran")
+            elif konc["estado"] == "FUERTES_COMPRAN":
+                det.append(f"MANOS: fuertes acumulando (azul {konc['fuertes']:+.0f}, {konc['fue_dias']}s)")
+            elif konc["estado"] == "FUERTES_VENDEN":
+                det.append("MANOS: ⚠ la calle compra y el dinero grande VENDE (distribución)")
+            if konc.get("cruce") == "alcista":
+                det.append("Koncorde: marrón cruza su media corta al alza (giro de corto plazo)")
         sangra = (cmf is not None and cmf < -0.05)
         despertando = bool((dmom or 0) >= 1.5 and not sangra and pts >= 6)
         # FASE del ciclo del durmiente — la secuencia que buscamos replicar de oro/BTC/mineras:
@@ -7675,8 +8538,8 @@ def compute_suelo(df, rrg, scores, flow, meanrev):
             fase = "DESPERTANDO"
         elif pre >= 3:
             fase = "PRE-DESPERTAR"
-        elif pre >= 2 or (cmf is not None and cmf > 0.05):
-            fase = "ACUMULACION"
+        elif pre >= 2 or (cmf is not None and cmf > 0.05) or (konc and konc.get("suelo_vivo")):
+            fase = "ACUMULACION"        # también si las manos fuertes ya recogen lo que sueltan las débiles
         else:
             fase = "DORMIDO"
         # ---- SCORE V2: FLUJO COMO PUERTA, NO COMO SUMANDO (v5.2) ------------
@@ -7710,7 +8573,7 @@ def compute_suelo(df, rrg, scores, flow, meanrev):
             _pts2 = min(_ctx, 4.9)          # techo duro: sin flujo NUNCA llega a 5
         else:
             _pts2 = min(_ctx * (1 + _f_flujo * 0.45), 10.0)
-        rows.append({"pts2": round(_pts2, 2),
+        rows.append({"pts2": round(_pts2, 2), "pts_base": pts_base, "konc": konc,
                      "sym": s, "pts": min(pts, 10), "det": det, "hi52": hi52, "vr": vr, "sil": sil,
                      "wk_lag": wk_lag, "n3": n3, "cmf": cmf, "dmom": dmom,
                      "vert": (round(vert, 1) if vert is not None else None),
@@ -9090,8 +9953,509 @@ def _spark(vals, w=70, h=20, color=None, sw=1.4):
             f'<polyline points="{pts}" fill="none" stroke="{c}" stroke-width="{sw}"/>{dot}</svg>')
 
 
+# =====================================================================================
+# 📡 AMPLITUD (v7.3) — ¿sube el mercado o solo sus gigantes?
+# Cuatro piezas, todas sobre datos que el terminal YA descarga (0 descargas extra):
+#   1) RATIOS RSP/SPY e IWM/SPY contra su media de 40 sesiones. Ratio por encima = la accion
+#      media (o la pequenya) gana al indice: el mercado se ENSANCHA. Diez sesiones seguidas al
+#      mismo lado CONFIRMAN el estado; un cruce sin confirmar es ESTABLE (puede ser ruido).
+#   2) AMPLITUD REAL con las acciones que ya se bajan cada noche para el McClellan: % sobre su
+#      media de 50 (tactica) y de 200 (estructural), y maximos contra minimos de 52 semanas.
+#   3) DIVERGENCIA: el S&P marca maximo de cierre de un anyo y el % de acciones sanas queda mas
+#      de AMP_DIV_MARGEN puntos por debajo de su pico anterior. Medible y fechable.
+#   4) LEDGER: cada cierre se graba (idempotente por fecha) y cada cambio de estado CONFIRMADO se
+#      evalua FUERA DE MUESTRA a 20/40/60 sesiones. Hasta que acumule casos, lo unico que hay es el
+#      backtest EN MUESTRA de los ratios, y el panel lo dice.
+# Lectura honesta: la amplitud estrecha es una CONDICION, no una senal de tiempo. En 1998, 2015 y
+# 2023 se estrecho asi y el indice siguio subiendo mucho tiempo. Lo que si dice siempre: los ETF
+# de Pe se parecen mas al RSP que al SPY, asi que un indice en maximos no es SU mercado.
+# =====================================================================================
+AMP_MEDIA = 40              # media del ratio (sesiones)
+AMP_CONFIRMA = 10           # sesiones seguidas al mismo lado de la media para confirmar el estado
+AMP_DIV_MARGEN = 10.0       # puntos de "% de acciones sanas" bajo el pico anterior para hablar de divergencia
+AMP_HORIZ = (20, 40, 60)    # que paso despues: 4, 8 y 12 semanas
+AMP_MIN_ACCIONES = 100      # por debajo no se publica amplitud: no se inventa
+AMPLITUD_FILE = os.path.join(SEGUIMIENTO_DIR, "amplitud_estado.json")
+_AMP_COL = {"ENSANCHANDO": "#2FD08A", "ESTRECHANDO": "#F4607A", "ESTABLE": "#F4B740"}
+
+
+def _amp_estados(ratio, media=AMP_MEDIA, confirma=AMP_CONFIRMA):
+    """Estado del ratio sesion a sesion. racha > 0 = sesiones seguidas POR ENCIMA de su media,
+    racha < 0 = por debajo. |racha| >= confirma confirma ENSANCHANDO o ESTRECHANDO."""
+    r = ratio.dropna()
+    ma = r.rolling(media, min_periods=media).mean()
+    racha, prev, cnt = [], 0, 0
+    for d in (r - ma).values:
+        if d != d or d == 0:
+            prev, cnt = 0, 0
+            racha.append(0)
+            continue
+        lado = 1 if d > 0 else -1
+        cnt = cnt + 1 if lado == prev else 1
+        prev = lado
+        racha.append(cnt * lado)
+    racha = pd.Series(racha, index=r.index, dtype=float)
+    estado = pd.Series("ESTABLE", index=r.index, dtype=object)
+    estado[racha >= confirma] = "ENSANCHANDO"
+    estado[racha <= -confirma] = "ESTRECHANDO"
+    estado[ma.isna()] = None
+    return pd.DataFrame({"ratio": r, "ma": ma, "racha": racha, "estado": estado})
+
+
+def _amp_backtest(tab, a, b, confirma=AMP_CONFIRMA, horiz=AMP_HORIZ):
+    """EN MUESTRA: cada vez que un estado se CONFIRMA (la sesion 'confirma' de la racha), ¿siguio el
+    ratio en esa direccion h sesiones despues? Contra la base: cualquier dia. Wilson 95% y N."""
+    out = {}
+    try:
+        idx = tab.index
+        a, b = a.reindex(idx), b.reindex(idx)
+        rac = tab["racha"].values
+        for nombre, objetivo, signo in (("ENSANCHANDO", confirma, 1), ("ESTRECHANDO", -confirma, -1)):
+            ev = [i for i in range(len(idx)) if rac[i] == objetivo]
+            fila = {"n_eventos": len(ev), "h": {}}
+            for h in horiz:
+                rel = []
+                for i in ev:
+                    if i + h < len(idx):
+                        x = (a.iloc[i + h] / a.iloc[i]) / (b.iloc[i + h] / b.iloc[i]) - 1.0
+                        if x == x:
+                            rel.append(float(x))
+                base = ((a.shift(-h) / a) / (b.shift(-h) / b) - 1.0).dropna()
+                n = len(rel)
+                ac = sum(1 for x in rel if x * signo > 0)
+                p = ac / n if n else None
+                lo, hi = _bt_wilson(p, n) if n else (None, None)
+                fila["h"][h] = {"n": n, "pct": (round(100 * p) if p is not None else None), "lo": lo, "hi": hi,
+                                "base": (round(100 * float((base * signo > 0).mean())) if len(base) else None),
+                                "mediana": (round(100 * float(np.median(rel)), 1) if n else None)}
+            out[nombre] = fila
+    except Exception as _dege:
+        _deg("_amp_backtest", _dege)
+    return out
+
+
+def _amp_acciones(stock_close, corte):
+    """% de acciones sobre su media de 50 y de 200, y maximos/minimos de 52 semanas, por sesion.
+    Recorta en 'corte' (modo viaje). None si no hay acciones suficientes: no se inventa amplitud."""
+    try:
+        if not stock_close:
+            return None
+        series = {}
+        for k, v in stock_close.items():
+            if v is None:
+                continue
+            v = v[v.index <= corte].dropna()
+            if len(v) > 60:
+                series[k] = v
+        if len(series) < AMP_MIN_ACCIONES:
+            return None
+        px = pd.DataFrame(series).sort_index().ffill(limit=2)
+
+        def _pct_sobre(n):
+            ma = px.rolling(n, min_periods=n).mean()
+            val = ma.notna() & px.notna()
+            cnt = val.sum(axis=1)
+            return ((px > ma) & val).sum(axis=1) / cnt.where(cnt >= AMP_MIN_ACCIONES) * 100.0
+
+        hi = px.rolling(252, min_periods=240).max()
+        lo = px.rolling(252, min_periods=240).min()
+        val = hi.notna() & px.notna()
+        ok = val.sum(axis=1) >= AMP_MIN_ACCIONES
+        nh = ((px >= hi) & val).sum(axis=1).where(ok)
+        nl = ((px <= lo) & val).sum(axis=1).where(ok)
+        return {"p50": _pct_sobre(50), "p200": _pct_sobre(200), "nh": nh, "nl": nl, "nhnl": nh - nl,
+                "n": len(series)}
+    except Exception as _dege:
+        _deg("_amp_acciones", _dege)
+        return None
+
+
+def _amp_divergencias(idx_close, p50, nhnl, margen=AMP_DIV_MARGEN):
+    """Cada sesion en que el indice marca MAXIMO DE CIERRE de 52 semanas, comparada con el pico de la
+    amplitud en la ventana de 20 a 120 sesiones antes. div=True si hoy esta 'margen' puntos por debajo."""
+    res = []
+    try:
+        d = pd.concat([idx_close.rename("i"), p50.rename("p"), nhnl.rename("nn")], axis=1)
+        d = d.dropna(subset=["i", "p"])
+        if len(d) < 150:
+            return res
+        mx = d["i"].rolling(252, min_periods=150).max()
+        nn10 = d["nn"].rolling(10, min_periods=5).mean()
+        pv = d["p"].values
+        for k in range(120, len(d)):
+            if not (d["i"].iloc[k] >= mx.iloc[k] - 1e-12):
+                continue
+            ven = pv[k - 120:k - 19]
+            if np.all(np.isnan(ven)):
+                continue
+            j = int(np.nanargmax(ven))
+            pico = float(ven[j])
+            nn = nn10.iloc[k]
+            res.append({"fecha": d.index[k], "p50": float(pv[k]), "pico": pico, "pico_fecha": d.index[k - 120 + j],
+                        "div": bool(pv[k] < pico - margen), "nhnl10": (float(nn) if nn == nn else None)})
+    except Exception as _dege:
+        _deg("_amp_divergencias", _dege)
+    return res
+
+
+def _amp_lectura(daily, n=20):
+    """¿Refugio o narrativa? Con la accion media quedandose atras: si suben los defensivos (utilities,
+    consumo basico, oro) el dinero se esconde; si suben los gigantes y los defensivos tambien caen, el
+    dinero se concentra en una historia. Son dos finales distintos: por eso se separan."""
+    r = {}
+    for s in (BENCH, "RSP", "IWM", "XLU", "XLP", "GLD", "MAGS"):
+        try:
+            c = daily[s]["Close"].dropna()
+            if len(c) > n:
+                r[s] = float((c.iloc[-1] / c.iloc[-1 - n] - 1.0) * 100.0)
+        except Exception:
+            pass
+    if BENCH not in r or "RSP" not in r:
+        return None
+    rezago = r["RSP"] - r[BENCH]
+    defs = [r[s] for s in ("XLU", "XLP", "GLD") if s in r]
+    dprom = float(np.mean(defs)) if defs else None
+    gig = r.get("MAGS", r[BENCH])
+    if rezago > -1.0:
+        tipo, txt = "SIN ESTRECHAMIENTO", "la accion media acompanya al indice"
+    elif dprom is not None and dprom > 0 and dprom > r["RSP"]:
+        tipo, txt = "REFUGIO", "la accion media se queda atras y suben los defensivos: el dinero se esconde"
+    elif dprom is not None and dprom <= 0 and gig > 0:
+        tipo, txt = "NARRATIVA", "suben los gigantes y caen hasta los defensivos: el dinero se concentra en una historia"
+    else:
+        tipo, txt = "MIXTO", "la accion media se queda atras sin un patron claro"
+    return {"tipo": tipo, "txt": txt, "n": n, "rezago": round(rezago, 1),
+            "def": (round(dprom, 1) if dprom is not None else None), "gig": round(gig, 1),
+            "r": {k: round(v, 1) for k, v in r.items()}}
+
+
+def compute_amplitud(daily, stock_close=None):
+    """Las cuatro piezas de la amplitud. None si no hay ni el indice."""
+    try:
+        if not daily or BENCH not in daily:
+            return None
+        b = daily[BENCH]["Close"].dropna()
+        if len(b) < AMP_MEDIA + 30:
+            return None
+        corte = b.index[-1]
+        out = {"fecha": str(corte.date()), "ratios": {}, "acc": None, "div": None, "lectura": None}
+        for sym, nombre, que in (("RSP", "RSP / SPY", "la accion media contra el indice"),
+                                 ("IWM", "IWM / SPY", "las pequenyas contra el indice")):
+            if sym not in daily:
+                continue
+            j = pd.concat([daily[sym]["Close"], b], axis=1, join="inner").dropna()
+            if len(j) < AMP_MEDIA + 30:
+                continue
+            aa, bb = j.iloc[:, 0], j.iloc[:, 1]
+            tab = _amp_estados(aa / bb)
+            u = tab.iloc[-1]
+            rel = lambda n: (float(((aa.iloc[-1] / aa.iloc[-1 - n]) / (bb.iloc[-1] / bb.iloc[-1 - n]) - 1.0) * 100.0)
+                             if len(aa) > n else None)
+            ult = tab.tail(250)
+            b0 = float(ult["ratio"].iloc[0])
+            out["ratios"][sym] = {
+                "nombre": nombre, "que": que, "estado": u["estado"], "racha": int(u["racha"]),
+                "gap": (float((u["ratio"] / u["ma"] - 1.0) * 100.0) if u["ma"] == u["ma"] else None),
+                "rel20": rel(20), "rel40": rel(40),
+                "serie": [float(x) / b0 * 100.0 for x in ult["ratio"].values],
+                "serie_ma": [(float(x) / b0 * 100.0 if x == x else None) for x in ult["ma"].values],
+                "bt": _amp_backtest(tab, aa, bb)}
+        acc = _amp_acciones(stock_close, corte) if stock_close else None
+        if acc:
+            def _ult(s, atras=0):
+                s = s.dropna()
+                return float(s.iloc[-1 - atras]) if len(s) > atras else None
+            p50 = acc["p50"].dropna()
+            nn = acc["nhnl"].dropna()
+            out["acc"] = {"n": acc["n"], "p50": _ult(acc["p50"]), "p50_20": _ult(acc["p50"], 20),
+                          "p200": _ult(acc["p200"]), "nh": _ult(acc["nh"]), "nl": _ult(acc["nl"]),
+                          "nhnl10": (float(nn.tail(10).mean()) if len(nn) else None),
+                          "serie_p50": p50.tail(250), "serie_idx": b.reindex(p50.tail(250).index)}
+            divs = _amp_divergencias(b, acc["p50"], acc["nhnl"])
+            rec = [d for d in divs if (corte - d["fecha"]).days <= 90]
+            drec = [d for d in rec if d["div"]]
+            um = divs[-1] if divs else None
+            out["div"] = {"ultimo_max": um, "n_max_60": len(rec), "n_div_60": len(drec),
+                          "ultima_div": (drec[-1] if drec else None),
+                          "activa": bool(drec and (corte - drec[-1]["fecha"]).days <= 30),
+                          "fechas_div": [d["fecha"] for d in divs if d["div"]],
+                          "nhnl_neg": bool(um and um["nhnl10"] is not None and um["nhnl10"] < 0
+                                           and (corte - um["fecha"]).days <= 30)}
+        out["lectura"] = _amp_lectura(daily)
+        return out
+    except Exception as _dege:
+        _deg("compute_amplitud", _dege)
+        return None
+
+
+def update_amplitud_ledger(amp, daily):
+    """Graba el estado de la amplitud de este cierre (idempotente: re-ejecutar el mismo dia sobreescribe,
+    no duplica). Es la memoria FUERA DE MUESTRA: lo que el terminal dijo en su momento, sin retocar."""
+    recs = []
+    try:
+        os.makedirs(os.path.dirname(AMPLITUD_FILE) or ".", exist_ok=True)
+        if os.path.exists(AMPLITUD_FILE):
+            with open(AMPLITUD_FILE, "r", encoding="utf-8") as fh:
+                recs = json.load(fh)
+    except Exception as _dege:
+        _deg("update_amplitud_ledger:leer", _dege)
+        recs = []
+    if not amp:
+        return recs
+    px = {}
+    for s in (BENCH, "RSP", "IWM"):
+        try:
+            px[s] = round(float(daily[s]["Close"].dropna().iloc[-1]), 4)
+        except Exception:
+            pass
+    acc = amp.get("acc") or {}
+    r1 = lambda v: (round(float(v), 1) if v is not None else None)
+    rec = {"date": amp["fecha"],
+           "rsp": (amp["ratios"].get("RSP") or {}).get("estado"),
+           "iwm": (amp["ratios"].get("IWM") or {}).get("estado"),
+           "p50": r1(acc.get("p50")), "p200": r1(acc.get("p200")), "nhnl10": r1(acc.get("nhnl10")),
+           "div": bool((amp.get("div") or {}).get("activa")),
+           "lectura": (amp.get("lectura") or {}).get("tipo"), "px": px}
+    recs = [r for r in recs if r.get("date") != rec["date"]]
+    recs.append(rec)
+    recs = sorted(recs, key=lambda r: r["date"])[-800:]
+    try:
+        guardar_json_seguro(AMPLITUD_FILE, recs, indent=0)
+    except Exception as _dege:
+        _deg("update_amplitud_ledger:guardar", _dege)
+    return recs
+
+
+def amp_ledger_cambios(recs, daily, horiz=AMP_HORIZ):
+    """Cambios de estado CONFIRMADOS vistos EN VIVO y que paso despues. El primer estado del ledger no
+    cuenta como cambio: no sabemos cuando empezo. Devuelve (cambios, fecha_inicio, n_cierres)."""
+    cambios = []
+    try:
+        if not recs or BENCH not in daily:
+            return cambios, None, 0
+        b = daily[BENCH]["Close"].dropna()
+        for clave, sym in (("rsp", "RSP"), ("iwm", "IWM")):
+            if sym not in daily:
+                continue
+            j = pd.concat([daily[sym]["Close"], b], axis=1, join="inner").dropna()
+            aa, bb = j.iloc[:, 0], j.iloc[:, 1]
+            ultimo = None
+            for r in recs:
+                e = r.get(clave)
+                if e not in ("ENSANCHANDO", "ESTRECHANDO"):
+                    continue
+                if ultimo is not None and e != ultimo:
+                    pos = aa.index.searchsorted(pd.Timestamp(r["date"]))
+                    signo = 1 if e == "ENSANCHANDO" else -1
+                    hh = {}
+                    for h in horiz:
+                        if pos < len(aa) and pos + h < len(aa):
+                            x = ((aa.iloc[pos + h] / aa.iloc[pos]) / (bb.iloc[pos + h] / bb.iloc[pos]) - 1.0) * 100.0
+                            hh[h] = {"rel": round(float(x), 1), "acierto": bool(x * signo > 0)}
+                        else:
+                            hh[h] = None
+                    cambios.append({"fecha": r["date"], "par": sym + "/" + BENCH, "de": ultimo, "a": e, "h": hh})
+                ultimo = e
+        cambios.sort(key=lambda c: c["fecha"], reverse=True)
+    except Exception as _dege:
+        _deg("amp_ledger_cambios", _dege)
+    return cambios, recs[0].get("date") if recs else None, len(recs)
+
+
+def _amp_linea_svg(serie, serie_ma, color, W=420, H=120):
+    """Ratio (normalizado a 100) y su media. Escala con un RANGO MINIMO de 6 puntos: un meneo del 1%
+    no se pinta como un derrumbe (la leccion del grafico de correlacion del 2026-09-22). La leyenda va
+    FUERA del svg, en HTML: dentro se encogia hasta ser ilegible en el movil."""
+    vals = [v for v in serie if v is not None and v == v]
+    if len(vals) < 10:
+        return ""
+    todos = vals + [v for v in serie_ma if v is not None and v == v]
+    lo, hi = min(todos), max(todos)
+    if hi - lo < 6.0:
+        c = (hi + lo) / 2.0
+        lo, hi = c - 3.0, c + 3.0
+    x0, x1, y0, y1 = 32, W - 6, 8, H - 6
+    n = len(serie)
+    xm = lambda i: x0 + (x1 - x0) * i / max(1, n - 1)
+    ym = lambda v: y1 - (v - lo) / (hi - lo) * (y1 - y0)
+    pts = lambda s: " ".join(f"{xm(i):.1f},{ym(v):.1f}" for i, v in enumerate(s) if v is not None and v == v)
+    return (f"<svg viewBox='0 0 {W} {H}' role='img' style='width:100%;max-width:{W}px;height:auto;background:transparent;margin-top:4px'>"
+            f"<text x='0' y='{y0 + 10}' font-size='12' fill='var(--txt3)'>{hi:.0f}</text>"
+            f"<text x='0' y='{y1}' font-size='12' fill='var(--txt3)'>{lo:.0f}</text>"
+            f"<line x1='{x0}' y1='{y1}' x2='{x1}' y2='{y1}' stroke='var(--line2)' stroke-width='1'/>"
+            f"<polyline points='{pts(serie_ma)}' fill='none' stroke='var(--txt3)' stroke-width='1.4' stroke-dasharray='5 4'/>"
+            f"<polyline points='{pts(serie)}' fill='none' stroke='{color}' stroke-width='2'/>"
+            "</svg>"
+            f"<div style='display:flex;justify-content:space-between;font-size:10px;color:var(--txt3)'>"
+            f"<span>hace ~1 anyo</span><span>discontinua = su media de {AMP_MEDIA} · hoy</span></div>")
+
+
+def _amp_amplitud_svg(idx, p50, fechas_div, W=520, H=250):
+    """Arriba el indice, abajo el % de acciones sobre su media de 50 en escala FIJA 0-100. Los puntos
+    rojos son los maximos del indice con la amplitud por debajo de su pico anterior (divergencias).
+    Puntos y no lineas verticales: con 34 maximos seguidos, las lineas hacian un muro que lo tapaba todo."""
+    if idx is None or p50 is None or len(p50) < 20:
+        return ""
+    d = pd.concat([idx.rename("i"), p50.rename("p")], axis=1).dropna()
+    if len(d) < 20:
+        return ""
+    n = len(d)
+    x0, x1 = 44, W - 6
+    ya0, ya1, yb0, yb1 = 10, 110, 132, H - 8
+    ilo, ihi = float(d["i"].min()), float(d["i"].max())
+    ihi = ihi if ihi > ilo else ilo + 1.0
+    xm = lambda k: x0 + (x1 - x0) * k / max(1, n - 1)
+    yi = lambda v: ya1 - (v - ilo) / (ihi - ilo) * (ya1 - ya0)
+    yp = lambda v: yb1 - max(0.0, min(100.0, v)) / 100.0 * (yb1 - yb0)
+    pi = " ".join(f"{xm(k):.1f},{yi(v):.1f}" for k, v in enumerate(d["i"].values))
+    pp = " ".join(f"{xm(k):.1f},{yp(v):.1f}" for k, v in enumerate(d["p"].values))
+    pos = {f: k for k, f in enumerate(d.index)}
+    marcas = "".join(f"<circle cx='{xm(pos[f]):.1f}' cy='{yi(d['i'].iloc[pos[f]]):.1f}' r='3' fill='#F4607A'/>"
+                     for f in (fechas_div or []) if f in pos)
+    return (f"<svg viewBox='0 0 {W} {H}' role='img' style='width:100%;max-width:720px;height:auto;background:transparent;margin-top:6px'>"
+            f"<text x='0' y='{ya0 + 11}' font-size='12' fill='var(--txt2)'>{esc(BENCH)}</text>"
+            f"<text x='0' y='{yp(100) + 10:.1f}' font-size='12' fill='var(--txt3)'>100%</text>"
+            f"<text x='0' y='{yp(50) + 4:.1f}' font-size='12' fill='var(--txt3)'>50%</text>"
+            f"<text x='0' y='{yb1:.1f}' font-size='12' fill='var(--txt3)'>0%</text>"
+            f"<line x1='{x0}' y1='{yp(50):.1f}' x2='{x1}' y2='{yp(50):.1f}' stroke='var(--line2)' stroke-dasharray='4 4'/>"
+            f"<line x1='{x0}' y1='{yb1:.1f}' x2='{x1}' y2='{yb1:.1f}' stroke='var(--line2)'/>"
+            f"<polyline points='{pi}' fill='none' stroke='var(--txt2)' stroke-width='1.8'/>"
+            f"<polyline points='{pp}' fill='none' stroke='#4CC2E0' stroke-width='1.8'/>"
+            + marcas + "</svg>"
+            "<div style='font-size:10.5px;color:var(--txt3)'>Arriba el indice; abajo, en <b style='color:#4CC2E0'>azul</b>, "
+            "el % de acciones sobre su media de 50. <b style='color:#F4607A'>Punto rojo</b> = maximo del indice con la amplitud "
+            "por debajo de su pico anterior. Ultimo anyo.</div>")
+
+
+def _amplitud_html(amp):
+    """El panel. Se inserta justo DETRAS de los pelotones: las cuatro ponderaciones de ahi dicen
+    CUANTO se separan los indices; esto dice si el hueco se abre o se cierra, y desde cuando."""
+    if not amp or not amp.get("ratios"):
+        return ""
+    f1 = lambda v: "—" if v is None else f"{v:+.1f}".replace(".", ",")
+    f0 = lambda v: "—" if v is None else f"{v:.0f}"
+    # --- resumen en una frase ---
+    est = {k: v.get("estado") for k, v in amp["ratios"].items()}
+    if est.get("RSP") == "ESTRECHANDO" and est.get("IWM") == "ESTRECHANDO":
+        resumen = ("El indice sube sobre pocos hombros: la accion media y las pequenyas llevan semanas perdiendo contra el. "
+                   "Tus ETF se parecen mas a ellas que al S&P.")
+    elif est.get("RSP") == "ENSANCHANDO" and est.get("IWM") == "ENSANCHANDO":
+        resumen = "El mercado se ensancha: la accion media y las pequenyas le ganan al indice. Es el viento que mas ayuda a tus ETF."
+    elif "ESTRECHANDO" in est.values():
+        resumen = "Estrechamiento parcial: una de las dos mitades del mercado se queda atras."
+    elif "ENSANCHANDO" in est.values():
+        resumen = "Ensanchamiento parcial: una de las dos mitades del mercado empieza a ganar al indice."
+    else:
+        resumen = "Sin estado confirmado: los ratios rondan su media. Si alguno aguanta al mismo lado diez sesiones, se confirma."
+    # --- tarjetas de los ratios ---
+    tarjetas = ""
+    for sym in ("RSP", "IWM"):
+        r = amp["ratios"].get(sym)
+        if not r:
+            continue
+        e = r["estado"] or "ESTABLE"
+        col = _AMP_COL.get(e, "#9FB0C8")
+        rac = r["racha"]
+        if e == "ESTABLE" and rac:
+            det = (f"cruzo {'al alza' if rac > 0 else 'a la baja'} su media hace {abs(rac)} ses — "
+                   f"si aguanta hasta {AMP_CONFIRMA}, se confirma el giro")
+        else:
+            det = f"{abs(rac)} sesiones {'por encima' if rac > 0 else 'por debajo'} de su media"
+        # backtest del estado actual (o del que se esta formando)
+        clave = e if e != "ESTABLE" else ("ENSANCHANDO" if rac > 0 else "ESTRECHANDO")
+        bt = (r.get("bt") or {}).get(clave) or {}
+        h40 = (bt.get("h") or {}).get(40) or {}
+        if h40.get("n"):
+            verbo = "siguio ganando" if clave == "ENSANCHANDO" else "siguio perdiendo"
+            aporta = h40.get("lo") is not None and h40.get("base") is not None and h40["lo"] > h40["base"]
+            btxt = (f"En muestra: las {h40['n']} veces que se confirmo {clave}, a 40 sesiones {verbo} el "
+                    f"<b>{f0(h40['pct'])}%</b> ({f0(h40['lo'])}–{f0(h40['hi'])}) · un dia cualquiera: {f0(h40['base'])}%. "
+                    + ("<b style='color:#2FD08A'>Aporta.</b>" if aporta else
+                       ("N pequenyo: pista, no prueba." if h40["n"] < 10 else "No se distingue de un dia cualquiera.")))
+        else:
+            btxt = "En muestra: sin confirmaciones de este estado en el historico descargado."
+        tarjetas += (f"<div class='amp-card'><div style='font-size:11px;color:var(--txt3)'><b style='color:var(--txt2)'>{esc(r['nombre'])}</b>"
+                     f" · {esc(r['que'])}</div>"
+                     f"<div style='font-size:15px;font-weight:700;color:{col};margin-top:3px'>{esc(e)}</div>"
+                     f"<div style='font-size:11px;color:var(--txt2)'>{esc(det)}</div>"
+                     f"<div style='font-size:11px;color:var(--txt2);margin-top:2px'>vs su media: {f1(r['gap'])}% · "
+                     f"20 ses: {f1(r['rel20'])} pts · 40 ses: {f1(r['rel40'])} pts</div>"
+                     + _amp_linea_svg(r["serie"], r["serie_ma"], col) +
+                     f"<div style='font-size:10.5px;color:var(--txt3)'>{btxt}</div></div>")
+    # --- amplitud real ---
+    acc, dv = amp.get("acc"), amp.get("div") or {}
+    if acc:
+        cambio = (acc["p50"] - acc["p50_20"]) if acc.get("p50") is not None and acc.get("p50_20") is not None else None
+        bloque = (f"<div style='margin-top:10px'><b style='color:var(--txt2);font-size:11px;letter-spacing:1px'>AMPLITUD REAL</b>"
+                  f"<span style='color:var(--txt3);font-size:10px'> — {acc['n']} acciones que el terminal ya descarga cada noche</span>"
+                  f"<div style='font-size:12px;color:var(--txt);margin-top:3px'>"
+                  f"<b>{f0(acc['p50'])}%</b> sobre su media de 50 ({f1(cambio)} pts en 20 ses) · "
+                  f"<b>{f0(acc['p200'])}%</b> sobre la de 200 · maximos de 52 sem: <b>{f0(acc['nh'])}</b> / minimos: <b>{f0(acc['nl'])}</b> "
+                  f"(neto medio 10 ses: {f1(acc['nhnl10'])})</div>"
+                  + _amp_amplitud_svg(acc.get("serie_idx"), acc.get("serie_p50"), dv.get("fechas_div")) + "</div>")
+        um = dv.get("ultimo_max")
+        if dv.get("activa") and dv.get("ultima_div"):
+            u = dv["ultima_div"]
+            dtxt = (f"<b style='color:#F4607A'>DIVERGENCIA</b>: el {esc(BENCH)} marco maximo de un anyo el {u['fecha']:%d-%m} con solo un "
+                    f"<b>{f0(u['p50'])}%</b> de acciones sobre su media de 50; en el pico anterior de la amplitud ({u['pico_fecha']:%d-%m}) "
+                    f"eran el <b>{f0(u['pico'])}%</b>. {dv['n_div_60']} de los {dv['n_max_60']} maximos de los ultimos 3 meses fueron asi.")
+        elif um is not None:
+            dtxt = (f"Sin divergencia: en el ultimo maximo del indice ({um['fecha']:%d-%m}) la amplitud acompanyaba "
+                    f"({f0(um['p50'])}% sobre su media de 50, pico anterior {f0(um['pico'])}%).")
+        else:
+            dtxt = "El indice no ha marcado maximo de un anyo en el tramo medible: no hay divergencia que buscar."
+        if dv.get("nhnl_neg"):
+            dtxt += (" <b style='color:#F4607A'>Y con mas acciones en minimos de un anyo que en maximos</b>: el indice en lo alto "
+                     "con la tropa en lo bajo.")
+        bloque += f"<div class='note' style='margin-top:6px'>{dtxt}</div>"
+    else:
+        bloque = ("<div class='note' style='margin-top:8px;color:var(--txt3)'>Amplitud real no disponible: hace falta el universo "
+                  f"de acciones (al menos {AMP_MIN_ACCIONES} con historia). El panel muestra solo los ratios.</div>")
+    # --- refugio o narrativa ---
+    le = amp.get("lectura")
+    if le:
+        colle = {"REFUGIO": "#F4B740", "NARRATIVA": "#B980FF", "MIXTO": "#9FB0C8", "SIN ESTRECHAMIENTO": "#2FD08A"}.get(le["tipo"], "#9FB0C8")
+        rr = le["r"]
+        bloque += (f"<div class='note' style='margin-top:6px'><b>¿Refugio o narrativa?</b> <b style='color:{colle}'>{esc(le['tipo'])}</b>: "
+                   f"{esc(le['txt'])}. A {le['n']} sesiones: {esc(BENCH)} {f1(rr.get(BENCH))}% · RSP {f1(rr.get('RSP'))}% · "
+                   f"IWM {f1(rr.get('IWM'))}% · gigantes (MAGS) {f1(rr.get('MAGS'))}% · defensivos (XLU, XLP, oro) {f1(le['def'])}%.</div>")
+    # --- ledger fuera de muestra ---
+    led = amp.get("ledger") or {}
+    cambios, inicio, ncierres = led.get("cambios") or [], led.get("inicio"), led.get("n") or 0
+    if cambios:
+        filas = ""
+        for c in cambios[:8]:
+            celdas = ""
+            for h in AMP_HORIZ:
+                x = c["h"].get(h)
+                celdas += ("<td class='r' style='color:var(--txt3)'>pendiente</td>" if not x else
+                           f"<td class='r' style='color:{'#2FD08A' if x['acierto'] else '#F4607A'}'>{f1(x['rel'])}</td>")
+            filas += (f"<tr><td>{esc(c['fecha'])}</td><td>{esc(c['par'])}</td>"
+                      f"<td style='color:{_AMP_COL.get(c['a'], '#9FB0C8')}'>{esc(c['de'])} → {esc(c['a'])}</td>{celdas}</tr>")
+        ltxt = ("<div class='scrollx' style='margin-top:4px'><table class='se'><tr><th class='se-l'>fecha</th><th>ratio</th><th>cambio</th>"
+                + "".join(f"<th class='r'>+{h} ses</th>" for h in AMP_HORIZ) + "</tr>" + filas + "</table></div>"
+                "<div style='font-size:10.5px;color:var(--txt3)'>Puntos que el ratio gano (+) o perdio (−) despues del cambio. "
+                "Verde = siguio en la direccion anunciada.</div>")
+    else:
+        ltxt = (f"<div style='font-size:11px;color:var(--txt3)'>El ledger empezo el {esc(inicio or '—')} ({ncierres} cierre(s) grabados) "
+                "y aun no ha visto un cambio de estado confirmado. Hasta entonces, lo unico medido es el backtest en muestra de las tarjetas.</div>")
+    bloque += (f"<div style='margin-top:10px'><b style='color:var(--txt2);font-size:11px;letter-spacing:1px'>LEDGER — FUERA DE MUESTRA</b>"
+               f"<span style='color:var(--txt3);font-size:10px'> — lo que dijo el terminal en su momento, sin retocar</span>{ltxt}</div>")
+    estilo = ("<style>#amplitud .amp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:8px}"
+              "#amplitud .amp-card{border:1px solid var(--line2);border-radius:6px;padding:8px 10px}"
+              "#amplitud svg text{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}</style>")
+    return (estilo + "<div class='panel full' id='amplitud'>"
+            "<h2>📡 AMPLITUD — ¿sube el mercado o solo sus gigantes?</h2>"
+            f"<div class='note'>{esc(resumen)}</div>"
+            f"<div class='amp-grid'>{tarjetas}</div>" + bloque +
+            "<div class='note' style='margin-top:10px;color:var(--txt3)'>Como leerlo: la amplitud estrecha es una <b>condicion, no una senal "
+            "de tiempo</b>. En 1998, 2015 y 2023 se estrecho asi y el indice siguio subiendo mucho tiempo. Lo que si dice siempre: cuando "
+            "esto marca ESTRECHANDO, que el S&P este en maximos no es tu mercado. El giro que buscas es el ratio RSP/SPY pasando a "
+            "ENSANCHANDO: diez sesiones seguidas sobre su media.</div></div>")
+
+
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -9588,6 +10952,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 fla = ("<span style='color:#2FD08A'>entra</span>" if (r["cmf"] or 0) > 0.05 else
                        "<span style='color:#F4607A'>sale</span>" if (r["cmf"] or 0) < -0.05 else
                        "<span style='color:#9FB0C8'>plano</span>") if r["cmf"] is not None else "—"
+                mana = _konc_celda(r.get("konc"))
                 n3a = ("<b style='color:#7BD88F'>0/3</b>" if r["n3"] == 0 else f"{r['n3']}/3" if r["n3"] is not None else "—")
                 # patrón PRE-DESPERTAR: cuántas de las 4 huellas de acumulación están presentes
                 _pre = r.get("pre") or 0
@@ -9625,6 +10990,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                            f"<td class='r'>{gira}</td>"
                            f"<td class='r' style='color:#9FB0C8'>{qta}</td>"
                            f"<td class='r' style='font-size:11px'>{fla}</td>"
+                           f"<td class='r' style='font-size:11px;white-space:nowrap'>{mana}</td>"
                            f"<td class='r' style='color:{vcol};font-size:11px;white-space:nowrap'>{verd}</td></tr>")
             crows = ""
             for s2 in (contra_sigs or []):
@@ -9689,11 +11055,16 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                         "no persiguiendo el despertar. La columna <b>patrón</b> (●●●●) cuenta las 4 huellas de acumulación institucional: "
                         "divergencia CMF positiva (precio baja, dinero entra) · OBV con mínimos crecientes (compran las caídas) · volatilidad comprimida (muelle cargado) · base de mínimos crecientes. "
                         "3-4 huellas con el precio aún quieto y 🤫 silencio = la ventana de anticipación; cuando pase a 🌅 y llegue el volumen, ya será tarde para entrar barato. "
+                        "La columna <b>manos</b> (Koncorde de Blai5) dice <b>quién vende y quién compra</b>: los paquetes grandes son manos fuertes (azul), los pequeños manos débiles (verde). "
+                        "<span style='color:#B980FF'>🩸 débiles sueltan</span> = les han saltado los stops (la zona verde se hunde bajo el marrón); "
+                        "<span style='color:#2FD08A'>🤝 TRASPASO</span> = además el azul está por encima de cero: las fuertes recogen ese papel, la huella clásica del suelo (+2 al score). "
+                        "<span style='color:#F4607A'>⚠ fuertes venden</span> = la calle compra y el dinero grande distribuye: lo contrario de un suelo. "
                         "La marca <span style='color:#FF8C42'>💥</span> señala los sectores <b>explosivos</b> (beta alta): donde el rebote es más salvaje y conviene tener liquidez lista. "
                         "El veredicto manda y <b>⚠ aún sangra</b> = ni tocar, da igual lo barato y lo bonito que esté el patrón.</div>"
                         "<div class='scrollx'><table class='se'><tr><th class='se-l'>sector / tema</th><th class='r'>😴</th>"
                         "<th class='r'>vs máx 52s</th><th class='r'>silencio</th><th class='r'>sem. dorm.</th>"
-                        "<th class='r'>estruct.</th><th class='r'>patrón</th><th class='r'>giro</th><th class='r'>precio 4s</th><th class='r'>flujo</th><th class='r'>veredicto</th></tr>"
+                        "<th class='r'>estruct.</th><th class='r'>patrón</th><th class='r'>giro</th><th class='r'>precio 4s</th><th class='r'>flujo</th>"
+                        "<th class='r' title='Koncorde (Blai5): AZUL = manos fuertes (paquetes grandes, días de poco volumen) · VERDE = manos débiles (paquetes pequeños, días de mucho volumen). Verde por debajo del marrón = a las débiles les saltan los stops. Azul > 0 = las fuertes recogen.'>manos</th><th class='r'>veredicto</th></tr>"
                         + sfilas + "</table></div>"
                         + ("<div style='margin-top:10px;padding:8px 10px;background:rgba(123,216,143,.06);border:1px solid #7BD88F33;border-radius:8px'>"
                            "<span style='font-size:11px;color:#7BD88F;font-weight:700'>SEÑAL CONTRARIA 0/3 DE ESTA SEMANA</span> "
@@ -10654,105 +12025,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     # que eran descarga y tiempo de build para nada. El ETF FIW sigue en el
     # universo y en la cascada de IA: lo que desaparece es solo su desglose.
 
-    # ---- PLAN DE ROTACION DE MI CARTERA (compara tu cartera real con las señales) ----
-    mi_plan = compute_mi_cartera_plan(MI_CARTERA, rrg, scores, flow, chosen, df)
-    if mi_plan:
-        mrows = ""
-        _n_trampa = 0
-        for r in mi_plan["rows"]:
-            est = (f"{r.get('quad','—')}" + (f" · {r['sc']}/5" if r.get("sc") is not None else "")) if r["base"] else "—"
-            eur = f"{r['eur']:,.0f} €" if isinstance(r["eur"], (int, float)) else esc(str(r["eur"]))
-            _dd = r.get("dd_pos")
-            ddcell = (f"<span style='color:{'#F4607A' if _dd <= -10 else '#F4B740' if _dd <= -3 else '#9FB0C8'}'>{_dd:.0f}%</span>" if _dd is not None else "—")
-            motivo = esc(r["why"])
-            if r.get("corte"):
-                _tipo, _ccol, _ctxt = r["corte"]
-                if _tipo == "trampa":
-                    _n_trampa += 1
-                motivo += f"<br><span style='color:{_ccol};font-size:10.5px'>{esc(_ctxt)}</span>"
-            mrows += (f"<tr><td class='se-l'><b>{esc(r['tk'])}</b>{esc(r.get('via',''))}</td>"
-                      f"<td class='r' style='color:#9FB0C8'>{esc(r['broker'])}</td>"
-                      f"<td class='r'>{eur}</td><td class='r'>{ddcell}</td><td class='r' style='color:#9FB0C8;font-size:11px'>{esc(est)}</td>"
-                      f"<td class='r'><b style='color:{r['col']}'>{esc(r['act'])}</b></td>"
-                      f"<td class='se-l' style='font-size:11px;color:var(--txt2)'>{motivo}</td></tr>")
-        rot = ""
-        if mi_plan["rotar_hacia"]:
-            chips = " ".join(f"<span class='lchip'><b>{r['sym']}</b> <span style='color:var(--txt3)'>{r['quad']}"
-                             + (f" {r['sc']}/5" if r["sc"] is not None else "") + "</span></span>" for r in mi_plan["rotar_hacia"])
-            rot = (f"<div style='margin-top:10px'><b style='color:#5B8CFF'>ROTAR HACIA</b> "
-                   "<span class='note' style='display:inline'>(recomendadas que aún no tienes):</span><div class='lchips' style='margin-top:6px'>" + chips + "</div></div>")
-        html.append("<div class='panel full'><h2>🩺 Plan de rotación de mi cartera — cortar o aguantar</h2>"
-                    f"<div class='note'>Compara <b>tus posiciones reales</b> (editables arriba del archivo en <code>MI_CARTERA</code>) con las señales de hoy. "
-                    f"Total declarado: <b>{mi_plan['total']:,.0f} €</b> · mantener {mi_plan['n_mantener']} · vender/rotar {mi_plan['n_vender']}"
-                    + (f" · <b style='color:#F4607A'>{_n_trampa} en trampa de esperanza</b>" if _n_trampa else "") + ". "
-                    "La columna <b>caída</b> es cuánto ha bajado desde su máximo de 52s. El motivo te dice si el sistema ordena <b>CORTAR</b> "
-                    "(cae y el dinero sigue saliendo) o si hay <b>base para aguantar con stop</b> (el flujo ya frenó). "
-                    "Las acciones y apalancados se evalúan por su ETF de referencia (vía …).</div>"
-                    "<div class='scrollx'><table class='se'><tr><th class='se-l'></th><th class='r'>broker</th><th class='r'>importe</th>"
-                    "<th class='r'>caída</th><th class='r'>estado</th><th class='r'>acción</th><th class='se-l'>motivo</th></tr>"
-                    + mrows + "</table></div>" + rot +
-                    "<div class='note' style='margin-top:10px;color:#F4B740'>⚠ La <b>trampa de esperanza</b>: mantener algo que cae «a ver si recupera» mientras el dinero sigue saliendo "
-                    "es cómo una pérdida pequeña se hace grande. El sistema no siente apego: si el flujo confirma la salida, corta. "
-                    "Esto aplica a tu <b>parte de rotación</b>, no a la liquidez de reserva. Rotar mucho genera comisiones y plusvalías que tributan. No es asesoramiento.</div></div>")
-
-    # ---- APALANCAMIENTO CONSOLIDADO (XTB + Robinhood + DEGIRO) + STRESS-TEST ----
-    apal = None
-    try:
-        apal = compute_apalancamiento(MI_CARTERA, BROKER_INFO)
-    except Exception:
-        apal = None
-    if apal:
-        _e = lambda v: f"{v:,.0f} €".replace(",", ".")
-        brows = ""
-        for b in apal["brokers"]:
-            esc5, esc10, esc20 = (b["esc"].get(dd) for dd in STRESS_DD)
-            def _cell(e):
-                if not e:
-                    return "<td class='r'>—</td>"
-                col = "#F4607A" if e["estado"] in ("STOP-OUT", "margin call", "cuenta a cero") else "#F4B740" if e["estado"] != "ok" else "#9FB0C8"
-                niv = f" · nivel {e['nivel_after']:.0f}%" if e["nivel_after"] is not None else ""
-                tag = f"<br><b style='color:{col};font-size:10px'>{e['estado'].upper()}</b>" if e["estado"] != "ok" else ""
-                return (f"<td class='r' style='white-space:nowrap'><span style='color:#F4607A'>{e['loss']:+,.0f} €</span> "
-                        f"<span style='color:#5E708A;font-size:10px'>({e['pct']:.0f}%{niv})</span>{tag}</td>").replace(",", ".")
-            lev_col = "#F4607A" if b["lev_ef"] >= 2.5 else "#F4B740" if b["lev_ef"] >= 1.5 else "#2FD08A"
-            extra = ""
-            info = b.get("info") or {}
-            if info.get("nivel_margen") is not None:
-                mcol = "#F4607A" if info["nivel_margen"] < 120 else "#F4B740" if info["nivel_margen"] < 200 else "#2FD08A"
-                extra = f"<br><span style='color:{mcol};font-size:10px'>nivel margen HOY: {info['nivel_margen']:.0f}% · libre {info.get('margen_libre', 0):.0f} €</span>"
-            brows += (f"<tr><td class='se-l'><b>{esc(b['broker'])}</b>{extra}</td>"
-                      f"<td class='r'>{_e(b['equity'])}</td>"
-                      f"<td class='r'>{_e(b['expo'])}</td>"
-                      f"<td class='r' style='color:{lev_col};font-weight:700'>{b['lev_ef']:.2f}×</td>"
-                      + _cell(esc5) + _cell(esc10) + _cell(esc20) + "</tr>")
-        tcol = "#F4607A" if apal["lev_ef"] >= 2 else "#F4B740" if apal["lev_ef"] >= 1.4 else "#2FD08A"
-        trow = (f"<tr style='border-top:2px solid #1C2740'><td class='se-l'><b>TOTAL</b></td>"
-                f"<td class='r'><b>{_e(apal['tot_eur'])}</b></td>"
-                f"<td class='r'><b>{_e(apal['tot_expo'])}</b></td>"
-                f"<td class='r' style='color:{tcol};font-weight:800'>{apal['lev_ef']:.2f}×</td>"
-                + "".join(f"<td class='r' style='color:#F4607A;font-weight:700'>{apal['tot_stress'][dd]:+,.0f} €</td>".replace(",", ".") for dd in STRESS_DD)
-                + "</tr>")
-        xtb_i = (BROKER_INFO or {}).get("XTB", {})
-        warn_xtb = ""
-        if xtb_i.get("nivel_margen") is not None and xtb_i["nivel_margen"] < 120:
-            warn_xtb = (f"<div class='note' style='margin-top:8px;color:#F4607A'>🚨 <b>XTB en zona crítica</b>: nivel de margen "
-                        f"{xtb_i['nivel_margen']:.1f}% y solo {xtb_i.get('margen_libre', 0):.0f} € libres. Sin colchón, una caída moderada "
-                        "activa cierres forzosos <b>en el peor momento</b> (justo cuando tu plan de liquidez diría comprar). "
-                        "Prioridad antes que cualquier rotación: liberar margen (reducir posiciones CFD) o aportar garantías.</div>")
-        html.append("<div class='panel full'><h2>⚖️ Apalancamiento consolidado — los 3 brokers juntos</h2>"
-                    "<div class='note'>Lo que ningún broker te enseña: tu <b>exposición real total</b> (importe × apalancamiento) y qué le pasaría "
-                    "al equity de cada cuenta si el S&amp;P cae <b>−5% / −10% / −20%</b> (con beta aproximada por tipo de activo: "
-                    "cripto ~1.8×, plata ~0.8×, bonos ~−0.2×, resto ~1×). Es un choque de <b>1 día</b>: en una caída de varios días con "
-                    "volatilidad, los productos de <b>reset diario</b> (3x/5x) pierden <b>más</b> por el decay — este cuadro es el suelo optimista.</div>"
-                    "<div class='scrollx'><table class='se'><tr><th class='se-l'>broker</th><th class='r'>equity</th>"
-                    "<th class='r'>exposición</th><th class='r'>apalanc. efectivo</th>"
-                    + "".join(f"<th class='r'>S&amp;P {dd}%</th>" for dd in STRESS_DD)
-                    + "</tr>" + brows + trow + "</table></div>"
-                    + warn_xtb +
-                    "<div class='note' style='margin-top:8px'>Regla que hemos hablado: si quieres usar margen de IBKR (tu 10% de pólvora), "
-                    "este cuadro tiene que seguir en verde <b>en el escenario −20%</b> DESPUÉS de añadirlo. Margen sobre productos ya apalancados "
-                    "= apalancamiento al cuadrado. Los importes de posición se editan arriba en <code>MI_CARTERA</code> y los datos de margen en "
-                    "<code>BROKER_INFO</code>. No es asesoramiento.</div></div>")
+    # (v7.0: panel MI CARTERA y panel de APALANCAMIENTO/stress-test eliminados con la cartera de brokers)
 
     # ---- VEREDICTO DE HOY (resumen de un vistazo, se inserta arriba) ----
     sem_short = stance.split("—")[0].strip() or "—"
@@ -11305,6 +12578,24 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         html.append("<div class='full'>" + fred_html + "</div>")
     html.append("</details>")
     html.insert(verdict_pos, verdict_html)
+    # ---- 🐎 PELOTONES: la primera pantalla del terminal (se inserta DELANTE del veredicto) ----
+    try:
+        _pel = compute_pelotones(daily, flow, df, options)
+        _corr = correlacion_manada(daily)
+        _lid = backtest_liderazgo(daily)
+        _pel_html = _pelotones_html(_pel, _corr, _lid, daily)
+        if _pel_html:
+            html.insert(verdict_pos, _pel_html)
+            verdict_pos += 1                      # la AMPLITUD va justo detras de los pelotones
+    except Exception as _e_pel:
+        _avisar("pelotones", f"no se pudo construir el panel de pelotones: {_e_pel}")
+    # ---- 📡 AMPLITUD: ¿sube el mercado o solo sus gigantes? (v7.3) ----
+    try:
+        _amp_html = _amplitud_html(amplitud)
+        if _amp_html:
+            html.insert(verdict_pos, _amp_html)
+    except Exception as _e_amp:
+        _avisar("amplitud", f"no se pudo construir el panel de amplitud: {_e_amp}")
     # ===== PREVISION MACRO (reloj de inversion) — al final del todo =====
     try:
         _macro = fetch_macro()
@@ -11391,7 +12682,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
 
     # ===== SISTEMA DE DECISION (rediseño Operativa): menos es mas — decidir en 10 segundos =====
     try:
-        _mi_syms = {t[0] for t in MI_CARTERA} if MI_CARTERA else set()
+        _mi_syms = set()          # v7.0: ya no hay cartera de brokers; solo cuenta la cesta del terminal
         _fichas = compute_fichas(df, daily or {}, rrg, flow or {}, scores, suelo_pre, centinela, plan,
                                  CARTERA_FINAL, _mi_syms, analogos=analogos, tau=tau, desks=desks, options=options)
         # --- cabecera de contexto: mercado + analogos + tau, todo en una franja ---
@@ -11585,15 +12876,6 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _sal = ", ".join(leaving[:4]) or "—"
         c1 += (f"<div style='font-size:12px;line-height:1.7'>Entran (Mejorando): <b style='color:#4CC2E0'>{esc(_ent)}</b><br>"
                f"Salen (Debilitándose): <b style='color:#F4B740'>{esc(_sal)}</b>")
-        if mi_plan and mi_plan.get("rows"):
-            _vnd = [r for r in mi_plan["rows"] if str(r.get("act", "")).upper().startswith("VENDER")]
-            _veur = sum(r["eur"] for r in _vnd if isinstance(r.get("eur"), (int, float)))
-            _vt = ", ".join(r["tk"] for r in _vnd[:5]) + ("…" if len(_vnd) > 5 else "")
-            if _vnd:
-                c1 += (f"<br>Tu cartera en señal de salida: <b style='color:#F4607A'>{len(_vnd)} posiciones · ~{_veur:,.0f} €</b>"
-                       f"<br><span style='color:#8FA3C0;font-size:11px'>{esc(_vt)}</span>").replace(",", ".")
-            else:
-                c1 += "<br>Tu cartera: <b style='color:#2FD08A'>sin señales de venta esta semana</b>"
         c1 += "</div>"
         mesa.append(_box("🚦 La semana en una línea + órdenes", c1, light + "55"))
         # 1b) CENTINELA compacto: el régimen manda sobre todas las demás cajas
@@ -11688,13 +12970,6 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             mesa.append(_box("🔀 Giro intradía — quién vendió la subida y quién compró el miedo", c5b, "#F4B74055"))
         # 6) alertas de riesgo (margen + escalones)
         c6 = ""
-        if apal:
-            for b in apal["brokers"]:
-                e5 = b["esc"].get(-5) or {}
-                if e5.get("estado") and e5["estado"] != "ok":
-                    c6 += (f"<div style='font-size:12px;margin:4px 0'>🚨 <b>{esc(b['broker'])}</b>: a S&P −5% → "
-                           f"<b style='color:#F4607A'>{esc(e5['estado'])}</b>"
-                           + (f" (nivel {e5['nivel_after']:.0f}%)" if e5.get("nivel_after") else "") + "</div>")
         if dd is not None:
             try:
                 _fal = 5.0 - abs(dd)
@@ -12025,7 +13300,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     try:
         _su_sb = []
         # --- 1) DE QUE ESTA HECHO EL INDICE
-        for _su_ix in ("NASDAQ 100 (QQQ)", "S&P 500 (SPY)", "RUSSELL 2000 (IWM)"):
+        for _su_ix in ("NASDAQ 100 (QQQ)", "S&P 500 (SPY)", "DOW JONES (DIA)", "RUSSELL 2000 (IWM)"):
             _su_dc = descomponer_indice(_su_ix, rrg, flow, scores)
             if not _su_dc:
                 continue
@@ -12073,7 +13348,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                                   despertares=despertares, df=df)
         if _sqsq and _sqsq.get("filas"):
             _sqCOL = {"ARRANCANDO": GRN, "DINERO CALLADO": GRN, "DINERO ENTRANDO": AMB,
-                    "SILENCIO": CYN, "CASTIGADO": GRY, "AUN SANGRA": RED}
+                    "DEJÓ DE SANGRAR": CYN, "SILENCIO": CYN,
+                    "CASTIGADO": GRY, "AUN SANGRA": RED}
             _sqqb = ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'>"
                    "<table style='min-width:560px'><tr style='color:#888;font-size:10px'><td>SECTOR</td>"
                    "<td>FASE</td><td>1·castigado</td><td>2·silencio</td>"
@@ -12157,8 +13433,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             "Esto <b>NO es el terminal de hoy</b>. Todo lo que ves está recalculado con los "
             "datos que existían hasta esa fecha y ni uno más: RRG, cockpit, CENTINELA, "
             "scoring, suelos, despertares y cascada son reales de ese día.<br><br>"
-            "<b>Lo que NO es de esa fecha, y hay que ignorar:</b> el panel de tu cartera "
-            "(MI_CARTERA está escrito a mano y es la de hoy), el track record y el libro de "
+            "<b>Lo que NO es de esa fecha, y hay que ignorar:</b> el track record y el libro de "
             "despertares (empezaron en 2026, salen vacíos), y las opciones, el DIX y las "
             "noticias (son datos de hoy: se han apagado a propósito).<br><br>"
             "<b>Para qué sirve:</b> abre el gráfico real de esas semanas en otra pestaña y "
@@ -12779,33 +14054,6 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _ntot = sum(len(v) for v in _qcount.values()) or 1
         si += f"<div>AMPLITUD RRG <span style='color:{GRN if _nlead / _ntot >= .5 else AMB}'>{_nlead}/{_ntot}</span> en Líder+Mejorando ({100 * _nlead / _ntot:.0f}%)</div>"
         html.append(_mod("SENTIMENT & INTERNALS", si))
-        # --- MODULO 6: PORTFOLIO DESK ---
-        if apal:
-            pd_ = (f"<div>EQUITY <span style='color:{AMB};font-weight:700'>{apal['tot_eur']:,.0f} €</span>"
-                   f" · EXPOSICIÓN {apal['tot_expo']:,.0f} €"
-                   f" · LEV <span style='color:{RED if apal['lev_ef'] >= 1.6 else AMB}'>{apal['lev_ef']:.2f}x</span></div>").replace(",", ".")
-            pd_ += "<table><tr><th style='text-align:left'>BROKER</th><th>EQ €</th><th>LEV</th><th>S&P−5%</th><th>ESTADO</th></tr>"
-            for b in apal["brokers"]:
-                e5 = b["esc"].get(-5) or {}
-                st5 = e5.get("estado", "ok")
-                stc = RED if st5 not in ("ok",) else GRN
-                pd_ += (f"<tr><td style='text-align:left;color:{AMB}'>{esc(b['broker'])}</td>"
-                        f"<td>{b['equity']:,.0f}</td><td>{b['lev_ef']:.2f}x</td>"
-                        f"<td style='color:{RED}'>{e5.get('loss', 0):+,.0f}</td>"
-                        f"<td style='color:{stc};font-size:10px'>{esc(st5.upper())}</td></tr>").replace(",", ".")
-            pd_ += "</table>"
-            if mi_plan and mi_plan.get("rows"):
-                _vnd = [r for r in mi_plan["rows"] if str(r.get("act", "")).upper().startswith("VENDER")]
-                _veur = sum(r["eur"] for r in _vnd if isinstance(r.get("eur"), (int, float)))
-                _mnt = [r for r in mi_plan["rows"] if r.get("act") == "MANTENER"]
-                _meur = sum(r["eur"] for r in _mnt if isinstance(r.get("eur"), (int, float)))
-                _tot = mi_plan.get("total") or 1
-                pd_ += (f"<div style='margin-top:4px'>ALINEACIÓN <span style='color:{GRN}'>{100 * _meur / _tot:.0f}% mantener</span> · "
-                        f"<span style='color:{RED}'>{len(_vnd)} pos en señal de salida (~{_veur:,.0f} €)</span></div>").replace(",", ".")
-            _top = sorted(apal["rows"], key=lambda r: -r["expo"])[:6]
-            pd_ += ("<div style='font-size:10.5px;color:#BFC7D5;margin-top:2px'>TOP EXPO: "
-                    + " · ".join(f"{r['tk']} {r['expo']:,.0f}€".replace(",", ".") for r in _top) + "</div>")
-            html.append(_mod("PORTFOLIO DESK — LOS 3 BROKERS", pd_))
         # --- MODULO 6b: MESAS DE PÓKER — semis, materiales y espacio (rebote desk genérico) ---
         for dk in (desks or []):
             if not dk:
@@ -12968,10 +14216,6 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _wadd((RED if g["sig"] == "bajista" else GRN), "GIRO",
                   f"{g['sym']}: gap {g['gap']:+.1f}% → cierre en {g['pos']}% del rango — {_gt}",
                   g["sym"], -1 if g["sig"] == "bajista" else 1)
-        for b in (apal["brokers"] if apal else []):
-            e5 = (b["esc"].get(-5) or {})
-            if e5.get("estado") and e5["estado"] != "ok":
-                _wadd(RED, "RISK", f"{b['broker']}: a S&P −5% → {e5['estado'].upper()}", b["broker"], -1)
         for s in (excluded_di or []):
             _wadd(AMB, "FLOW", f"{s}: DISTRIBUCIÓN OCULTA — precio sube, dinero sale. Excluido.", s, -1)
         for c in (contra_sigs or []):
@@ -13576,7 +14820,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             pass
         # --- OPCIONES EN CRISTIANO: el OPTIONS DESK traducido a frases simples, ETF a ETF ---
         try:
-            _exp = explicar_opciones(options, flow=flow, rrg=rrg, cartera=(set(CARTERA_FINAL or []) | ({t[0] for t in MI_CARTERA} if MI_CARTERA else set())))
+            _exp = explicar_opciones(options, flow=flow, rrg=rrg, cartera=set(CARTERA_FINAL or []))
             if _exp:
                 _bloq = ""
                 _visibles = [e for e in _exp if e["en_cart"] or e["prio"] <= 1][:14]
@@ -13878,11 +15122,6 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 _tknames[k.upper()] = (_corto + " · " + _largo) if (_corto and _corto != _largo) else _largo
             except Exception:
                 continue
-        for k, v in CARTERA_NOMBRES.items():
-            _tknames.setdefault(k.upper(), v)
-        for k, v in ALIAS2ETF.items():
-            if v and k.upper() not in _tknames:
-                _tknames[k.upper()] = f"→ se evalúa vía {v}"
         html.append("<script>var TKN=" + json.dumps(_tknames, ensure_ascii=False) + ";"
                     "(function(){"
                     # tooltip flotante
@@ -14249,12 +15488,29 @@ def main():
             globals()["SITE_DIR"] = os.path.join("site", "viaje", str(_corte.date()))
             globals()["OUTPUT_HTML"] = os.path.join(SITE_DIR, "pro", "index.html")
             globals()["LITE_HTML"] = os.path.join(SITE_DIR, "lite", "index.html")
+            _seg_real = SEGUIMIENTO_DIR
             globals()["SEGUIMIENTO_DIR"] = os.path.join("viaje_temporal",
                                                         str(_corte.date()), "historico")
+            # v7.3 — FALLO CORREGIDO: aqui solo se redirigian TRACK_FILE y TRACK_BAK. Los ledgers del
+            # CENTINELA, senales contrarias, wire y despertares seguian apuntando al historico REAL, asi
+            # que un viaje a 2022 escribia registros de 2022 en ellos (mientras la consola decia "tu
+            # terminal de hoy NO se toca"). Ahora se redirige TODA ruta que cuelgue del historico real,
+            # tambien las que se anyadan en el futuro.
+            for _k, _v in list(globals().items()):
+                if _k.isupper() and isinstance(_v, str) and _v.startswith(_seg_real + os.sep):
+                    globals()[_k] = os.path.join(SEGUIMIENTO_DIR, os.path.relpath(_v, _seg_real))
             globals()["TRACK_FILE"] = os.path.join(SEGUIMIENTO_DIR, "track_record.json")
             globals()["TRACK_BAK"] = os.path.join(SEGUIMIENTO_DIR, "track_record.bak.json")
             globals()["IA_AUTO"] = False
             globals()["DIX_ON"] = False
+            # v7.0 — LAS OPCIONES SE APAGAN DE VERDAD. El comentario de arriba decia desde
+            # siempre que en modo viaje "las opciones se apagan", pero NO era cierto: nadie
+            # las apagaba y compute_options seguia bajando las cadenas de HOY. Hasta ahora
+            # solo se notaba en unos paneles con un aviso al lado; desde que los PELOTONES
+            # tienen columna de opciones, un viaje a 2022 mostraria el skew de esta semana
+            # en la misma fila que un precio de 2022. Eso es justo la mentira que el modo
+            # viaje existe para no contar. Ademas el viaje va mucho mas rapido sin ellas.
+            globals()["OPCIONES_ON"] = False
             globals()["BACKTEST_SUELO"] = False
             globals()["VIAJE_FECHAS"] = []
             os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
@@ -14300,9 +15556,20 @@ def main():
         _avisar("es_futuro", "futuro ES no disponible: la referencia casi-24h no se muestra este build", nivel="info")
     # SPY entra aqui aunque no sea un "sector": es la vara de medir del panel de cobertura
     # (¿se cubren MAS en semis que en el mercado entero?). Sin el, ese panel no tiene contra que comparar.
-    _uni_opt = [s for s in ([BENCH] + SECTORS + THEMATIC + EXTRA) if s in df.columns]
-    print("  OPTIONS DESK: descargando cadenas de opciones de Yahoo ...")
-    options = compute_options(_uni_opt, flow=flow, daily=daily)
+    # v7.0 — EL ORDEN IMPORTA: compute_options corta en max_syms. Antes el universo iba
+    # [BENCH]+SECTORS+THEMATIC+EXTRA y el corte en 40 dejaba SIN CADENA justo a TAN, ICLN, FAN,
+    # ARKK, ARKF, ARKX, UFO, QTUM, SLV, SIL, XME e IBIT: es decir, casi toda la manada de beta
+    # alta, que es de lo que va el panel de PELOTONES. Ahora los miembros de los pelotones van
+    # PRIMEROS y el resto del universo detras.
+    _pel_syms = [m for cfg in PELOTONES.values() for m in cfg["members"]]
+    _uni_opt = list(dict.fromkeys([BENCH] + _pel_syms + SECTORS + THEMATIC + EXTRA))
+    _uni_opt = [s for s in _uni_opt if s in df.columns or s in (daily or {})]
+    if OPCIONES_ON:
+        print("  OPTIONS DESK: descargando cadenas de opciones de Yahoo ...")
+        options = compute_options(_uni_opt, flow=flow, daily=daily, max_syms=OPCIONES_MAX_SYMS)
+    else:
+        options = None
+        print("  OPTIONS DESK: APAGADO (modo viaje) — las cadenas son de hoy y no de la fecha del viaje")
     _n_opt = len(options) if options else 0
     print(f"  OPTIONS DESK: {_n_opt} ETFs con datos de opciones")
     _cobertura = None
@@ -14363,6 +15630,16 @@ def main():
         season = None
     fx = fetch_fx()
     _stk_univ = fetch_stock_universe() if STOCK_LEADERS else {}
+    if VIAJE_A and _stk_univ:
+        # v7.3 — FALLO CORREGIDO: las acciones se bajan despues del corte del viaje y nadie las
+        # recortaba: el McClellan de un terminal de 2022 ensenyaba la amplitud de HOY.
+        try:
+            _c_v = daily[BENCH].index[-1]
+            _stk_univ = {k: v[v.index <= _c_v] for k, v in _stk_univ.items() if v is not None}
+            _stk_univ = {k: v for k, v in _stk_univ.items() if len(v) > 60}
+        except Exception as _e_cv:
+            _avisar("viaje", f"no se pudo recortar el universo de acciones: {_e_cv}")
+            _stk_univ = {}
     leaders, leaders_n, sector_breadth = compute_rs_leaders(_stk_univ) if STOCK_LEADERS else (None, 0, {})
     # --- amplitud estilo McClellan sobre ese mismo universo (v4.4): 0 descargas extra
     _mcc = None
@@ -14385,6 +15662,23 @@ def main():
                   f"· disparos historicos: {_mcc['bt_nyse']['n_disparos']}")
     except Exception as _e_mcc:
         _avisar("mcclellan", f"oscilador de amplitud no calculado: {_e_mcc}")
+    _amp = None
+    try:
+        _amp = compute_amplitud(daily, _stk_univ)
+        if _amp:
+            _amp_recs = update_amplitud_ledger(_amp, daily)
+            _cmb, _ini, _nrec = amp_ledger_cambios(_amp_recs, daily)
+            _amp["ledger"] = {"cambios": _cmb, "inicio": _ini, "n": _nrec}
+            _rs = " · ".join(f"{v['nombre']} {v['estado']} ({v['racha']:+d})" for v in _amp["ratios"].values())
+            _ac = _amp.get("acc")
+            print(f"  Amplitud: {_rs}"
+                  + (f" · {_ac['p50']:.0f}% sobre su media de 50 ({_ac['n']} acciones)" if _ac and _ac.get("p50") is not None else "")
+                  + (" · DIVERGENCIA activa" if (_amp.get("div") or {}).get("activa") else ""))
+            if not _ac:
+                _avisar("amplitud", f"sin universo de acciones suficiente (minimo {AMP_MIN_ACCIONES}): el panel de amplitud "
+                                    "muestra solo los ratios RSP/SPY e IWM/SPY")
+    except Exception as _e_amp:
+        _avisar("amplitud", f"amplitud no calculada: {_e_amp}")
     print("  Vigilancia: descargando acciones de la watchlist...")
     watch = compute_watchlist(WATCHLIST)
     # --- CENTINELA y compañía ANTES del snapshot: así la IA automática conoce el régimen ---
@@ -14574,7 +15868,7 @@ def main():
             print("\nAviso enviado.")
 
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

@@ -315,5 +315,34 @@
 "eslabon": "C5-RETORNO",
 "cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
 }
+},
+{
+"date": "2026-09-28",
+"sym": "XLI",
+"fase": "DESPERTANDO",
+"pts": 7,
+"pre": 1,
+"caida": -9.3,
+"cmf": -0.046,
+"sil": 1,
+"vr": 1.01,
+"huellas": [
+"volumen 1.01×",
+"0/3 estructurales (64-65% hist. a 4 sem)",
+"impulso girando (+1.6 en 3s)",
+"CMF plano: dejó de salir"
+],
+"px0": 168.78,
+"inval": 163.21,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 97.4,
+"usd_cmf": 0.448,
+"china": "floja",
+"china_cmf": -0.292,
+"eslabon": "C5-RETORNO",
+"cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
+}
 }
 ]

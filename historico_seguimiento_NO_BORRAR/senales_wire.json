@@ -2668,5 +2668,125 @@
 "tag": "EARLY",
 "sym": "UFO",
 "dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-09-30",
+"tag": "CAPITUL",
+"sym": "GLD",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "CAPITUL",
+"sym": "EMB",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "CAPITUL",
+"sym": "SLV",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "GRADUADO",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "GRADUADO",
+"sym": "GRID",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "GRADUADO",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "GRADUADO",
+"sym": "LIT",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "GIRO",
+"sym": "MSTR",
+"dir": -1
+},
+{
+"date": "2026-09-30",
+"tag": "GIRO",
+"sym": "COIN",
+"dir": -1
+},
+{
+"date": "2026-09-30",
+"tag": "GIRO",
+"sym": "NCLD",
+"dir": -1
+},
+{
+"date": "2026-09-30",
+"tag": "FLOW",
+"sym": "XLV",
+"dir": -1
+},
+{
+"date": "2026-09-30",
+"tag": "0/3",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "SUELO",
+"sym": "HYDR",
+"dir": 0
+},
+{
+"date": "2026-09-30",
+"tag": "SUELO",
+"sym": "KWEB",
+"dir": 0
+},
+{
+"date": "2026-09-30",
+"tag": "SUELO",
+"sym": "ITB",
+"dir": 0
+},
+{
+"date": "2026-09-30",
+"tag": "EARLY",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "EARLY",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-09-30",
+"tag": "EARLY",
+"sym": "UFO",
+"dir": 1
 }
 ]

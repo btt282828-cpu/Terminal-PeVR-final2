@@ -70,5 +70,9 @@
 {
 "date": "2026-10-01",
 "estado": "DISTRIBUCION"
+},
+{
+"date": "2026-10-02",
+"estado": "DISTRIBUCION"
 }
 ]

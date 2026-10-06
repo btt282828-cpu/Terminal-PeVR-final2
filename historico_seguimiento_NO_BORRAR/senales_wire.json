@@ -2878,5 +2878,125 @@
 "tag": "EARLY",
 "sym": "UFO",
 "dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-10-05",
+"tag": "CLÍMAX",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-10-05",
+"tag": "CAPITUL",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "NOCTURNO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "GRADUADO",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "GRADUADO",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "GRADUADO",
+"sym": "GRID",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "GRADUADO",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "GIRO",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-10-05",
+"tag": "GIRO",
+"sym": "SLV",
+"dir": -1
+},
+{
+"date": "2026-10-05",
+"tag": "GIRO",
+"sym": "FAN",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "FLOW",
+"sym": "XLV",
+"dir": -1
+},
+{
+"date": "2026-10-05",
+"tag": "SUELO",
+"sym": "EWG",
+"dir": 0
+},
+{
+"date": "2026-10-05",
+"tag": "SUELO",
+"sym": "XLI",
+"dir": 0
+},
+{
+"date": "2026-10-05",
+"tag": "SUELO",
+"sym": "KWEB",
+"dir": 0
+},
+{
+"date": "2026-10-05",
+"tag": "SUELO",
+"sym": "ITA",
+"dir": 0
+},
+{
+"date": "2026-10-05",
+"tag": "EARLY",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "EARLY",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-10-05",
+"tag": "EARLY",
+"sym": "UFO",
+"dir": 1
 }
 ]

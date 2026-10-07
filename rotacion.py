@@ -127,7 +127,10 @@ SECTORS = ["XLK","XLF","XLE","XLV","XLY","XLP","XLI","XLB","XLU","XLRE","XLC"]
 THEMATIC = ["FXI","EEM","ITA","MAGS","EWG","EWP","COPX","URA","LIT"]   # EWG=Alemania(DAX), EWP=España(IBEX); COPX=cobre, URA=uranio, LIT=litio
 # Extra utiles para detectar rotaciones (viajes, semis, banca regional, biotech, mineras oro, software, vivienda, China tech)
 EXTRA = ["DRAM","NCLD","JETS","SMH","KRE","XBI","GDX","IGV","SOXX","ITB","KWEB","GRID","PAVE","FIW","CGW","HYDR",
-         "XRT","XOP","OIH","ARKF","ARKK","CIBR","SKYY","BOTZ","TAN","ICLN","FAN","XME","SIL","SLV","EWJ","INDA","EWZ","VGK","IBIT","DRIV","EWY","MOO","QTUM","ARKX","UFO"]   # ...+ infraestructura de IA: red eléctrica (GRID), construcción (PAVE), agua EE.UU. (FIW), global (CGW) e hidrógeno (HYDR) + Bitcoin (IBIT) + espacio (ARKX)
+         "XRT","XOP","OIH","ARKF","ARKK","CIBR","SKYY","BOTZ","TAN","ICLN","FAN","XME","SIL","SLV","EWJ","INDA","EWZ","VGK","IBIT","DRIV","EWY","MOO","QTUM","ARKX","UFO","REMX"]   # ...+ infraestructura de IA: red eléctrica (GRID), construcción (PAVE), agua EE.UU. (FIW), global (CGW) e hidrógeno (HYDR) + Bitcoin (IBIT) + espacio (ARKX)
+# v7.5 — REMX = VanEck Rare Earth & Strategic Metals: tierras raras, litio, wolframio y molibdeno
+#        (37 valores; ~29% China, ~25% Australia, ~18% EE.UU. segun VanEck a 5-oct-2026). Va en EXTRA y
+#        no en THEMATIC a proposito: THEMATIC tambien alimenta la web publica (La Estela) y eso no se toca.
 SATELLITES = ["IWM","DIA","TLT","GLD","HYG","UUP","LQD","EMB","RSP"]     # para riesgo y regimen macro (+crédito IG/emergente y S&P equiponderado para los sintéticos de pulso)
 
 # Acciones de agua (componentes de FIW) que CREO disponibles como CFD en XTB.
@@ -156,7 +159,7 @@ GRUPO_SECTORES = SECTORS + ["IWM","DIA","RSP"]                             # 11 
 GRUPO_SUBSECTORES = ["XBI","KRE","JETS","ITB","ITA","XRT","XOP","OIH","ARKX","UFO"]          # temas EE.UU. no-IA (biotech, banca regional, viajes, vivienda, defensa, espacio)
 GRUPO_TECH        = ["SMH","SOXX","DRAM","NCLD","IGV","MAGS","ARKF","ARKK","CIBR","SKYY","BOTZ","DRIV","QTUM"]  # tech e innovacion: chips, software, megacaps, fintech, innovacion, ciber, nube, robotica
 GRUPO_LIMPIA      = ["TAN","ICLN","FAN","LIT","HYDR"]                               # energia limpia: solar, limpia global, eolica, baterias, hidrogeno
-GRUPO_MATERIALES  = ["XME","GDX","COPX","URA","SIL","SLV","MOO"]                    # materiales y metales: mineria, oro, cobre, uranio, plata, agronegocio
+GRUPO_MATERIALES  = ["XME","GDX","COPX","URA","SIL","SLV","MOO","REMX"]             # materiales y metales: mineria, oro, cobre, uranio, plata, agronegocio, tierras raras
 GRUPO_IAINFRA     = ["GRID","PAVE","FIW","CGW"]                                     # infraestructura: red electrica, construccion, agua EE.UU., agua global
 COMMODITIES = ["COPX","URA","LIT"]
 GRUPO_INTERNAC = ["EEM","FXI","KWEB","EWG","EWP","EWJ","INDA","EWZ","VGK","EWY"]    # internacional: emergentes, China, Alemania, Espana, Japon, India, Brasil, Europa, Corea (chivato de semis)
@@ -277,6 +280,18 @@ PELOTONES = {
     "PEL-URANIO":     {"nombre": "Uranio", "corto": "Uranio", "bloque": "subola", "beta": 4,
                        "members": ["URA"],
                        "desc": "un solo ETF: esto NO es una media de un bloque, es URA. Su ciclo es el nuclear, no el del mercado"},
+    # v7.5 — REMX entra A SU BOLA y no dentro de Mineras o de Transicion, a proposito:
+    #   1) meterlo en un bloque cambia las cifras que Pedro ya lee de ese bloque (su indice, su techo,
+    #      sus vivos, su flujo) sin ninguna medida que diga que encaja;
+    #   2) no se ha podido medir desde donde se programo (sin acceso a datos de mercado). Por eso la
+    #      fila de un peloton de UN ETF ensena ahora a que bloque se parece de verdad (la marca ≈, con
+    #      la misma vara de 120 sesiones que la cohesion). Si dice que se mueve como Mineras o como
+    #      Transicion, se mete en ese bloque con la medida delante.
+    "PEL-TIERRAS":    {"nombre": "Tierras raras y metales estrategicos", "corto": "Tierras raras", "bloque": "subola", "beta": 4,
+                       "members": ["REMX"],
+                       "desc": "un solo ETF: es REMX, no la media de un bloque. Tierras raras, litio, wolframio y molibdeno; "
+                               "mas de la mitad cotiza en China y Australia. Lo mueven los controles de exportacion de China "
+                               "y las compras de los gobiernos, no solo el apetito por riesgo. La marca ≈ dice a que bloque se parece"},
     "PEL-BITCOIN":    {"nombre": "Bitcoin", "corto": "Bitcoin", "bloque": "subola", "beta": 5,
                        "members": ["IBIT", "COIN", "MSTR"],
                        "desc": "bitcoin al contado + el broker + la tesoreria apalancada: desde hace un tiempo va a su bola"},
@@ -314,7 +329,9 @@ PEL_BLOQUES = {"manada": ("LA MANADA", "se mueven como uno — aqui se decide de
                "tipos":  ("SENSIBLES A TIPOS", "los mueve el bono"),
                "refugio": ("REFUGIO", "si lidera, aviso de que el dinero se esconde")}
 PEL_MIN_MIEMBROS = 2        # menos de esto no es un bloque; con 1 miembro disenyado (URA) se admite y se marca
-OPCIONES_MAX_SYMS = 62      # cadenas de opciones por build. Cada una son varias peticiones a Yahoo: subirlo
+OPCIONES_MAX_SYMS = 64      # v7.5: SPY + los 63 miembros de los pelotones. Con 62 el ultimo miembro (UUP) se quedaba
+                            # sin cadena: el SPY ocupa el primer hueco y nadie lo veia. Ahora, si vuelve a pasar, se avisa.
+                            # cadenas de opciones por build. Cada una son varias peticiones a Yahoo: subirlo
                             # alarga el build. 62 cubre el universo de pelotones + sectores; con 40 se quedaba
                             # fuera media manada (ver comentario en main()).
 PEL_OPC_MIN_N = 2           # miembros liquidos minimos para dar lectura de opciones de un peloton (1 si es de un solo ETF)
@@ -332,7 +349,7 @@ INDICES_PONDERACION = [("SPY", "por capitalizacion", "manda el peso de los gigan
 #     vigila SOLO estos tras una caida fuerte, para entrar en el giro en vez de estar siempre invertido. ---
 SECTORES_EXPLOSIVOS = ["SMH", "SOXX", "XBI", "ARKK", "ARKF", "KWEB", "FXI", "XME", "COPX", "GDX",
                        "URA", "SLV", "TAN", "IBIT", "QTUM", "LABU", "MAGS", "IGV", "KRE", "TNA", "ARKX", "SIL",
-                       "XOP", "OIH", "LIT", "UFO"]
+                       "XOP", "OIH", "LIT", "UFO", "REMX"]
 # etiqueta legible del "porque son explosivos"
 EXPLOSIVO_TIPO = {
     "SMH": "chips",
@@ -343,6 +360,7 @@ EXPLOSIVO_TIPO = {
     "URA": "uranio", "SLV": "plata", "TAN": "solar", "IBIT": "bitcoin", "KRE": "banca regional", "TNA": "small caps x3",
     "ARKX": "espacio", "UFO": "espacio puro", "SIL": "plata mineras",
     "XOP": "petróleo E&P", "OIH": "serv. petroleros", "LIT": "litio/baterías",
+    "REMX": "tierras raras",
 }
 # --- MESAS DE PÓKER (pestaña PRO): cada mesa = un tema explosivo con su análisis de rebote completo
 #     (Wilson 95%, Kelly, cubos históricos). prefs = orden de preferencia del ETF; lead_keys = de qué
@@ -387,7 +405,8 @@ CLIMA_VOL_FUERTE = 1.3           # si además el volumen de ese día fue >= 1.3�
 # --- FLUJO NOCTURNO (🌏 acumulación extranjera): para los internacionales, la compra de verdad ocurre en su
 #     bolsa local (Hong Kong, Tokio...) y el ETF americano abre ya subido de gap. El CMF solo mide la sesión USA,
 #     así que puede decir "sale dinero" mientras el activo acumula en Asia — el punto ciego que ocultó a China. ---
-FLUJO_NOCTURNO_SYMS = set(GRUPO_INTERNAC) | {"IBIT"}   # también IBIT: bitcoin cotiza 24h y el gap manda
+FLUJO_NOCTURNO_SYMS = set(GRUPO_INTERNAC) | {"IBIT", "REMX"}   # también IBIT (bitcoin cotiza 24h) y REMX (v7.5: más de la mitad
+                                                                 # del fondo cotiza en China y Australia, ANTES de que abra EE.UU.)
 FLUJO_NOCTURNO_MIN = 2.0         # gap acumulado de 20 sesiones (en %) a partir del cual se marca acumulación extranjera
                         # (regla anti-anomalia: si el filtro de flujo deja 1-2 supervivientes, no les cae el 100%)
 # --- Chequeo de COHERENCIA SECTORIAL: si un ETF entra en cartera por su fuerza como bloque pero su
@@ -521,6 +540,9 @@ SECTOR_STOCKS = {
     "GRID": ["ETN", "SE", "ABB", "EMR", "PWR", "AME", "HUBB", "GEV", "CEG", "VST"],
     "XRT":  ["ANF", "GAP", "BBWI", "DKS", "M", "URBN", "AEO", "ROST", "KSS", "BURL"],
     "KWEB": ["BABA", "TCEHY", "PDD", "JD", "TME", "NTES", "BIDU", "TCOM", "LI", "XPEV"],
+    # v7.5 — REMX se deja FUERA a proposito: unos dos tercios del fondo cotizan en China, Australia y
+    # Taiwan, y este terminal solo baja bien acciones de EE.UU. Con 3-4 nombres americanos (SQM, ALB,
+    # MP...) su "amplitud real" seria la de un trozo del fondo leida como si fuera el fondo entero.
 
     "XLK":  ["AAPL","MSFT","NVDA","AVGO","ORCL","CRM","AMD","ADBE","ACN","CSCO","INTC","IBM","QCOM","NOW","TXN"],
     "XLF":  ["BRK-B","JPM","V","MA","BAC","WFC","GS","AXP","MS","SPGI","BLK","C","SCHW","CB","PGR"],
@@ -547,6 +569,13 @@ SECTOR_STOCKS = {
 }
 FRED_API_KEY = ""                                # DEJAR VACIO: la key va en los Secrets de GitHub (FRED_API_KEY), NO aqui (repo publico)
 ISM_MANUAL = 54.0                                # ISM manufacturas (no esta limpio en FRED gratis): actualizalo a mano el 1er dia habil de cada mes. Ult.: 54.0 (mayo-2026)
+ISM_MANUAL_FECHA = "2026-05"                     # v7.4: MES del dato de ISM_MANUAL (AAAA-MM). Con mas de 1 mes el panel lo marca CADUCADO y no cuenta: actualiza los dos juntos
+ESTRES_ON = True                                 # v7.4: estres financiero (OFR) + replica del Trump Pressure Index (FRED sin key). El MODO VIAJE lo apaga solo
+OFR_FSI_URLS = ["https://www.financialresearch.gov/financial-stress-index/data/fsi.csv"]   # descarga publica de la OFR; si falla, respaldo STLFSI4 de FRED
+ZWEIG_BAJO = 0.40                                # v7.4: Zweig Breadth Thrust: por debajo se ARMA (sobreventa extrema de amplitud)
+ZWEIG_ALTO = 0.615                               #       y si pasa de aqui en <= ZWEIG_VENTANA sesiones, se DISPARA
+ZWEIG_VENTANA = 10
+ZWEIG_SPAN = 10                                  #       media exponencial de 10 sesiones de avances / (avances + descensos)
 # --- Analisis con IA (opcional): comentario automatico en el panel ---
 # --- EVENTOS PUNTUALES con fecha (editable): se pintan en la pestaña News. Formato ("YYYY-MM-DD", "texto") ---
 EVENTOS_MERCADO = [
@@ -586,7 +615,7 @@ IA_PROMPTS = [
     ("news", "📰 News — solo lo que mueve TUS posiciones",
      "Eres el filtro de noticias de un inversor de rotacion sectorial. Busca en la web SOLO los 6-8 catalizadores CON FECHA "
      "de las proximas 2 semanas que puedan mover de verdad este universo: semiconductores (SMH/SOXX), biotech (XBI), banca regional (KRE), "
-     "financieras (XLF), retail (XRT), salud (XLV), energia (XLE/XOP), oro y mineras (GLD/GDX), bitcoin (IBIT), China/emergentes (KWEB/FXI/EEM), "
+     "financieras (XLF), retail (XRT), salud (XLV), energia (XLE/XOP), oro y mineras (GLD/GDX), tierras raras y metales estrategicos (REMX), bitcoin (IBIT), China/emergentes (KWEB/FXI/EEM), "
      "Alemania (EWG/DAX). Incluye: FOMC y datos macro clave, resultados de empresas que arrastran a esos ETFs (megacaps, semis, bancos regionales, "
      "mineras grandes), decisiones regulatorias o geopoliticas con fecha. Para CADA una: fecha exacta, que es, que ETF(s) toca y en que direccion, "
      "y el escenario que la invalidaria. PROHIBIDO: opiniones de analistas, price targets, rumores sin fecha, noticias ya cotizadas. "
@@ -749,6 +778,7 @@ TOP_HOLDING = {
     "GRID":"Eaton / Quanta / GE Vernova", "PAVE":"Eaton / Trane / Quanta",
     "FIW":"Ferguson / Xylem / Veralto", "CGW":"American Water / Veolia / Xylem",
     "HYDR":"Plug Power / Bloom / ITM Power",
+    "REMX":"SQM / Albemarle / MP Materials",     # v7.5: ficha de VanEck a 5-oct-2026 (8,3% / 7,9% / 6,7%)
 }
 SITE_DIR = "site"                                # carpeta que publica GitHub Pages
 STATIC_DIR = "static"                            # iconos, manifest, service worker
@@ -764,8 +794,11 @@ NAMES = {
     # Hasta ~40 semanas de historia el scoring saldra INCOMPLETO (sin SMA40 no puede
     # puntuar precio>SMA40 ni momentum 3m) y el RRG tendra estela corta. El CMF y el
     # volumen SI son validos a partir de 30 sesiones: eso es lo que hay que mirar.
-    "DRAM": "Memorias / HBM",
-    "NCLD": "Neocloud (GPU en alquiler)",
+    # v7.4 — FALLO CORREGIDO: estaban como TEXTO suelto y no como trio (ingles, espanol, tipo).
+    # El codigo hace NAMES.get(sym)[1] y cogia la SEGUNDA LETRA: DRAM salia como "e" en todo el
+    # terminal y su tipo quedaba en "m" en vez de "ciclico".
+    "DRAM": ("Memory / HBM", "Memorias / HBM", "ciclico"),
+    "NCLD": ("Neocloud", "Neocloud (GPU en alquiler)", "ciclico"),
     "SPY":("S&P 500","Indice (referencia)","bench"),
     "XLK":("Technology","Tecnologia","ciclico"),
     "XLF":("Financials","Financiero","ciclico"),
@@ -822,6 +855,10 @@ NAMES = {
     "XME":("Metals & Mining","Minería y metales","sensible"),
     "SIL":("Silver Miners","Mineras de plata","sensible"),
     "SLV":("Silver","Plata","sensible"),
+    # v7.5 — en España NO se compra el REMX americano (sin KID): la version UCITS es VVMX en Xetra
+    #        (ISIN IE0002PG6CA6, WKN A3CRL9, en euros). El terminal lee el americano porque su volumen
+    #        es el que de verdad dice si entra o sale dinero; se opera el UCITS.
+    "REMX":("VanEck Rare Earth & Strategic Metals — en España: versión UCITS VVMX (Xetra, ISIN IE0002PG6CA6)","Tierras raras y metales estratégicos","ciclico"),
     "EWJ":("Japan","Japón","ciclico"),
     "INDA":("India","India","ciclico"),
     "EWZ":("Brazil","Brasil","ciclico"),
@@ -1136,7 +1173,9 @@ def compute_track_perf(recs, benches=("SPY", "QQQ", "IWM"), ew_universe=None):
         if not bk:
             continue
         sysret = sum((pxb[t] / pxa[t] - 1.0) for t in bk) / len(bk)
-        row = {"week": b["week"], "date": b["date"], "basket": a.get("basket", []), "sys": sysret, "bench": {}}
+        _sp = _semanas_entre(a.get("week"), b.get("week"))      # v7.4: si faltan semanas, la fila abarca varias
+        row = {"week": b["week"], "date": b["date"], "basket": a.get("basket", []), "sys": sysret, "bench": {},
+               "span": (_sp or 1), "lbl": str(b["week"]) + (f" ({_sp} sem)" if _sp and _sp > 1 else "")}
         cum["sys"] *= (1.0 + sysret)
         row["cum_sys"] = cum["sys"] - 1.0
         # cesta de TODOS los sectores equiponderada (referencia: ¿la selección bate a tenerlo todo por igual?)
@@ -1159,7 +1198,7 @@ def compute_track_perf(recs, benches=("SPY", "QQQ", "IWM"), ew_universe=None):
         return None
     return {"weeks": weeks, "cum": {k: cum[k] - 1.0 for k in cum},
             "pending": {"week": recs[-1]["week"], "date": recs[-1]["date"], "basket": recs[-1].get("basket", [])},
-            "n": len(weeks)}
+            "n": len(weeks), "n_cal": sum(w.get("span", 1) for w in weeks)}
 
 def topup_recent(sym, d, end):
     # rellena con Yahoo las barras mas recientes que Stooq aun no tenga (frescura del ultimo dia).
@@ -2053,6 +2092,38 @@ def cohesion_peloton(members, daily, ventana=120):
             "min": round(min(vals), 2), "max": round(max(vals), 2)}
 
 
+def _corr_con_bloque(sym, members, daily, ventana=120):
+    """v7.5 — Correlacion de los retornos diarios de `sym` con CADA uno de `members`, con la
+    misma ventana que cohesion_peloton (120 sesiones) para que los numeros se puedan comparar.
+    Devuelve {miembro: (correlacion, sesiones)} solo con los que tienen historia suficiente.
+    Sirve para los pelotones de UN solo ETF (URA, REMX): se pusieron "a su bola" por su historia,
+    no por una medida. Diccionario vacio si no hay datos: aqui no se inventa un parecido."""
+    out = {}
+    try:
+        d0 = (daily or {}).get(sym)
+        if d0 is None or "Close" not in getattr(d0, "columns", []):
+            return out
+        base = d0["Close"].dropna()
+        if len(base) < ventana:
+            return out
+        for m in members:
+            d = (daily or {}).get(m)
+            if m == sym or d is None or "Close" not in getattr(d, "columns", []):
+                continue
+            ser = d["Close"].dropna()
+            if len(ser) < ventana:
+                continue
+            R = pd.concat([base, ser], axis=1).dropna().pct_change().dropna().iloc[-ventana:]
+            if len(R) < ventana * 0.6:
+                continue
+            c = R.iloc[:, 0].corr(R.iloc[:, 1])
+            if c == c:
+                out[m] = (round(float(c), 2), len(R))
+    except Exception as _dege:
+        _deg("_corr_con_bloque", _dege)
+    return out
+
+
 def _techo_de(serie, ventana=PEL_VENTANA_TECHO):
     """Techo de la serie dentro de la ventana: fecha, sesiones desde entonces y % por debajo.
 
@@ -2279,6 +2350,38 @@ def compute_pelotones(daily, flow, df=None, options=None):
             continue
     if not out:
         return None
+    # v7.5 — para cada peloton de UN solo ETF: el bloque de verdad al que mas se parece (correlacion
+    # media con sus miembros, la misma vara que la cohesion) y su "gemelo": el ETF suelto que mas se le
+    # parece. Si el gemelo pasa de 0,80, comprar los dos es practicamente la misma apuesta.
+    try:
+        _todos = [m for c in PELOTONES.values() for m in c["members"]]
+        for r in out:
+            if not r.get("solo"):
+                continue
+            _psym1 = PELOTONES[r["key"]]["members"][0]
+            _pcm2 = _corr_con_bloque(_psym1, _todos, daily)
+            if not _pcm2:
+                r["afin"] = None
+                continue
+            _pmejor = None
+            for _pk2, _pc2 in PELOTONES.items():
+                if _pk2 == r["key"] or len(_pc2["members"]) < 2:
+                    continue
+                _vals = [_pcm2[m][0] for m in _pc2["members"] if m in _pcm2]
+                if len(_vals) < 2:
+                    continue
+                _rho = round(sum(_vals) / len(_vals), 2)
+                if _pmejor is None or _rho > _pmejor["rho"]:
+                    _pcoh2 = next((x.get("coh") for x in out if x["key"] == _pk2), None)
+                    _pmejor = {"key": _pk2, "corto": _pc2["corto"], "rho": _rho, "n": len(_vals),
+                               "ses": max(_pcm2[m][1] for m in _pc2["members"] if m in _pcm2),
+                               "rho_bloque": (_pcoh2 or {}).get("corr")}
+            _pgem = max(_pcm2.items(), key=lambda kv: kv[1][0])
+            if _pmejor is not None:
+                _pmejor["gemelo"] = (_pgem[0], _pgem[1][0])
+            r["afin"] = _pmejor
+    except Exception as _dege:
+        _deg("compute_pelotones:afinidad", _dege)
     orden = {"manada": 0, "subola": 1, "nucleo": 2, "tipos": 3, "refugio": 4}
     out.sort(key=lambda r: (orden.get(r["bloque"], 9), -r["beta"], -(r["techo"]["dias"] if r["techo"] else 0)))
     return out
@@ -4452,46 +4555,99 @@ def laboratorio_suelos(df, daily, horizontes=(4, 8, 12), ruta=None, verbose=True
 # y el reparto exacto no es publico en tiempo real. Sirven para saber si un
 # bloque pesa mucho o poco, no para calcular al decimal.
 # ======================================================================
+# ----------------------------------------------------------------------
+# v7.4 — LAS BARRAS SALEN DE LAS MISMAS BOLITAS DEL RRG
+#
+# LO QUE FALLABA (lo vio Pedro): en el RRG habia anillo verde en SMH, SOXX, CIBR,
+# SKYY, PAVE o en los equipos de semis, y en estas barras el S&P solo decia
+# "entra tecnologia". No era que la regla fuera distinta: es que cada indice se
+# partia SOLO en los 11 sectores grandes (XLK, XLF...), asi que todo lo demas
+# quedaba escondido dentro de un XLK o un XLI y su anillo no sumaba en ningun sitio.
+#
+# AHORA:
+#   1) Cada sector se parte en las bolitas que el terminal YA descarga (las del
+#      RRG y las acciones de sus cestas). Si un bloque tiene varias, su peso se
+#      reparte A PARTES IGUALES entre ellas.
+#   2) Cada bolita se pinta con clasificar_flujo(), que usa _anillo_verde y
+#      _anillo_rojo: la MISMA regla que dibuja el anillo en el RRG.
+#   3) Un bloque sin dato ya NO cuenta como "plano": va aparte, como "sin medir".
+#   4) La barra es el indice ENTERO (100%). Antes estiraba solo la parte medida
+#      y el verde nunca coincidia con el numero de encima.
+#   5) La frase final mira "mas de la mitad del peso medido". Antes pedia que lo
+#      que sale fuera el DOBLE de lo que entra: el S&P con un 56% saliendo
+#      aparecia como "sin direccion clara".
+# Los TOTALES por sector son los de antes; el reparto interno de cada sector entre
+# sus bolitas es APROXIMADO y esta escrito a mano (cambia cada trimestre).
+# ----------------------------------------------------------------------
 COMPOSICION = {
     "NASDAQ 100 (QQQ)": {
         "bench": "QQQ",
         "bloques": [
-            ("7 Magnificos",       "MAGS", 43),
-            ("Semiconductores",    "SMH",  13),
-            ("Software y nube",    "IGV",   9),
-            ("Ciberseguridad",     "CIBR",  3),
-            ("Consumo discrec.",   "XLY",   6),
-            ("Comunicaciones",     "XLC",   5),
-            ("Salud",              "XLV",   6),
-            ("Industriales",       "XLI",   4),
+            ("7 Magnificos",               ["MAGS"],                          43),
+            ("Semiconductores",            ["SMH", "SOXX"],                   12),
+            ("Equipos de semis",           ["ASML", "LRCX", "AMAT", "KLAC"],   3),
+            ("Software y nube",            ["IGV", "SKYY"],                    9),
+            ("Ciberseguridad",             ["CIBR"],                           3),
+            ("Consumo discrec.",           ["XLY"],                            6),
+            ("Comunicaciones",             ["XLC"],                            5),
+            ("Biotecnologia",              ["XBI"],                            3),
+            ("Salud (resto)",              ["XLV"],                            3),
+            ("Industriales",               ["XLI"],                            4),
+            ("Consumo basico",             ["XLP"],                            5),   # Costco, Pepsi... antes no estaba
         ],
     },
     "S&P 500 (SPY)": {
         "bench": "SPY",
         "bloques": [
-            ("Tecnologia",         "XLK",  32),
-            ("Financiero",         "XLF",  13),
-            ("Salud",              "XLV",  10),
-            ("Consumo discrec.",   "XLY",  10),
-            ("Comunicaciones",     "XLC",   9),
-            ("Industriales",       "XLI",   8),
-            ("Consumo basico",     "XLP",   6),
-            ("Energia",            "XLE",   4),
-            ("Materiales",         "XLB",   2),
-            ("Utilities",          "XLU",   2),
+            # Tecnologia: 32 en total, como antes, partida en sus bolitas
+            ("Semiconductores",            ["SMH", "SOXX"],                   13),
+            ("Equipos de semis",           ["LRCX", "AMAT", "KLAC"],           1),
+            ("Software y nube",            ["IGV", "SKYY"],                    9),
+            ("Ciberseguridad",             ["CIBR"],                           1),
+            ("Almacenamiento",             ["WDC", "STX", "SNDK"],           0.5),
+            ("Tecnologia (resto: Apple, hardware)", ["XLK"],                 7.5),
+            # Financiero 13
+            ("Banca regional",             ["KRE"],                            1),
+            ("Financiero (resto)",         ["XLF"],                           12),
+            # Salud 10
+            ("Biotecnologia",              ["XBI"],                            2),
+            ("Salud (resto)",              ["XLV"],                            8),
+            # Consumo discrecional 10
+            ("Comercio minorista",         ["XRT"],                          2.5),
+            ("Constructoras",              ["ITB"],                          0.5),
+            ("Consumo discrec. (resto)",   ["XLY"],                            7),
+            ("Comunicaciones",             ["XLC"],                            9),
+            # Industriales 8
+            ("Aeroespacial y defensa",     ["ITA"],                            2),
+            ("Infraestructura y red",      ["PAVE", "GRID"],                 1.5),
+            ("Industriales (resto)",       ["XLI"],                          4.5),
+            ("Consumo basico",             ["XLP"],                            6),
+            # Energia 4
+            ("Petroleo E&P",               ["XOP"],                            1),
+            ("Servicios petroleros",       ["OIH"],                          0.5),
+            ("Energia (resto)",            ["XLE"],                          2.5),
+            ("Materiales",                 ["XLB"],                            2),
+            ("Utilities",                  ["XLU"],                            2),
+            ("Inmobiliario",               ["XLRE"],                           2),   # antes no estaba
         ],
     },
     "RUSSELL 2000 (IWM)": {
         "bench": "IWM",
         "bloques": [
-            ("Banca regional",     "KRE",  17),
-            ("Biotecnologia",      "XBI",  14),
-            ("Industriales",       "XLI",  13),
-            ("Consumo discrec.",   "XLY",  11),
-            ("Inmobiliario",       "XLRE",  7),
-            ("Energia",            "XLE",   5),
-            ("Tecnologia",         "XLK",  12),
-            ("Salud",              "XLV",   6),
+            ("Banca regional",             ["KRE"],                           17),
+            ("Biotecnologia",              ["XBI"],                           14),
+            ("Aeroespacial y defensa",     ["ITA"],                            2),
+            ("Infraestructura",            ["PAVE"],                           2),
+            ("Industriales (resto)",       ["XLI"],                            9),
+            ("Comercio minorista",         ["XRT"],                            3),
+            ("Constructoras",              ["ITB"],                            2),
+            ("Consumo discrec. (resto)",   ["XLY"],                            6),
+            ("Inmobiliario",               ["XLRE"],                           7),
+            ("Petroleo E&P",               ["XOP"],                            3),
+            ("Energia (resto)",            ["XLE"],                            2),
+            ("Tecnologia",                 ["XLK"],                           12),
+            ("Salud (resto)",              ["XLV"],                            6),
+            ("Mineria y metales",          ["XME"],                            2),
         ],
     },
     # v7.0 — DOW JONES. AVISO QUE NO ES EL MISMO QUE EN LOS OTROS TRES: el Dow se pondera
@@ -4504,85 +4660,318 @@ COMPOSICION = {
     "DOW JONES (DIA)": {
         "bench": "DIA",
         "bloques": [
-            ("Financiero",         "XLF",  21),
-            ("Tecnologia",         "XLK",  20),
-            ("Salud",              "XLV",  15),
-            ("Industriales",       "XLI",  14),
-            ("Consumo discrec.",   "XLY",  13),
-            ("Consumo basico",     "XLP",   6),
-            ("Comunicaciones",     "XLC",   3),
-            ("Energia",            "XLE",   3),
-            ("Materiales",         "XLB",   2),
+            ("Financiero",                 ["XLF"],                           21),
+            ("Software",                   ["IGV"],                            9),   # Microsoft, Salesforce
+            ("Tecnologia (resto)",         ["XLK"],                           11),   # Apple, Cisco, IBM, Nvidia
+            ("Salud",                      ["XLV"],                           15),
+            ("Aeroespacial",               ["ITA"],                            3),   # Boeing
+            ("Industriales (resto)",       ["XLI"],                           11),
+            ("Consumo discrec.",           ["XLY"],                           13),
+            ("Consumo basico",             ["XLP"],                            6),
+            ("Comunicaciones",             ["XLC"],                            3),
+            ("Energia",                    ["XLE"],                            3),
+            ("Materiales",                 ["XLB"],                            2),
         ],
     },
 }
+# En las pequenas, un ETF de sector del S&P (XLK, XLI...) NO representa al indice: el flujo
+# de XLK es el de Nvidia, Apple y Microsoft. No hay bolita de pequenas para ese sector, asi
+# que se usa la que hay y se MARCA como "grandes". Se senala, no se esconde.
+COMPOSICION_PEQUENAS = {"RUSSELL 2000 (IWM)"}
 
 
-def descomponer_indice(nombre, rrg, flow, scores):
-    """Reparte el peso del indice segun si a cada bloque le ENTRA o le SALE
-    dinero. Devuelve None si no hay datos suficientes."""
+def clasificar_flujo(f):
+    """(estado, signo) con LA MISMA regla que pinta el anillo del RRG.
+       verde (entra)  = _anillo_verde: CMF > +0.05 o acumulacion oculta
+       rojo (sale)    = _anillo_rojo (distribucion oculta) o CMF < -0.05
+       gris (plano)   = el resto
+       sin dato       = signo None (NUNCA 0: un hueco no es un flujo neutro)"""
+    if not f or f.get("cmf") is None:
+        return "sin dato", None
+    if _anillo_rojo(f):
+        return "sale (oculta)", -1
+    if _anillo_verde(f):
+        return "entra", 1
+    if f.get("label") == "Distribucion":
+        return "sale", -1
+    return "plano", 0
+
+
+def _pct_comp(v):
+    v = float(v or 0)
+    return (f"{v:.1f}" if 0 < v < 1 else f"{v:.0f}") + "%"
+
+
+def descomponer_indice(nombre, rrg, flow, scores, flujo_propio=None):
+    """Reparte el peso del indice segun si a cada bolita le ENTRA o le SALE dinero.
+       Devuelve None si se mide menos del 40% del indice."""
     try:
         cfg = COMPOSICION.get(nombre)
         if not cfg:
             return None
-        _sc = {r["sym"]: r for r in (scores or [])}
-        filas, peso_visto = [], 0
-        for etq, sym, peso in cfg["bloques"]:
-            f = (flow or {}).get(sym) or {}
-            d = (rrg or {}).get(sym) or {}
-            cmf = f.get("cmf")
-            if cmf is None and not d:
-                continue
-            quad = d.get("quad")
-            # verticalidad: cuanto se esta moviendo, no solo donde esta
-            vert = round((d.get("mom") or 100) - 100, 1)
-            if cmf is None:
-                estado, signo = "sin dato", 0
-            elif f.get("diverg") == "distribucion oculta":
-                estado, signo = "sale (oculta)", -1
-            elif cmf > 0.05:
-                estado, signo = "entra", 1
-            elif cmf < -0.05:
-                estado, signo = "sale", -1
+        pequenas = nombre in COMPOSICION_PEQUENAS
+        filas = []
+        tot = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+        hay_grandes = False
+        for etq, miembros, peso in cfg["bloques"]:
+            miembros = list(miembros) if isinstance(miembros, (list, tuple)) else [miembros]
+            cuota = float(peso) / max(1, len(miembros))
+            mem = []
+            bl = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+            for sym in miembros:
+                f = (flow or {}).get(sym)
+                estado, signo = clasificar_flujo(f)
+                q = ((rrg or {}).get(sym) or {}).get("quad")
+                grande = bool(pequenas and sym in SECTORS)
+                hay_grandes = hay_grandes or grande
+                k = "sin" if signo is None else ("entra" if signo > 0 else ("sale" if signo < 0 else "plano"))
+                bl[k] += cuota
+                tot[k] += cuota
+                mem.append({"sym": sym, "estado": estado, "signo": signo,
+                            "cmf": (f or {}).get("cmf"),
+                            "quad": (QUAD.get(q, (q,))[0] if q else None),
+                            "grande": grande})
+            medidos = [x for x in mem if x["signo"] is not None]
+            if not medidos:
+                est_b, sig_b = "sin dato", None
+            elif len({x["signo"] for x in medidos}) == 1:
+                est_b, sig_b = medidos[0]["estado"], medidos[0]["signo"]
+                if len(medidos) > 1 and sig_b < 0:
+                    est_b = "sale"
+                if len(medidos) < len(mem):
+                    est_b += f" ({len(mem) - len(medidos)} sin dato)"
             else:
-                estado, signo = "plano", 0
-            filas.append({"etq": etq, "sym": sym, "peso": peso, "cmf": cmf,
-                          "quad": quad, "vert": vert, "estado": estado,
-                          "signo": signo,
-                          "score": (_sc.get(sym) or {}).get("score")})
-            peso_visto += peso
-        if not filas or peso_visto < 40:
+                ne = sum(1 for x in medidos if x["signo"] > 0)
+                ns = sum(1 for x in medidos if x["signo"] < 0)
+                npl = len(medidos) - ne - ns
+                partes = []
+                if ne:
+                    partes.append(f"{ne} entra")
+                if npl:
+                    partes.append(f"{npl} plano")
+                if ns:
+                    partes.append(f"{ns} sale")
+                est_b = "mixto: " + " · ".join(partes)
+                sig_b = 1 if bl["entra"] > bl["sale"] else (-1 if bl["sale"] > bl["entra"] else 0)
+            filas.append({"etq": etq, "peso": float(peso), "miembros": mem, "estado": est_b,
+                          "signo": sig_b, "reparto": bl})
+        med = tot["entra"] + tot["plano"] + tot["sale"]
+        p_tabla = sum(fb["peso"] for fb in filas)
+        p_fuera = max(0.0, 100.0 - p_tabla)
+        if med < 40:
             return None
-        p_entra = sum(f["peso"] for f in filas if f["signo"] > 0)
-        p_sale = sum(f["peso"] for f in filas if f["signo"] < 0)
-        p_plano = peso_visto - p_entra - p_sale
-        # el bloque que MANDA: el de mas peso, y si tira o frena
-        dom = max(filas, key=lambda f: f["peso"])
-        filas.sort(key=lambda f: -f["peso"])
-        # lectura: no es un pronostico, es lo que pesa cada lado
-        if p_entra >= p_sale * 2 and p_entra >= 40:
-            lectura = ("La mayor parte del peso tiene dinero entrando. "
-                       "El indice tiene el viento a favor por composicion.")
-            color = "verde"
-        elif p_sale >= p_entra * 2 and p_sale >= 40:
-            lectura = ("La mayor parte del peso tiene dinero saliendo. "
-                       "Por mucho que suban bloques pequenos, no compensan.")
+        medidas = [fb for fb in filas if fb["signo"] is not None]
+        dom = max(medidas, key=lambda fb: fb["peso"]) if medidas else None
+        top = max(filas, key=lambda fb: fb["peso"]) if filas else None
+        fe, fs, fp = tot["entra"] / med, tot["sale"] / med, tot["plano"] / med
+        if fs > 0.5:
+            lectura = (f"Más de la mitad del peso medido ({100 * fs:.0f}%) tiene el dinero saliendo. "
+                       f"Lo que entra ({100 * fe:.0f}%) no lo compensa.")
             color = "rojo"
-        elif dom["signo"] < 0:
-            lectura = (f"El bloque que mas pesa ({dom['etq']}, {dom['peso']}%) tiene "
-                       f"el dinero saliendo. Es dificil que el indice tire sin el.")
+        elif fe > 0.5:
+            lectura = (f"Más de la mitad del peso medido ({100 * fe:.0f}%) tiene el dinero entrando: "
+                       "el índice tiene el viento a favor por composición.")
+            color = "verde"
+        elif fp >= 0.5:
+            lectura = (f"La mayor parte del peso medido ({100 * fp:.0f}%) está plana: ni entra ni sale. "
+                       + (f"Manda hacia dónde se incline {dom['etq']} ({_pct_comp(dom['peso'])})." if dom else ""))
+            color = "ambar"
+        elif dom is not None and dom["signo"] is not None and str(dom["estado"]).startswith("mixto"):
+            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) va mixto "
+                       f"({dom['estado'][7:]}): el índice no tiene una dirección clara por composición.")
+            color = "ambar"
+        elif dom is not None and dom["signo"] is not None and dom["signo"] < 0:
+            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero saliendo. "
+                       "Es difícil que el índice tire sin él.")
+            color = "ambar"
+        elif dom is not None and dom["signo"] is not None and dom["signo"] > 0:
+            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero entrando, "
+                       "pero el resto está dividido: tira, sin apoyo amplio.")
             color = "ambar"
         else:
-            lectura = ("Peso repartido entre los dos lados: el indice no tiene "
-                       "una direccion clara por composicion.")
+            lectura = "Peso repartido entre los dos lados: el índice no tiene una dirección clara por composición."
             color = "ambar"
+        aviso = ""
+        if top is not None and top["signo"] is None:
+            aviso = (f"Ojo: el bloque que más pesa ({top['etq']}, {_pct_comp(top['peso'])}) no tiene dato hoy; "
+                     "la lectura se hace sin él.")
+        propio = None
+        if flujo_propio:
+            e_p, s_p = clasificar_flujo(flujo_propio)
+            nota = ""
+            if s_p is not None and ((color == "rojo" and s_p > 0) or (color == "verde" and s_p < 0)):
+                nota = ("no cuadra con la suma por bloques: puede que las bolitas no representen bien al índice. "
+                        "Se señala, no se reconcilia.")
+            propio = {"sym": cfg["bench"], "estado": e_p, "signo": s_p, "cmf": flujo_propio.get("cmf"), "nota": nota}
         return {"nombre": nombre, "bench": cfg["bench"], "filas": filas,
-                "peso_visto": peso_visto, "p_entra": p_entra, "p_sale": p_sale,
-                "p_plano": p_plano, "dominante": dom, "lectura": lectura,
-                "color": color}
+                "p_entra": tot["entra"], "p_plano": tot["plano"], "p_sale": tot["sale"],
+                "p_sin": tot["sin"], "p_fuera": p_fuera, "peso_visto": med,
+                "dominante": dom, "lectura": lectura, "color": color, "aviso": aviso,
+                "propio": propio, "grandes": hay_grandes}
     except Exception as _dege:
         _deg(f"descomponer_indice:{nombre}", _dege)
         return None
+
+
+def _composicion_html(dc):
+    """Caja de un indice (pestana Detector de suelos, estetica PRO)."""
+    GRN, RED, GRY, AMB = "#00E676", "#FF5252", "#8A96A8", "#FFB000"
+    col = {"verde": GRN, "rojo": RED, "ambar": AMB}.get(dc["color"], GRY)
+    sin_medir = max(0.0, dc["p_sin"] + dc["p_fuera"])
+    t = (f"<div style='font-size:12px;margin-bottom:8px'>"
+         f"<span style='color:{GRN};font-weight:700'>{_pct_comp(dc['p_entra'])} entra</span> · "
+         f"<span style='color:{GRY}'>{_pct_comp(dc['p_plano'])} plano</span> · "
+         f"<span style='color:{RED};font-weight:700'>{_pct_comp(dc['p_sale'])} sale</span> · "
+         f"<span style='color:#5E708A'>{_pct_comp(sin_medir)} sin medir</span></div>")
+    t += ("<div style='display:flex;height:16px;border-radius:4px;overflow:hidden;margin-bottom:3px;"
+          "border:1px solid #222C3A'>")
+    for v, c, nm in ((dc["p_entra"], GRN, "entra"), (dc["p_plano"], "#2A3648", "plano"),
+                     (dc["p_sale"], RED, "sale"),
+                     (sin_medir, "repeating-linear-gradient(45deg,#1A2230 0 4px,#0B0F17 4px 8px)", "sin medir")):
+        if v > 0:
+            t += f"<div title='{nm} {_pct_comp(v)}' style='flex:0 0 {v:.2f}%;background:{c}'></div>"
+    t += ("</div><div style='font-size:9.5px;color:#5E708A;margin-bottom:10px'>la barra es el índice entero · "
+          "rayado = peso que el panel no sigue o sin dato hoy</div>")
+    t += ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'><table style='min-width:440px'>"
+          "<tr style='color:#888;font-size:10px'><td>bloque</td><td>bolitas del RRG (anillo · CMF · cuadrante)</td>"
+          "<td>peso</td><td>dinero</td></tr>")
+    for fb in dc["filas"]:
+        chips = []
+        for x in fb["miembros"]:
+            cc = {1: GRN, -1: RED, 0: GRY}.get(x["signo"], "#3A4658")
+            cm = f"{x['cmf']:+.2f}" if x["cmf"] is not None else "—"
+            qd = f" · {x['quad']}" if x["quad"] else ""
+            gr = " <span style='color:#FFB000;font-size:9px'>grandes</span>" if x["grande"] else ""
+            chips.append(f"<span style='white-space:nowrap'><span style='color:{cc}'>●</span> "
+                         f"{esc(x['sym'])} <span style='color:{GRY};font-size:10px'>{cm}{esc(qd)}</span>{gr}</span>")
+        cb = {1: GRN, -1: RED, 0: GRY}.get(fb["signo"], "#5E708A")
+        t += (f"<tr><td style='font-weight:700'>{esc(fb['etq'])}</td>"
+              f"<td style='font-size:11px;line-height:1.7'>{'<br>'.join(chips)}</td>"
+              f"<td style='font-weight:700'>{_pct_comp(fb['peso'])}</td>"
+              f"<td style='color:{cb};font-weight:700;font-size:11px'>{esc(fb['estado'])}</td></tr>")
+    t += "</table></div>"
+    t += f"<div style='color:{col};font-size:12px;margin-top:8px'>{esc(dc['lectura'])}</div>"
+    if dc.get("aviso"):
+        t += f"<div style='color:{AMB};font-size:11px;margin-top:4px'>{esc(dc['aviso'])}</div>"
+    pr = dc.get("propio")
+    if pr:
+        pc = {1: GRN, -1: RED, 0: GRY}.get(pr["signo"], "#5E708A")
+        pcm = f"{pr['cmf']:+.2f}" if pr.get("cmf") is not None else "—"
+        t += (f"<div style='font-size:11px;margin-top:6px;color:{GRY}'>El propio {esc(pr['sym'])} (su bolita en el RRG): "
+              f"<b style='color:{pc}'>{esc(pr['estado'])}</b> · CMF {pcm}"
+              + (f" — <span style='color:{AMB}'>{esc(pr['nota'])}</span>" if pr.get("nota") else "") + "</div>")
+    elif dc.get("bench") == "QQQ":
+        t += ("<div style='font-size:10px;color:#5E708A;margin-top:6px'>El QQQ no tiene bolita en el RRG "
+              "(no se descarga como ETF): aquí no hay contraste con su propio flujo.</div>")
+    if dc.get("grandes"):
+        t += ("<div style='font-size:10px;color:#FFB000;margin-top:5px'>⚠ Lo marcado «grandes» se mide con el ETF "
+              "del sector del S&amp;P porque no hay bolita de pequeñas para ese sector: su flujo es el de las grandes "
+              "empresas, no el de las del Russell.</div>")
+    t += ("<div style='font-size:10px;color:#666;margin-top:6px'><b>Esto NO es una predicción.</b> Es aritmética de "
+          "composición con las <b>mismas bolitas del RRG</b> y la misma regla del anillo: verde = entra (CMF por encima "
+          "de +0,05), rojo = sale (por debajo de −0,05 o distribución oculta), gris = plano. Si un bloque tiene varias "
+          "bolitas, su peso se reparte a partes iguales entre ellas. Los pesos son aproximados y cambian cada "
+          "trimestre.</div>")
+    return t
+
+
+def resumen_por_familias(rrg, flow):
+    """Las MISMAS bolitas del RRG, por las familias de su selector, con la regla del anillo."""
+    try:
+        if not rrg:
+            return None
+        fams, tot, vistos = [], {"entra": [], "plano": [], "sale": [], "sin": []}, set()
+        orden = [g for g in GRUPO_ORDEN if g not in ("sintetico", "cascada")] + ["_otros"]
+        for g in orden:
+            if g == "_otros":
+                syms = [s for s in rrg if s not in vistos and s != BENCH and s not in SINTETICOS]
+                nombre = "Otros"
+            else:
+                syms = [s for s in rrg if GRUPO.get(s) == g and s != BENCH and s not in SINTETICOS]
+                nombre = GRUPO_NOMBRE.get(g, g)
+            if not syms:
+                continue
+            fila = {"g": g, "nombre": nombre, "n": len(syms), "entra": [], "plano": [], "sale": [], "sin": []}
+            for s in syms:
+                vistos.add(s)
+                f = (flow or {}).get(s)
+                est, sg = clasificar_flujo(f)
+                k = "sin" if sg is None else ("entra" if sg > 0 else ("sale" if sg < 0 else "plano"))
+                fila[k].append({"sym": s, "cmf": (f or {}).get("cmf"), "estado": est})
+                tot[k].append(s)
+            for k in ("entra", "plano", "sale", "sin"):
+                fila[k].sort(key=lambda x: -abs(x["cmf"]) if x["cmf"] is not None else 0)
+            fams.append(fila)
+        if not fams:
+            return None
+        # v7.4 — lo que tiene flujo pero NO bolita en el RRG (acciones sueltas de las cestas, ETF con
+        # poca historia). Sale en la tira «Entra dinero» del Contexto, asi que aqui tambien: las dos
+        # pantallas tienen que decir exactamente lo mismo.
+        resto = sorted(s for s in (flow or {}) if s not in vistos and s != BENCH and s not in SINTETICOS)
+        acc = None
+        if resto:
+            acc = {"g": "_sin_bolita", "nombre": "Sin bolita en el RRG (acciones de las cestas o ETF con poca historia)",
+                   "n": len(resto), "entra": [], "plano": [], "sale": [], "sin": []}
+            for s in resto:
+                f = (flow or {}).get(s)
+                est, sg = clasificar_flujo(f)
+                k = "sin" if sg is None else ("entra" if sg > 0 else ("sale" if sg < 0 else "plano"))
+                acc[k].append({"sym": s, "cmf": (f or {}).get("cmf"), "estado": est})
+            for k in ("entra", "plano", "sale", "sin"):
+                acc[k].sort(key=lambda x: -abs(x["cmf"]) if x["cmf"] is not None else 0)
+        return {"fams": fams, "tot": tot, "n_sint": sum(1 for s in rrg if s in SINTETICOS), "acc": acc}
+    except Exception as _dege:
+        _deg("resumen_por_familias", _dege)
+        return None
+
+
+def _familias_html(rf):
+    GRN, RED, GRY = "#00E676", "#FF5252", "#8A96A8"
+    tot = rf["tot"]
+    n_tot = sum(len(v) for v in tot.values())
+    t = (f"<div style='font-size:12px;margin-bottom:6px'>De las <b>{n_tot}</b> bolitas del RRG: "
+         f"<span style='color:{GRN};font-weight:700'>{len(tot['entra'])} con anillo verde (entra)</span> · "
+         f"<span style='color:{GRY}'>{len(tot['plano'])} planas</span> · "
+         f"<span style='color:{RED};font-weight:700'>{len(tot['sale'])} con el dinero saliendo</span>"
+         + (f" · <span style='color:#5E708A'>{len(tot['sin'])} sin dato</span>" if tot["sin"] else "")
+         + "</div>")
+    _acc = rf.get("acc")
+    _acc_e = [x["sym"] for x in (_acc or {}).get("entra", [])]
+    if tot["entra"] or _acc_e:
+        t += (f"<div style='font-size:11px;margin-bottom:10px;color:{GRN}'>Entra dinero en: "
+              + esc(", ".join(tot["entra"]))
+              + (" · sin bolita en el RRG: " + esc(", ".join(_acc_e)) if _acc_e else "") + "</div>")
+    for fa in rf["fams"] + ([_acc] if _acc else []):
+        n = max(1, fa["n"])
+        seg = ""
+        for k, c in (("entra", GRN), ("plano", "#2A3648"), ("sale", RED), ("sin", "#151C27")):
+            if fa[k]:
+                seg += f"<div style='flex:0 0 {100.0 * len(fa[k]) / n:.2f}%;background:{c}'></div>"
+        lineas = []
+        for k, c, etq in (("entra", GRN, "entra"), ("sale", RED, "sale"), ("plano", GRY, "plano"),
+                          ("sin", "#5E708A", "sin dato")):
+            if not fa[k]:
+                continue
+            items = []
+            for x in fa[k]:
+                cm = f"{x['cmf']:+.2f}" if x["cmf"] is not None else "—"
+                oc = " oculta" if "oculta" in x["estado"] else ""
+                items.append(f"<span style='white-space:nowrap'><b style='color:{c}'>{esc(x['sym'])}</b>"
+                             f"<span style='color:#5E708A;font-size:9.5px'> {cm}{oc}</span></span>")
+            lineas.append(f"<span style='color:{c};font-size:10px'>{etq}:</span> " + " · ".join(items))
+        t += (f"<div style='margin:9px 0 3px;font-size:12px'><b>{esc(fa['nombre'])}</b> "
+              f"<span style='color:#5E708A'>· {len(fa['entra'])} de {fa['n']} {'con anillo verde' if fa['g'] != '_sin_bolita' else 'con dinero entrando'}</span></div>"
+              "<div style='display:flex;height:9px;border-radius:3px;overflow:hidden;border:1px solid #222C3A;"
+              "margin-bottom:4px'>" + seg + "</div>"
+              "<div style='font-size:11px;line-height:1.7'>" + "<br>".join(lineas) + "</div>")
+    t += ("<div style='font-size:10px;color:#666;margin-top:10px'><b>Por qué este panel.</b> Las barras de los índices "
+          "de abajo reparten el peso de cada índice; aquí está todo lo que pinta el RRG, familia por familia, con la "
+          "<b>misma regla del anillo</b>: verde = CMF por encima de +0,05 o acumulación oculta; rojo = por debajo de "
+          "−0,05 o distribución oculta. Cada bolita cuenta uno (no pesa por tamaño)."
+          + (f" Las {rf['n_sint']} cestas sintéticas no llevan anillo en el RRG: su flujo está en Pelotones."
+             if rf.get("n_sint") else "")
+          + " No es asesoramiento.</div>")
+    return t
 
 
 
@@ -5248,6 +5637,26 @@ def _pelotones_html(pel, corr=None, lider=None, daily=None):
                     fl += " <span style='color:#F4B740;font-size:9px' title='el CMF del bloque y el promedio de sus miembros dicen cosas distintas: manda el del bloque, pero mira el detalle antes de moverte'>≠</span>"
             solo = (" <span style='color:#F4B740;font-size:9px;border:1px solid #F4B74055;border-radius:3px;padding:0 3px' "
                     "title='Un solo ETF: esto NO es la media de un bloque, es ese ticker'>1 ETF</span>" if r["solo"] else "")
+            _af = r.get("afin") if r["solo"] else None
+            if _af:
+                _afrb = _af.get("rho_bloque")
+                # "se mueve como uno mas": su parecido con el bloque llega a 0,50 y a menos de 0,10 de lo
+                # que se parecen los miembros entre si. Si no, tiene ciclo propio de verdad.
+                _afcerca = bool(_af["rho"] >= 0.5 and (_afrb is None or _af["rho"] >= _afrb - 0.10))
+                _afcol = "#F4B740" if _afcerca else "var(--txt3)"
+                _aft = (f"Correlación media de este ETF con los {_af['n']} miembros de {_af['corto']} en {_af['ses']} sesiones: "
+                        f"{_af['rho']:.2f}" + (f" (ellos entre sí: {_afrb:.2f})" if _afrb is not None else "")
+                        + ". Es el bloque al que más se parece. "
+                        + ("Se mueve casi como uno más de ese bloque: puede que NO vaya a su bola."
+                           if _afcerca else "No llega a moverse como ese bloque: tiene su propio ciclo."))
+                _afgem = _af.get("gemelo")
+                if _afgem:
+                    _aft += f" El ETF suelto que más se le parece: {_afgem[0]} ({_afgem[1]:.2f})."
+                solo += (f" <span style='color:{_afcol};font-size:9px' title='{esc(_aft)}'>"
+                         f"≈{esc(_af['corto'])} {_af['rho']:.2f}</span>")
+                if _afgem and _afgem[1] >= 0.8:
+                    solo += (f" <span style='color:#F4B740;font-size:9px' title='{esc(_aft)}'>"
+                             f"gemelo {esc(_afgem[0])} {_afgem[1]:.2f}</span>")
             _c = r.get("coh")
             if _c:
                 _ct = (f"Cohesión: correlación media {_c['corr']:.2f} entre sus {_c['n']} miembros (120 sesiones), "
@@ -5364,6 +5773,10 @@ def _pelotones_html(pel, corr=None, lider=None, daily=None):
             f"media de {PEL_MA_DIAS} sesiones. <b>Flujo</b> = CMF de Chaikin del <b>bloque</b> (el sintetico, con el volumen sumado en euros: cada ETF "
             "pesa por el dinero que mueve, no a partes iguales); el simbolo <b>≠</b> avisa de que el promedio de sus miembros dice otra cosa. "
             "<b>Manos</b> = Koncorde calculado sobre ese mismo sintetico, no sobre un ETF suelto. "
+            "<b>≈Bloque 0,xx</b> (solo en los de un ETF, como Uranio o Tierras raras) = a que bloque se parece de verdad: "
+            "su correlacion media con los miembros de ese bloque en 120 sesiones; en ambar si se mueve casi como uno mas de "
+            "ese bloque, y entonces no va a su bola. <b>gemelo</b> = el ETF suelto que mas se le parece, si pasa de 0,80: "
+            "comprar los dos es practicamente la misma apuesta. "
             "<b>Opciones</b> = mediana de las cadenas liquidas del bloque. <b>Aviso que no se puede saltar</b>: la cadena gratuita de Yahoo "
             "NO dice quien compro y quien vendio — en cada contrato hay las dos partes. Lo que si mide es si la <b>proteccion esta cara</b> "
             "(las puts fuera de dinero cotizando por encima de las calls) y hacia donde se va la actividad. Por eso pone 🛡 proteccion / "
@@ -5457,6 +5870,7 @@ OPCIONES_PROXY = {
     "ITB":  ["DHI", "LEN"],              # constructoras: D.R. Horton, Lennar
     "FIW":  ["AWK", "XYL"],              # agua: American Water Works, Xylem
     "CIBR": ["PANW", "CRWD"],            # ciberseguridad: Palo Alto, CrowdStrike
+    "REMX": ["SQM", "ALB", "MP"],         # v7.5 tierras raras: sus tres mayores posiciones con opciones en EE.UU. (~23% del fondo)
 }
 
 COBERTURA_CESTAS = [
@@ -5568,9 +5982,13 @@ def compute_cobertura(options, rrg=None, flow=None, min_hist=8):
             estado, col = "NORMAL", "#9FB0C8"
             lectura = "el coste de protegerse esta en su rango de siempre: sin informacion util"
 
+        # v7.4: la MEDIA de percentiles escondia que dos de tres ETFs estaban caros
+        _altos = [mm for mm in miembros if mm["rank"] is not None and mm["rank"] >= 85]
+        if rank_m is not None and rank_m < 75 and _altos:
+            lectura += " · ojo: la media esconde a " + ", ".join(f"{mm['sym']} (percentil {mm['rank']})" for mm in _altos)
         if delta_m is not None and abs(delta_m) >= 0.01 and rank_m is not None:
             lectura += (f" · se esta {'ABRIENDO' if delta_m > 0 else 'CERRANDO'} "
-                        f"({delta_m:+.3f} en ~5 registros)")
+                        + "(" + f"{delta_m:+.2f}".replace(".", ",") + " en ~5 registros)")
 
         cestas.append({"id": cid, "titulo": titulo, "miembros": miembros, "estado": estado,
                        "col": col, "lectura": lectura,
@@ -7512,16 +7930,23 @@ def fetch_macro():
     """Descarga macro de FRED (empleo, inflacion, PCE, blandos) y calcula nivel + direccion.
     Defensivo: sin key o si falla una serie, la salta. Devuelve dict {sid: {...}} o None."""
     key = _fred_key()
-    if not key:
-        return None
     def _obs(sid, limit=90):
-        try:
-            url = ("https://api.stlouisfed.org/fred/series/observations"
-                   f"?series_id={sid}&api_key={key}&file_type=json&sort_order=desc&limit={limit}")
-            r = requests.get(url, timeout=15).json()
-            return [float(o["value"]) for o in r.get("observations", []) if o["value"] not in (".", "")]
-        except Exception:
+        if key:
+            try:
+                url = ("https://api.stlouisfed.org/fred/series/observations"
+                       f"?series_id={sid}&api_key={key}&file_type=json&sort_order=desc&limit={limit}")
+                r = requests.get(url, timeout=15).json()
+                v = [float(o["value"]) for o in r.get("observations", []) if o["value"] not in (".", "")]
+                if v:
+                    return v
+            except Exception:
+                pass
+        # v7.4 — SIN KEY: la descarga publica de FRED (la misma serie, sin registrarse). El panel
+        # llevaba apagado porque el secreto FRED_API_KEY no llegaba al build.
+        s = _fred_csv(sid, desde=str(dt.date.today() - dt.timedelta(days=4000)))
+        if s is None:
             return []
+        return [float(x) for x in s.values[-limit:]][::-1]
     def _yoy(v, per=12):
         return (v[0] / v[per] - 1.0) * 100 if len(v) > per and v[per] else None
     m = {}
@@ -8378,7 +8803,7 @@ def cycle_clock_html(cyc):
         lx, ly = pt(R + 24, i * 90 + 45)
         labels += (f"<text x='{lx:.0f}' y='{ly:.0f}' fill='{f['col'] if active else '#9FB0C8'}' font-size='11' "
                    f"font-weight='{700 if active else 500}' text-anchor='middle'>{f['lbl']}</text>"
-                   f"<text x='{lx:.0f}' y='{ly+13:.0f}' fill='#5E708A' font-size='8.5' text-anchor='middle'>{f['n']}/{f['tot']} con dinero</text>")
+                   f"<text x='{lx:.0f}' y='{ly+13:.0f}' fill='#5E708A' font-size='8.5' text-anchor='middle'>{f['n']}/{f['tot']} con fuerza</text>")
     nx, ny = pt(R - 16, cur_idx * 90 + 45)
     needle = (f"<line x1='{cx}' y1='{cy}' x2='{nx:.1f}' y2='{ny:.1f}' stroke='{cur['col']}' stroke-width='3.5' stroke-linecap='round'/>"
               f"<circle cx='{cx}' cy='{cy}' r='6' fill='{cur['col']}'/>")
@@ -8658,6 +9083,7 @@ FAMILIAS = {
     "metales preciosos": ["GLD", "SLV", "GDX", "SIL", "XME"],
     "cobre / industrial": ["COPX", "XLB", "MOO"],
     "energia nuclear":    ["URA"],
+    "tierras raras":      ["REMX"],      # v7.5: su propia historia, como el uranio, mientras no se mida que va con otro bloque
     "energia limpia":     ["TAN", "LIT", "ICLN", "FAN", "HYDR", "DRIV"],
     "software / nube":    ["IGV", "SKYY", "CIBR", "MAGS", "XLK"],
     "chips":              ["SMH", "SOXX"],
@@ -10455,7 +10881,7 @@ def _amplitud_html(amp):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -10699,23 +11125,26 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     "<div style='font-size:10px;color:#666;margin-top:7px'>⚠ Esto es <b>contexto, no señal</b>: los eslabones son "
                     "cestas de solo lectura (no entran en scoring ni cartera). La cascada <b>no es limpia ni ordenada</b> — los eslabones "
                     "se solapan y a veces van al revés; y si el capex se recorta, lo que más cae es justo el final de la cadena, que es "
-                    "donde está la beta. Falta el eslabón de <b>equipos</b> (ASML/LRCX/AMAT): no hay ETF de equipos semi en tu universo "
-                    "UCITS, habría que montarlo con acciones sueltas como el sintético de FIW. No es asesoramiento.</div></div>")
+                    "donde está la beta. El eslabón de <b>equipos</b> (C1b: ASML, LRCX, AMAT, KLAC) se monta con acciones sueltas porque "
+                    "no hay ETF de equipos semi en tu universo UCITS. No es asesoramiento.</div></div>")
     # ---- RELOJ DEL CICLO ECONOMICO ----
     try:
         cyc = compute_cycle_phase(rrg, scores or [])
         cur = cyc.get("actual")
         if cur:
             lit_txt = ", ".join(cur["lit"]) if cur["lit"] else "—"
+            _cyc_sale = [s for s in cur["lit"] if (clasificar_flujo((flow or {}).get(s))[1] or 0) < 0]
+            _cyc_av = (f"<br><span style='color:#F4607A'>Ojo: con fuerza relativa pero con el dinero saliendo (CMF): "
+                       f"{esc(', '.join(_cyc_sale))}</span>" if _cyc_sale else "")
             html.append("<div class='panel full'><h2>🕒 Reloj del ciclo económico — ¿en qué punto estamos?</h2>"
-                        "<div class='note'>Dónde está el dinero hoy, traducido al ciclo económico (modelo de rotación sectorial de Fidelity/Stovall). "
-                        "La aguja marca la fase cuyos sectores están <b>recibiendo dinero ahora</b> (en Líder o Mejorando). El ciclo gira en el sentido del reloj: "
+                        "<div class='note'>Dónde está la fuerza relativa hoy, traducida al ciclo económico (modelo de rotación sectorial de Fidelity/Stovall). "
+                        "La aguja marca la fase cuyos sectores tienen <b>fuerza relativa ahora</b> (Líder o Mejorando en el RRG: es precio contra el S&amp;P, no dinero entrando). El ciclo gira en el sentido del reloj: "
                         "Recuperación → Expansión → Sobrecalentamiento → Recesión → y vuelta a empezar.</div>"
                         + cycle_clock_html(cyc)
                         + f"<div style='text-align:center;margin-top:6px'><b style='color:{cur['col']};font-size:15px'>{cur['lbl']}</b> "
                           f"<span style='color:#9FB0C8'>· {cur['sub']}</span></div>"
                         + f"<div class='note' style='margin-top:8px'>{cur['desc']}<br>"
-                          f"<b>Con dinero entrando ahora ({cur['n']}/{cur['tot']}):</b> <span style='color:{cur['col']}'>{lit_txt}</span></div>"
+                          f"<b>Con fuerza relativa ahora ({cur['n']}/{cur['tot']}):</b> <span style='color:{cur['col']}'>{lit_txt}</span>{_cyc_av}</div>"
                         "<div class='note' style='margin-top:8px;color:#5E708A'>⚠ Los ciclos son <b>lentos</b> (cada fase dura 1-4 años) y en tiempo real son <b>confusos</b> — "
                         "distinguir mitad de ciclo de final de ciclo es justo donde más se equivoca todo el mundo. Es un <b>mapa orientativo, no una predicción</b>, "
                         "y va con la rotación del mercado, no con el calendario. El flujo manda. No es asesoramiento.</div></div>")
@@ -11142,7 +11571,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                            + _bar + _vs
                            + f"<div style='font-size:11px;color:var(--txt2);margin:4px 0'>{esc(c['lectura'])}</div>"
                            + _chips
-                           + (f"<div style='font-size:10px;color:var(--txt3);margin-top:4px'>n={c['n_min']} lecturas guardadas</div>" if c["n_min"] else "")
+                           + (f"<div style='font-size:10px;color:var(--txt3);margin-top:4px'>historia: {c['n_min']} lectura(s) en el ETF que menos tiene · cada ETF necesita {cobertura.get('min_hist', 8)} para tener percentil</div>" if c["n_min"] else "")
                            + "</div>")
             _av = ""
             if not cobertura.get("listo"):
@@ -11312,6 +11741,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     "a diario, sufren desgaste por volatilidad y pueden caer mucho más que el índice (TQQQ perdió ~80% en 2022). "
                     "No son para mantener en mercados laterales. El mercado puede seguir cayendo más allá del −20%. No es asesoramiento.</div></div>")
 
+    # ---- v7.4 ESTRES FINANCIERO (OFR) + PRESION (replica del Trump Pressure Index) ----
+    try:
+        html.append(_estres_presion_html(estres, presion))
+    except Exception as _dege:
+        _deg("panel:estres_presion", _dege)
     # ---- LECTURA DEL MERCADO Y PROBABILIDADES (fusion de todo) ----
     # defaults incondicionales: el veredicto (stance/light/bull) SIEMPRE debe poder pintarse,
     # aunque scores o probs falten en un build degradado.
@@ -11339,6 +11773,21 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             light, stance = "#F4B740", "ÁMBAR-VERDE — mercado alcista pero selectivo: hay oportunidades, aunque pocas y concentradas."
         else:
             light, stance = "#F4B740", "ÁMBAR — mercado alcista pero sin señales fuertes claras esta semana: mejor paciencia."
+        # v7.4 — JERARQUIA DE LA CASA (no negociable): el CENTINELA manda sobre el semaforo del
+        # scoring. Antes salia VERDE con el CENTINELA en DISTRIBUCION confirmada: el veredicto decia
+        # "compra beta alta" mientras el reloj de regimen decia "nada nuevo de beta alta".
+        _cn_est = (centinela or {}).get("estado")
+        if bull and _cn_est in ("DISTRIBUCION", "ACECHO", "LIQUIDEZ"):
+            _cn_conf = "confirmado" if (centinela or {}).get("confirmado") else "sin confirmar"
+            if _cn_est == "LIQUIDEZ":
+                light, stance = "#F4607A", ("ROJO — el CENTINELA está en LIQUIDEZ (" + _cn_conf + "): el liderazgo es "
+                                           "defensivo, prioridad caja. La puntuación no manda sobre el régimen.")
+            elif _cn_est == "ACECHO":
+                light, stance = "#F4B740", ("ÁMBAR — el CENTINELA está en ACECHO (" + _cn_conf + "): en caja vigilando "
+                                           "los despertares. Solo entra lo que confirme el flujo el viernes.")
+            else:
+                light, stance = "#F4B740", ("ÁMBAR — el CENTINELA está en DISTRIBUCIÓN (" + _cn_conf + ") y manda sobre "
+                                           "la puntuación: mantén lo que tienes con stops, nada nuevo de beta alta.")
         read = (f"Régimen <b>{esc(regime['label'])}</b>, apetito de riesgo <b>{esc(risk['label'])}</b>, "
                 f"tendencia del mercado <b>{'alcista' if bull else 'bajista'}</b>. "
                 f"<b>{n_buy}</b> ETF con puntuación de compra (4–5/5) esta semana.")
@@ -11350,16 +11799,30 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 continue
             pcol = "#2FD08A" if d["pup"] >= 60 else "#F4B740" if d["pup"] >= 50 else "#F4607A"
             acol = "#2FD08A" if d["avg"] >= 0 else "#F4607A"
+            _wl0 = _bt_wilson(d["pup"] / 100.0, d.get("n") or 0)
+            _wl0t = (f" <span style='font-size:10px;color:#5E708A'>(IC95 {_wl0[0]}–{_wl0[1]})</span>" if _wl0[0] is not None else "")
             prob_rows += (f"<tr><td class='pb-l'><b>{sc}/3</b> señales estructurales</td>"
-                          f"<td class='pb-v' style='color:{pcol}'>{d['pup']}%</td>"
+                          f"<td class='pb-v' style='color:{pcol}'>{d['pup']}%{_wl0t}</td>"
                           f"<td class='pb-v' style='color:{acol}'>{d['avg']:+.1f}%</td>"
                           f"<td class='pb-n'>{d['n']} casos</td></tr>")
+        # v7.4 — si la muestra va AL REVES, se dice en la lectura, no se esconde en la tabla
+        try:
+            _p3 = (st.get(3) or {}).get("pup")
+            _p0 = (st.get(0) or {}).get("pup")
+            if _p3 is not None and _p0 is not None and _p3 < _p0:
+                read += (f" <span style='color:#F4B740'>⚠ En esta muestra va al revés: con 3/3 señales subió el {_p3}% "
+                         f"de las veces y con 0/3 el {_p0}%. La puntuación no está dando ventaja a {fwd} semanas: "
+                         "su valor está en recortar caídas, no en elegir ganadores.</span>")
+        except Exception as _dege:
+            _deg("lectura:invertida", _dege)
         # candidatos listos con motivos + probabilidad
         cand = ""
         for r in buy[:8]:
             ls = lite(r); bd = st.get(ls, {})
             reasons = ", ".join(name for name, v in r["parts"] if v)
+            _wl1 = _bt_wilson(bd["pup"] / 100.0, bd.get("n") or 0) if bd.get("pup") is not None else (None, None)
             prob_txt = (f"<b style='color:{'#2FD08A' if bd['pup']>=55 else '#F4B740'}'>{bd['pup']}%</b> histórico de subir en {fwd} sem (media {bd['avg']:+.1f}%)"
+                        + (f" · IC95 {_wl1[0]}–{_wl1[1]}%, n={bd.get('n')}" if _wl1[0] is not None else "")
                         if bd.get("pup") is not None else "—")
             nm = NAMES.get(r["sym"], (r["sym"], r["sym"], ""))[1]
             acc = " <span class='sc-acc'>⚡</span>" if r["obv_cross"] else ""
@@ -11684,6 +12147,29 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     # CARTERA_FINAL = la unica lista que se opera (todos los filtros + tope de posiciones, universo "Todos").
     # TODOS los paneles (veredicto, mesa, track record, candidato, redes, Modo Claude) leen de aqui.
     CARTERA_FINAL = [s for s, _ in (_cart_sorted[:MAX_POSICIONES] if MAX_POSICIONES else _cart_sorted)]
+    # v7.4 — NUEVO / SALEN se miden contra la CESTA REGISTRADA en el track record, no contra el
+    # cuadrante. Antes "salen" eran los que dejaban Lider/Mejorando aunque no estuvieran en tu
+    # cesta (FXI, VGK) y COPX, que si estaba y salia, no aparecia. Y IGV salia "mantener" siendo nueva.
+    _tr_regs = []
+    try:
+        if os.path.exists(TRACK_FILE):
+            with open(TRACK_FILE, "r", encoding="utf-8") as _trfh:
+                _tr_regs = json.load(_trfh) or []
+    except Exception as _dege:
+        _deg("cartera:leer_track", _dege)
+        _tr_regs = []
+    _wk_act = semana_trading(last_date)
+    _reg_act = next((r for r in _tr_regs if r.get("week") == _wk_act), None)
+    _regs_prev = sorted((r for r in _tr_regs if str(r.get("week", "")) < _wk_act), key=lambda r: str(r.get("week", "")))
+    _reg_prev = _regs_prev[-1] if _regs_prev else None
+    _cesta_prev = set(_reg_prev.get("basket", [])) if _reg_prev else None
+    _cesta_cong_dif = ""
+    if _reg_act is not None and set(_reg_act.get("basket", [])) != set(CARTERA_FINAL):
+        _cesta_cong_dif = ("el track record de " + _wk_act + " quedó registrado con "
+                           + (", ".join(_reg_act.get("basket", [])) or "—")
+                           + " (primer build tras el cierre). Este build da " + (", ".join(CARTERA_FINAL) or "—")
+                           + ". Lo que se mide es la registrada.")
+    _cn_frenadas = []
 
     def _prev_quad(d):
         rs = d.get("ratio_series") or []
@@ -11713,7 +12199,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             tot = sum(w.values()) or 1.0
             return {s: w[s] / tot for s in syms}
 
-        def _cartera_block(keep):
+        def _cartera_block(keep, operada=False):
             sel = [(s, d) for s, d in chosen if keep(s)]
             sel.sort(key=_cart_key)
             if MAX_POSICIONES and len(sel) > MAX_POSICIONES:
@@ -11739,7 +12225,10 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     top_h = f"<span class='wk-stk' title='acelerando y no en máximos (no extendidas)'>acciones: {esc(stk)}</span>"
                 else:
                     top_h = f"<span class='wk-stk' title='accion lider (orientativo)'>lider: {esc(top)}</span>" if top else ""
-                isnew = _prev_quad(d) not in ("leading", "improving")
+                if operada and _cesta_prev is not None:
+                    isnew = s not in _cesta_prev          # v7.4: nueva = no estaba en la cesta registrada
+                else:
+                    isnew = _prev_quad(d) not in ("leading", "improving")
                 tag = "<span class='wk-new'>NUEVO</span>" if isnew else "<span class='wk-keep'>mantener</span>"
                 trend_warn = ("<span style='font-size:9.5px;color:#5AA9E6;border:1px solid #5AA9E555;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap' title='rebote por debajo de su media de 40 semanas — mira el gráfico antes de entrar'>⚠ bajo tendencia, mira el gráfico</span>"
                               if (CARTERA_AVISA_TENDENCIA and s in below_trend) else "")
@@ -11765,14 +12254,25 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                          f"<span class='wk-stk' title='regla anti-anomalía: cuando los filtros dejan pocas posiciones (como esta semana el flujo), ninguna se lleva más del "
                          f"{CARTERA_PESO_MAX}% — el resto espera en liquidez a que haya más señales. Editable en CARTERA_PESO_MAX.'>"
                          "quedarse fuera también es una posición</span></div>")
-            ex = [s for s, d in rrg.items() if keep(s) and d["quad"] not in ("leading", "improving") and _prev_quad(d) in ("leading", "improving")]
-            ex_h = (f"<div class='note' style='margin-top:10px;color:#F4607A'><b>Salen esta semana (vender):</b> {', '.join(ex)}</div>" if ex else "")
+            if operada and _cesta_prev is not None:
+                _sel_syms = {x for x, _ in sel}
+                ex = [x for x in sorted(_cesta_prev) if x not in _sel_syms]
+                ex_h = (f"<div class='note' style='margin-top:10px;color:#F4607A'><b>Salen esta semana (vender):</b> {', '.join(ex)}"
+                        f" <span style='color:#9FB0C8'>— estaban en la cesta registrada de {esc(str(_reg_prev.get('week', '')))} y ya no están</span></div>"
+                        if ex else "")
+            else:
+                ex = [s for s, d in rrg.items() if keep(s) and d["quad"] not in ("leading", "improving") and _prev_quad(d) in ("leading", "improving")]
+                ex_h = (f"<div class='note' style='margin-top:10px;color:#F4607A'><b>Salen esta semana (vender):</b> {', '.join(ex)}</div>" if ex else "")
             pesotxt = {"volatilidad": "ponderado por volatilidad inversa", "impulso": "ponderado por impulso", "igual": "a partes iguales"}[PESO]
             head = (f"<div class='note' style='margin-bottom:8px;color:#2FD08A'>"
                     f"<b>👉 Aquí repartes tu dinero:</b> estas <b>{n}</b> posiciones son la cartera de esta semana, con el <b>% de tu capital</b> que va en cada una "
                     f"(tope {MAX_POSICIONES or '∞'} posiciones, {pesotxt}). "
                     f"<b>acciones:</b> = qué comprar si el ETF no se vende en España o quieres apalancar.</div>")
-            return head + rows + ex_h
+            _cong_h = ""
+            if operada and _cesta_cong_dif:
+                _cong_h = ("<div class='note' style='margin:0 0 8px;padding:6px 9px;border-left:3px solid #F4B740;color:#F4B740'>⚠ "
+                           + esc(_cesta_cong_dif) + "</div>")
+            return head + _cong_h + rows + ex_h
 
         bull_banner = ("<div class='note' style='margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(47,208,138,.1);color:#2FD08A'>"
                        "✓ <b>Mercado alcista</b> (S&P por encima de su media de 40 semanas): la estrategia invierte.</div>"
@@ -11782,7 +12282,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                        "<b>liquidez / defensivo</b>. Las posiciones de abajo son orientativas; el backtest estaría en liquidez.</div>")
 
         sec_html = _cartera_block(lambda s: s in SECTORS)
-        all_html = _cartera_block(lambda s: True)
+        all_html = _cartera_block(lambda s: True, operada=True)
         dm_note = ""
         if excluded_dm:
             dm_note = ("<div class='note' style='margin-top:8px;color:#F4B740'>⚠ <b>Excluidos por momentum absoluto negativo</b> "
@@ -11841,8 +12341,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                         "movimiento grande, no acertar el máximo exacto. Los % son un <b>score de deterioro en escala 0-100, no probabilidades calibradas</b>. En internacionales, la 🌏 acumulación "
                         "extranjera actúa de atenuante (el CMF americano infravalora su compra). Ejemplo vivo: tu entrada en EWJ del viernes se audita aquí cada día. No es asesoramiento.</div>"
                         "<table class='sectbl'><tr><th class='se-l'>POSICIÓN</th><th class='se-l'>ESTADO</th>"
-                        "<th class='r' title='score de deterioro 0-100 mostrado como probabilidad ORIENTATIVA de que el techo ya esté formado'>P. TECHO</th>"
-                        "<th class='r' title='100 menos el deterioro: orientativa de continuación'>P. SIGUE</th>"
+                        "<th class='r' title='score de deterioro 0-100: NO es una probabilidad'>DETERIORO</th>"
+                        "<th class='r' title='100 menos el deterioro: NO es una probabilidad'>AGUANTE</th>"
                         "<th class='r' title='el nivel más alto que queda POR DEBAJO del precio: mínimo de 10 sesiones o SMA50 diaria'>STOP</th>"
                         "<th class='r' title='zona orientativa de recompra si corrige: SMA50 diaria o el soporte previo'>RECOMPRA</th>"
                         "<th class='se-l'>LAS 3 RAZONES QUE MÁS PESAN</th></tr>" + gfilas + "</table></div>")
@@ -11925,7 +12425,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 bcells += (f"<td class='r' style='color:{_cc(rb)}'>{_pct(rb)}</td>" if rb is not None else "<td class='r' style='color:#5E708A'>—</td>")
             ew = w.get("ew")
             ewcell = (f"<td class='r' style='color:{_cc(ew)}'>{_pct(ew)}</td>" if ew is not None else "<td class='r' style='color:#5E708A'>—</td>") if has_ew else ""
-            rows += (f"<tr><td class='se-l'>{w['week']}</td>"
+            rows += (f"<tr><td class='se-l'>{w.get('lbl', w['week'])}</td>"
                      f"<td class='r' style='color:{_cc(w['sys'])};font-weight:700'>{_pct(w['sys'])}</td>{ewcell}{bcells}"
                      f"<td class='r' style='color:{_cc(beat)}'>{_pct(beat)}</td></tr>")
         cumcells = "".join(f"<td class='r' style='color:{_cc(cum.get(b,0))};font-weight:700'>{_pct(cum.get(b,0))}</td>" for b in bn)
@@ -11944,7 +12444,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                       else f"<b style='color:#F4607A'>pierde por {_pct(beat_ew)}</b>")
             ewphrase = (f" · vs <b>sectores equiponderados</b> {_pct(ewcum)}: la <b>selección</b> {ewverd} "
                         "a tener los 11 sectores por igual")
-        head = (f"Desde que registras ({tperf['n']} semanas): <b style='color:{_cc(cum['sys'])}'>sistema {_pct(cum['sys'])}</b> · "
+        head = (f"Desde que registras ({tperf['n']} registros · {tperf.get('n_cal', tperf['n'])} semanas de calendario): <b style='color:{_cc(cum['sys'])}'>sistema {_pct(cum['sys'])}</b> · "
                 f"SPY {_pct(cum.get('SPY',0))} · QQQ {_pct(cum['QQQ']) if 'QQQ' in cum else '—'} · IWM {_pct(cum['IWM']) if 'IWM' in cum else '—'} → "
                 f"<b style='color:{_cc(beat_cum)}'>{verdict}</b>{ewphrase}")
         pend = tperf["pending"]
@@ -12011,7 +12511,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                     + rows + cumrow + "</table></div>"
                     f"<div class='note' style='margin-top:8px'>La <b>cesta del sistema</b> = las posiciones de la <b>Cartera de la semana</b> (equiponderadas), rotada cada semana. "
                     "<b>sect.EW</b> = los <b>11 sectores SPDR equiponderados</b> (sin rotar): es la referencia honesta de si tu <b>selección</b> aporta algo o si te bastaría con tenerlos todos por igual. "
-                    f"En curso ({esc(pend['week'])}): <b>{esc(', '.join(pend['basket']) or '—')}</b> — su resultado se medirá en el próximo registro. "
+                    f"Decidida al cierre de {esc(pend['week'])} y en curso ahora: <b>{esc(', '.join(pend['basket']) or '—')}</b> — su resultado se medirá en el próximo registro. "
                     "<b>Paper-track honesto</b>: sin comisiones, impuestos ni slippage; se construye solo si ejecutas la herramienta cada semana. No es asesoramiento.</div></div>")
     elif basket:
         html.append("<div class='panel full'><h2>📈 Track record del sistema — rendimiento acumulado verificable</h2>"
@@ -12032,12 +12532,27 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     reg_short = regime["label"].split(" / ")[0]
     mkt = "alcista" if bull else "bajista"
     top_pos = list(CARTERA_FINAL)          # identica a la Cartera de la semana: una sola verdad
+    _cn_e2 = (centinela or {}).get("estado")
     if not bull:
         cartera_txt = "liquidez — el filtro de tendencia no invierte en mercado bajista"
+    elif top_pos and _cn_e2 == "LIQUIDEZ":
+        cartera_txt = ("nada nuevo — CENTINELA en LIQUIDEZ (a caja). La cesta del sistema, la que mide el track record, "
+                       "sería: " + ", ".join(top_pos))
+    elif top_pos and _cn_e2 in ("DISTRIBUCION", "ACECHO"):
+        # v7.4: la cesta NO se toca (la mide el track record); lo que cambia es la orden que se te da
+        _cn_nuevas = [s for s in top_pos if (_cesta_prev is None or s not in _cesta_prev)]
+        _cn_frenadas = [s for s in _cn_nuevas if _es_beta_alta(s, df)]
+        _cn_ok = [s for s in top_pos if s not in _cn_frenadas]
+        cartera_txt = ", ".join(_cn_ok) if _cn_ok else "—"
+        if _cn_frenadas:
+            cartera_txt += (" · EN ESPERA por el CENTINELA (beta alta nueva): " + ", ".join(_cn_frenadas)
+                            + (" — si no las tenías ya" if _cesta_prev is None else ""))
     elif top_pos:
         cartera_txt = ", ".join(top_pos)
     else:
         cartera_txt = "nada claro — mantener liquidez"
+    if _cesta_cong_dif:
+        cartera_txt += " · ⚠ " + _cesta_cong_dif
     breadth_pct = round(100 * sum(1 for s in rrg if rrg[s]["ratio"] >= 100) / max(1, len(rrg)))
     if not bull:
         ojo = "el S&P está por debajo de su media de 40s: prioriza <b>liquidez / defensivo</b>."
@@ -12599,7 +13114,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     # ===== PREVISION MACRO (reloj de inversion) — al final del todo =====
     try:
         _macro = fetch_macro()
-        _mr = compute_macro_regime(_macro, ISM_MANUAL)
+        _ism_ok = _ism_vigente()          # v7.4: un ISM a mano caducado no cuenta (se leia como si fuera de hoy)
+        _mr = compute_macro_regime(_macro, _ism_ok)
         if _macro and _mr:
             def _ar(it):
                 d = it["dir"]; gu = it.get("goodup", True)
@@ -12618,9 +13134,14 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                           f"<td class='r'>{v['val']:g}{(' ' + v['unit']) if v['unit'] else ''}</td>"
                           f"<td class='r' style='color:{c}'>{a} {v['dir']:+g}</td></tr>")
                 return r
-            ism_row = (f"<tr><td class='se-l'>ISM manufacturas <span style='color:#5E708A;font-size:10px'>(manual)</span></td>"
-                       f"<td class='r'>{ISM_MANUAL:g}</td>"
-                       f"<td class='r' style='color:{'#2FD08A' if ISM_MANUAL >= 50 else '#F4607A'}'>{'expansión' if ISM_MANUAL >= 50 else 'contracción'}</td></tr>")
+            if _ism_ok is not None:
+                ism_row = (f"<tr><td class='se-l'>ISM manufacturas <span style='color:#5E708A;font-size:10px'>(manual)</span></td>"
+                           f"<td class='r'>{_ism_ok:g}</td>"
+                           f"<td class='r' style='color:{'#2FD08A' if _ism_ok >= 50 else '#F4607A'}'>{'expansión' if _ism_ok >= 50 else 'contracción'}</td></tr>")
+            else:
+                ism_row = (f"<tr><td class='se-l'>ISM manufacturas <span style='color:#5E708A;font-size:10px'>(manual)</span></td>"
+                           f"<td class='r' style='color:#5E708A'>{ISM_MANUAL:g}</td>"
+                           f"<td class='r' style='color:#F4B740'>caducado ({esc(str(ISM_MANUAL_FECHA))}): no cuenta — actualízalo en config.py</td></tr>")
             conf_list, wait_list = [], []
             for s in _mr["favor"]:
                 q = (rrg.get(s, {}) or {}).get("quad")
@@ -12633,7 +13154,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 "<div class='panel full'><h2>Previsión macro — reloj de inversión</h2>"
                 "<div class='note'>Cruzo la <b>dirección del crecimiento</b> (datos blandos, que se adelantan) con la <b>dirección de la inflación</b> "
                 "(PCE/IPC subyacente) para situar el régimen, y miro dónde está entrando el dinero en tu propio panel. "
-                "<b>Es un mapa de probabilidades por régimen, no una predicción.</b></div>"
+                "<b>Es un mapa por régimen, no una predicción.</b></div>"
                 "<div class='scrollx'><table class='se'><tr><th class='se-l'>indicador</th><th class='r'>nivel</th><th class='r'>tendencia</th></tr>"
                 "<tr><td colspan='3' style='color:#5E708A;font-size:11px;padding-top:6px'>DUROS (retrasados)</td></tr>"
                 + _rows("hard") +
@@ -12651,21 +13172,21 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 + (f"Ya en Líder/Mejorando: <b style='color:#2FD08A'>{', '.join(conf_list)}</b>. " if conf_list else "Aún ninguno de los favorecidos está en Líder/Mejorando. ")
                 + (f"Aún no confirman: <span style='color:#9FB0C8'>{', '.join(wait_list)}</span>. " if wait_list else "")
                 + "Actúa donde el régimen <b>y</b> el flujo coinciden.</div>"
-                "<div class='scrollx' style='margin-top:10px'><table class='se'><tr><th class='se-l'>escenario</th><th class='r'>prob.*</th><th class='se-l'>implicación</th></tr>"
-                f"<tr><td class='se-l'>Base</td><td class='r' style='font-weight:700'>~{pr['base']}%</td><td class='se-l'>{esc_base}</td></tr>"
-                f"<tr><td class='se-l'>Alcista</td><td class='r'>~{pr['bull']}%</td><td class='se-l'>crecimiento reacelera con inflación contenida → giro a cíclicos/tech (XLK, XLY, XLF, IWM)</td></tr>"
-                f"<tr><td class='se-l'>Bajista</td><td class='r'>~{pr['bear']}%</td><td class='se-l'>susto de crecimiento o inflación que reacelera → defensa (XLP, XLU, XLV, TLT, GLD)</td></tr>"
+                "<div class='scrollx' style='margin-top:10px'><table class='se'><tr><th class='se-l'>escenario</th><th class='se-l'>implicación</th></tr>"
+                f"<tr><td class='se-l'>Base (lo que dice hoy la señal)</td><td class='se-l'>{esc_base}</td></tr>"
+                "<tr><td class='se-l'>Alternativa alcista</td><td class='se-l'>crecimiento reacelera con inflación contenida → giro a cíclicos/tech (XLK, XLY, XLF, IWM)</td></tr>"
+                "<tr><td class='se-l'>Alternativa bajista</td><td class='se-l'>susto de crecimiento o inflación que reacelera → defensa (XLP, XLU, XLV, TLT, GLD)</td></tr>"
                 "</table></div>"
                 "<div class='note' style='margin-top:8px'><b>Línea de tiempo — qué dato rompe el empate:</b> "
                 "el <b>PCE subyacente</b> (fin de mes) marca el eje inflación; las <b>nóminas</b> (1er viernes), el <b>ISM</b> (1er día hábil) y el <b>IPC</b> (mitad de mes) marcan el crecimiento. "
                 "Cada build lo recalcula con el dato fresco.</div>"
-                f"<div class='note' style='margin-top:8px;color:#5E708A'>*Probabilidades gruesas derivadas de la fuerza de la señal (claridad {round(_mr['conf'] * 100)}%), "
-                "no de un modelo predictivo. La previsión macro es de poca pericia hasta para los bancos: úsala como marco, no como certeza. "
+                f"<div class='note' style='margin-top:8px;color:#5E708A'>Sin porcentajes: este método no tiene una muestra con la que calcularlos "
+                f"(claridad de la señal hoy: {round(_mr['conf'] * 100)}%). La previsión macro es de poca pericia hasta para los bancos: úsala como marco, no como certeza. "
                 "El <b>flujo manda</b>. No es asesoramiento.</div></div>")
         elif _macro is None:
             _k = _fred_key()
             if not _k:
-                _diag = ("No encuentro la key. En el <b>PC</b>: pon <b>clave_fred.txt</b> (con la key dentro) en la misma carpeta "
+                _diag = ("La descarga pública de FRED (sin key) no respondió y tampoco encuentro la key. En el <b>PC</b>: pon <b>clave_fred.txt</b> (con la key dentro) en la misma carpeta "
                          "desde la que lanzas <code>python rotacion.py</code> y re-ejecuta. En <b>GitHub</b>: ponla en Secrets "
                          "(Settings → Secrets and variables → Actions → <b>FRED_API_KEY</b>).")
             else:
@@ -12871,7 +13392,10 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         c1 = (f"<div style='font-size:14px;margin-bottom:8px'><b style='color:{light}'>{esc(sem_short)}</b> · {esc(reg_short)} · {esc(risk['label'])}{_fg_t}</div>")
         c1 += ("<div style='font-size:12px;margin-bottom:6px;padding:6px 8px;background:rgba(91,140,255,.08);border:1px solid #5B8CFF33;border-radius:6px'>"
                "CARTERA FINAL: <b style='color:#5B8CFF'>" + esc(", ".join(CARTERA_FINAL) if CARTERA_FINAL else "liquidez") + "</b>"
-               "<span style='color:#8FA3C0;font-size:10px'> — la única lista que se opera; el resto son candidatos</span></div>")
+               "<span style='color:#8FA3C0;font-size:10px'> — la única lista que se opera; el resto son candidatos</span>"
+               + (("<br><span style='color:#F4B740;font-size:11px'>⏸ en espera por el CENTINELA (beta alta nueva): <b>"
+                   + esc(", ".join(_cn_frenadas)) + "</b></span>") if _cn_frenadas else "")
+               + "</div>")
         _ent = ", ".join(entering[:4]) or "—"
         _sal = ", ".join(leaving[:4]) or "—"
         c1 += (f"<div style='font-size:12px;line-height:1.7'>Entran (Mejorando): <b style='color:#4CC2E0'>{esc(_ent)}</b><br>"
@@ -13299,43 +13823,27 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("<div id='vista-sue' style='display:none'>")
     try:
         _su_sb = []
-        # --- 1) DE QUE ESTA HECHO EL INDICE
+        # --- 0) v7.4 — ¿DONDE ENTRA EL DINERO? Las MISMAS bolitas del RRG, por familias
+        try:
+            _rf = resumen_por_familias(rrg, flow)
+            if _rf:
+                _su_sb.append(_mod("🟢 ¿DÓNDE ENTRA EL DINERO? — LAS MISMAS BOLITAS DEL RRG", _familias_html(_rf)))
+        except Exception as _dege:
+            _deg("vista_suelos:familias", _dege)
+        # --- 1) DE QUE ESTA HECHO EL INDICE (v7.4: partido en las bolitas del RRG)
         for _su_ix in ("NASDAQ 100 (QQQ)", "S&P 500 (SPY)", "DOW JONES (DIA)", "RUSSELL 2000 (IWM)"):
-            _su_dc = descomponer_indice(_su_ix, rrg, flow, scores)
+            _su_b = (COMPOSICION.get(_su_ix) or {}).get("bench")
+            _su_fp = spy_flow if _su_b == BENCH else (flow or {}).get(_su_b)
+            _su_dc = descomponer_indice(_su_ix, rrg, flow, scores, flujo_propio=_su_fp)
             if not _su_dc:
                 continue
-            _su_col = {"verde": GRN, "rojo": RED, "ambar": AMB}.get(_su_dc["color"], GRY)
-            _su_t = (f"<div style='font-size:12px;margin-bottom:8px'>"
-                  f"<span style='color:{GRN};font-weight:700'>{_su_dc['p_entra']}% entra</span> · "
-                  f"<span style='color:{GRY}'>{_su_dc['p_plano']}% plano</span> · "
-                  f"<span style='color:{RED};font-weight:700'>{_su_dc['p_sale']}% sale</span>"
-                  f"<span style='color:#5E708A'> (de {_su_dc['peso_visto']}% del índice cubierto)</span></div>")
-            # barra visual del reparto de peso
-            _su_tot = max(1, _su_dc["peso_visto"])
-            _su_t += ("<div style='display:flex;height:16px;border-radius:4px;overflow:hidden;"
-                   "margin-bottom:10px'>"
-                   f"<div style='width:{100*_su_dc['p_entra']/_su_tot:.0f}%;background:{GRN}'></div>"
-                   f"<div style='width:{100*_su_dc['p_plano']/_su_tot:.0f}%;background:#2A3648'></div>"
-                   f"<div style='width:{100*_su_dc['p_sale']/_su_tot:.0f}%;background:{RED}'></div></div>")
-            _su_t += ("<table><tr style='color:#888;font-size:10px'><td>bloque</td><td>peso</td>"
-                   "<td>CMF</td><td>dinero</td><td>cuadrante</td></tr>")
-            for _su_f in _su_dc["filas"]:
-                _su_sc2 = {1: GRN, -1: RED}.get(_su_f["signo"], GRY)
-                _su_cm = f"{_su_f['cmf']:+.2f}" if _su_f["cmf"] is not None else "—"
-                _su_t += (f"<tr><td style='font-weight:700'>{esc(_su_f['etq'])} "
-                       f"<span style='color:{GRY};font-weight:400;font-size:10px'>{esc(_su_f['sym'])}</span></td>"
-                       f"<td style='font-weight:700'>{_su_f['peso']}%</td>"
-                       f"<td style='color:{GRY}'>{_su_cm}</td>"
-                       f"<td style='color:{_su_sc2};font-weight:700'>{esc(_su_f['estado'])}</td>"
-                       f"<td style='color:{GRY};font-size:11px'>{esc(_su_f['quad'] or '—')}</td></tr>")
-            _su_t += "</table>"
-            _su_t += (f"<div style='color:{_su_col};font-size:12px;margin-top:8px'>{esc(_su_dc['lectura'])}</div>")
-            _su_t += ("<div style='font-size:10px;color:#666;margin-top:6px'>"
-                   "<b>Esto NO es una predicción.</b> Es aritmética de composición: cuánto del peso "
-                   "del índice tiene dinero entrando y cuánto saliendo. No dice cuánto subirá, dice "
-                   "si los bloques que mandan acompañan o frenan. Los pesos son aproximados y "
-                   "cambian cada trimestre.</div>")
-            _su_sb.append(_mod(f"⚖️ DE QUÉ ESTÁ HECHO EL {esc(_su_dc['nombre'])}", _su_t))
+            _su_sb.append(_mod(f"⚖️ DE QUÉ ESTÁ HECHO EL {esc(_su_dc['nombre'])}", _composicion_html(_su_dc)))
+        # --- 2) v7.4 — EMPUJE DE AMPLITUD (Zweig Breadth Thrust)
+        try:
+            _su_sb.append(_mod("🚀 EMPUJE DE AMPLITUD (ZWEIG) — " + esc((zweig or {}).get("estado", "SIN DATO")),
+                               _zweig_html(zweig)))
+        except Exception as _dege:
+            _deg("vista_suelos:zweig", _dege)
         for _su_blk in _su_sb:
             html.append(_su_blk)
     except Exception as _dege:
@@ -15450,6 +15958,510 @@ def export_estela(rrg, flow, scores, suelo, graduados, despertares, centinela,
 # ----------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------
+# ======================================================================
+# v7.4 — TRES INDICADORES NUEVOS Y SUS AYUDANTES
+#   · ZWEIG BREADTH THRUST con el universo de acciones que ya se baja
+#   · ESTRES FINANCIERO de la OFR (respaldo: STLFSI4 de FRED)
+#   · REPLICA de mercado del TRUMP PRESSURE INDEX (Deutsche Bank)
+# Todo es CONTEXTO, no disparador: la decision sigue siendo del cierre del viernes.
+# Sin datos -> None. Nunca un 0 inventado.
+# ======================================================================
+
+def _fred_csv(sid, desde=None, timeout=25):
+    """Serie de FRED SIN key: la descarga publica fredgraph.csv. None si falla."""
+    try:
+        url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=" + str(sid)
+        if desde:
+            url += "&cosd=" + str(desde)
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
+        if getattr(r, "status_code", 0) != 200 or not r.text or "<html" in r.text[:300].lower():
+            return None
+        dfx = pd.read_csv(StringIO(r.text))
+        if dfx.shape[1] < 2:
+            return None
+        ix = pd.to_datetime(dfx.iloc[:, 0], errors="coerce")
+        val = pd.to_numeric(dfx.iloc[:, 1], errors="coerce")
+        s = pd.Series(val.values, index=ix)
+        s = s[s.index.notna()].dropna().sort_index()
+        s = s[~s.index.duplicated(keep="last")]
+        return s if len(s) else None
+    except Exception as _dege:
+        _deg(f"_fred_csv:{sid}", _dege)
+        return None
+
+
+def _ism_vigente(max_meses=1):
+    """ISM_MANUAL solo vale si es reciente: un dato a mano caducado se lee como si fuera de hoy."""
+    try:
+        y, m = (int(x) for x in str(ISM_MANUAL_FECHA).split("-")[:2])
+        hoy = dt.date.today()
+        if (hoy.year * 12 + hoy.month) - (y * 12 + m) <= max_meses:
+            return ISM_MANUAL
+    except Exception as _dege:
+        _deg("_ism_vigente", _dege)
+    return None
+
+
+def _semanas_entre(wa, wb):
+    """Semanas entre dos etiquetas '%G-W%V' (las del track record). None si no se pueden leer."""
+    try:
+        ya, ka = str(wa).split("-W")
+        yb, kb = str(wb).split("-W")
+        da = dt.date.fromisocalendar(int(ya), int(ka), 5)
+        db = dt.date.fromisocalendar(int(yb), int(kb), 5)
+        return max(1, (db - da).days // 7)
+    except Exception:
+        return None
+
+
+def _beta_semanal(sym, df, semanas=52, min_n=20):
+    try:
+        if df is None or sym not in df.columns or BENCH not in df.columns:
+            return None
+        sub = df[[sym, BENCH]].astype(float)
+        r = (sub / sub.shift(1) - 1.0).dropna().iloc[-semanas:]
+        if len(r) < min_n:
+            return None
+        v = float(r[BENCH].var())
+        return float(r[sym].cov(r[BENCH]) / v) if v > 0 else None
+    except Exception as _dege:
+        _deg("_beta_semanal", _dege)
+        return None
+
+
+def _es_beta_alta(sym, df, umbral=1.3):
+    """Beta alta = de la lista de explosivos o beta semanal contra el S&P >= 1.3."""
+    if sym in SECTORES_EXPLOSIVOS:
+        return True
+    b = _beta_semanal(sym, df)
+    return bool(b is not None and b >= umbral)
+
+
+def _svg_linea_umbral(vals, refs=(), w=560, h=120, color="#4CC2E0", lo=None, hi=None):
+    """Linea sencilla con umbrales horizontales discontinuos. refs = [(valor, color, etiqueta)]."""
+    try:
+        v = [float(x) for x in (vals or []) if x is not None and x == x]
+        if len(v) < 2:
+            return ""
+        rv = [float(r[0]) for r in refs]
+        a = min(v + rv) if lo is None else lo
+        b = max(v + rv) if hi is None else hi
+        if b - a < 1e-9:
+            b = a + 1.0
+        pad = (b - a) * 0.08
+        a, b = a - pad, b + pad
+        ml, mr, mt, mb = 6, 52, 6, 6
+        def X(i):
+            return ml + i * (w - ml - mr) / (len(v) - 1)
+        def Y(x):
+            return mt + (b - x) / (b - a) * (h - mt - mb)
+        pts = " ".join(f"{X(i):.1f},{Y(x):.1f}" for i, x in enumerate(v))
+        out = f"<svg viewBox='0 0 {w} {h}' style='width:100%;height:auto;display:block'>"
+        for val, col, etq in refs:
+            y = Y(float(val))
+            out += (f"<line x1='{ml}' y1='{y:.1f}' x2='{w - mr}' y2='{y:.1f}' stroke='{col}' stroke-width='1' "
+                    f"stroke-dasharray='4,3'/><text x='{w - mr + 4}' y='{y + 3:.1f}' fill='{col}' font-size='9'>{etq}</text>")
+        out += f"<polyline points='{pts}' fill='none' stroke='{color}' stroke-width='1.8'/>"
+        out += f"<circle cx='{X(len(v) - 1):.1f}' cy='{Y(v[-1]):.1f}' r='3' fill='{color}'/>"
+        return out + "</svg>"
+    except Exception as _dege:
+        _deg("_svg_linea_umbral", _dege)
+        return ""
+
+
+def compute_zweig(stock_close, bench=None, min_acciones=100):
+    """ZWEIG BREADTH THRUST con el universo de acciones que ya baja el terminal (el del McClellan).
+
+    QUE ES: Martin Zweig. Cada dia, avances / (avances + descensos); media exponencial de
+    10 sesiones. Si pasa de MENOS de 0.40 a MAS de 0.615 en 10 sesiones o menos, el mercado
+    ha pasado de vender casi todo a comprar casi todo de golpe. Es una senal rara.
+
+    QUE NO ES: el original usa los ~3.000 valores de la Bolsa de Nueva York. Esto es el S&P 500
+    y las acciones extra del terminal, asi que los niveles no son identicos. La lista es la de
+    HOY (las que sobrevivieron) y con ~2 anyos de datos hay muy pocas senales: N pequeno.
+
+    Los dias incompletos (el ultimo con medio universo sin cierre) se descartan: si cuentan
+    menos del 80% de lo normal, ese dia no es una medida, es un hueco."""
+    try:
+        if not stock_close or len(stock_close) < min_acciones:
+            return None
+        px = pd.DataFrame({k: v for k, v in stock_close.items() if v is not None and len(v) > 60})
+        if px.shape[1] < min_acciones:
+            return None
+        px = px.sort_index()
+        dif = px.diff()
+        adv = (dif > 0).sum(axis=1)
+        dec = (dif < 0).sum(axis=1)
+        tot = adv + dec
+        ref = tot.rolling(20, min_periods=5).median()
+        ok = (tot > 0) & ((tot >= 0.8 * ref) | ref.isna())
+        ratio = (adv[ok] / tot[ok]).astype(float)
+        if len(ratio) < ZWEIG_SPAN + 40:
+            return None
+        ema = ratio.ewm(span=ZWEIG_SPAN, adjust=False).mean().iloc[ZWEIG_SPAN:]
+        vals = [float(x) for x in ema.values]
+        fechas = list(ema.index)
+        senales, armado_en = [], None
+        for i, v in enumerate(vals):
+            if v < ZWEIG_BAJO:
+                armado_en = i
+            elif v > ZWEIG_ALTO and armado_en is not None and i - armado_en <= ZWEIG_VENTANA:
+                senales.append((i, i - armado_en))
+                armado_en = None
+        n = len(vals) - 1
+        hoy = vals[-1]
+        bajos = [i for i, v in enumerate(vals) if v < ZWEIG_BAJO]
+        ult_bajo = bajos[-1] if bajos else None
+        estado, quedan, limite, necesita = "INACTIVO", None, None, None
+        fecha_bajo = str(fechas[ult_bajo].date()) if ult_bajo is not None else None
+        if senales and n - senales[-1][0] <= ZWEIG_VENTANA:
+            estado = "DISPARADO"
+        elif ult_bajo is not None and n - ult_bajo <= ZWEIG_VENTANA:
+            quedan = ZWEIG_VENTANA - (n - ult_bajo)
+            if quedan <= 0:
+                estado = "NO LLEGÓ"
+            else:
+                estado = "ARMADO"
+                a = 2.0 / (ZWEIG_SPAN + 1)
+                q = (1 - a) ** quedan
+                necesita = (ZWEIG_ALTO - q * hoy) / (1 - q)
+                try:
+                    _d0 = fechas[-1].date()
+                    _ses = _nyse_bdays(_d0 + dt.timedelta(days=1), _d0 + dt.timedelta(days=40))
+                    if len(_ses) >= quedan:
+                        limite = str(_ses[quedan - 1].date())
+                except Exception as _dege:
+                    _deg("compute_zweig:calendario", _dege)
+        elif ult_bajo is not None and n - ult_bajo <= 3 * ZWEIG_VENTANA and not (senales and senales[-1][0] > ult_bajo):
+            estado = "NO LLEGÓ"
+        historia = []
+        b = bench.dropna().sort_index() if bench is not None else None
+        for i, k in senales:
+            fx = fechas[i]
+            fila = {"fecha": str(fx.date()), "sesiones": k, "r21": None, "r63": None}
+            if b is not None and len(b):
+                pos = b.index.searchsorted(fx)
+                for h, key in ((21, "r21"), (63, "r63")):
+                    if pos < len(b) and pos + h < len(b):
+                        fila[key] = round(float(b.iloc[pos + h] / b.iloc[pos] - 1) * 100, 1)
+            historia.append(fila)
+        return {"estado": estado, "hoy": round(hoy, 3), "min10": round(min(vals[-ZWEIG_VENTANA:]), 3),
+                "crudo": round(float(ratio.iloc[-1]), 3), "fecha": str(fechas[-1].date()),
+                "adv": int(adv[ok].iloc[-1]), "dec": int(dec[ok].iloc[-1]),
+                "quedan": quedan, "limite": limite,
+                "necesita": (round(necesita, 3) if necesita is not None else None),
+                "fecha_bajo": fecha_bajo, "senales": historia,
+                "senal_hoy": bool(senales and senales[-1][0] == n),
+                "serie": [round(x, 4) for x in vals[-120:]],
+                "n_acciones": int(px.shape[1]), "n_sesiones": len(vals), "desde": str(fechas[0].date())}
+    except Exception as _dege:
+        _deg("compute_zweig", _dege)
+        return None
+
+
+def _zweig_html(z):
+    AMB, GRN, RED, GRY, CYN = "#FFB000", "#00E676", "#FF5252", "#8A96A8", "#4CC2E0"
+    if not z:
+        return ("<div style='font-size:12px;color:#8A96A8'>Sin datos suficientes: hace falta el universo de "
+                "acciones (mínimo 100 con historia). No se inventa una serie.</div>")
+    col = {"DISPARADO": GRN, "ARMADO": AMB}.get(z["estado"], GRY)
+    t = (f"<div style='font-size:13px;margin-bottom:6px'><b style='color:{col}'>{esc(z['estado'])}</b> · media de 10 "
+         f"sesiones <b>{z['hoy']:.3f}</b> · mínimo de las 10 últimas {z['min10']:.3f} · el {esc(z['fecha'])} "
+         f"subieron {z['adv']} y bajaron {z['dec']}</div>")
+    if z["estado"] == "ARMADO":
+        if z.get("necesita") is not None and z["necesita"] <= 1:
+            t += (f"<div style='font-size:12px;color:{AMB}'>Se armó al bajar de 0.40 (último día por debajo: "
+                  f"{esc(z['fecha_bajo'] or '?')}). Para dispararse tiene que pasar de 0.615 antes del "
+                  f"<b>{esc(z['limite'] or '?')}</b> ({z['quedan']} sesión/es). Haría falta que subiera, de media, "
+                  f"un <b>{100 * z['necesita']:.0f}%</b> de las acciones cada día.</div>")
+        else:
+            t += (f"<div style='font-size:12px;color:{GRY}'>Se armó (último día por debajo de 0.40: "
+                  f"{esc(z['fecha_bajo'] or '?')}), pero con {z['quedan']} sesión/es por delante ya no es alcanzable: "
+                  "haría falta que subiera más del 100% de las acciones cada día.</div>")
+    elif z["estado"] == "DISPARADO":
+        _s = z["senales"][-1] if z.get("senales") else {}
+        t += (f"<div style='font-size:12px;color:{GRN}'>Disparado el {esc(_s.get('fecha', '?'))}: pasó de menos de 0.40 a "
+              f"más de 0.615 en {_s.get('sesiones', '?')} sesiones.</div>")
+    elif z["estado"] == "NO LLEGÓ":
+        t += (f"<div style='font-size:12px;color:{GRY}'>Se armó (último día por debajo de 0.40: {esc(z['fecha_bajo'] or '?')}) "
+              "pero no pasó de 0.615 a tiempo: la sobreventa no se convirtió en empuje.</div>")
+    else:
+        t += f"<div style='font-size:12px;color:{GRY}'>Sin sobreventa extrema reciente: no ha bajado de 0.40.</div>"
+    t += ("<div style='margin:8px 0 2px'>"
+          + _svg_linea_umbral(z["serie"], refs=[(ZWEIG_ALTO, GRN, "0.615"), (0.5, "#3A4658", "0.50"),
+                                                (ZWEIG_BAJO, RED, "0.40")], color=CYN, lo=0.2, hi=0.8)
+          + "<div style='font-size:9.5px;color:#5E708A'>últimas 120 sesiones de la media de 10</div></div>")
+    hs = z.get("senales") or []
+    t += (f"<div style='font-size:11px;margin-top:6px'>Señales en los datos del terminal (desde {esc(z['desde'])}, "
+          f"{z['n_sesiones']} sesiones): <b>{len(hs)}</b>")
+    for h in hs[-6:]:
+        r21 = f"{h['r21']:+.1f}%" if h.get("r21") is not None else "aún sin dato"
+        r63 = f"{h['r63']:+.1f}%" if h.get("r63") is not None else "aún sin dato"
+        t += f"<br>· {esc(h['fecha'])}: S&amp;P a 1 mes {r21}, a 3 meses {r63}"
+    t += "</div>"
+    t += ("<div style='font-size:10px;color:#666;margin-top:8px'><b>Qué es.</b> La señal de Martin Zweig: cuando la "
+          "media de 10 sesiones de «suben ÷ (suben + bajan)» pasa de menos de 0.40 a más de 0.615 en 10 sesiones o "
+          "menos, el mercado ha pasado de vender casi todo a comprar casi todo de golpe. Es rara.<br><b>Lo que NO es.</b> "
+          f"El original usa los ~3.000 valores de la Bolsa de Nueva York; esto son las {z['n_acciones']} acciones que ya "
+          "baja el terminal (sobre todo el S&amp;P 500), así que los niveles no son idénticos. La lista es la de hoy (las "
+          "que sobrevivieron) y hay muy pocas señales: N pequeño, pista, no prueba. Contexto, no disparador: se decide "
+          "con el cierre del viernes. No es asesoramiento.</div>")
+    return t
+
+
+def _estres_lectura(s, fuente, comp, diario=True):
+    s = s.dropna().astype(float)
+    v = float(s.iloc[-1])
+    k1, k2 = (5, 21) if diario else (1, 4)
+    d1 = v - float(s.iloc[-1 - k1]) if len(s) > k1 else None
+    d2 = v - float(s.iloc[-1 - k2]) if len(s) > k2 else None
+    pct = int(round(100 * float((s <= v).mean())))
+    ch = (s - s.shift(k2)).dropna()
+    p_salto = int(round(100 * float((ch <= d2).mean()))) if (d2 is not None and len(ch) > 100) else None
+    prev = s.iloc[:-5]
+    mayores = prev[prev >= v]
+    max_desde = str(mayores.index[-1].date()) if len(mayores) else None
+    max_hace = (len(s) - 1 - s.index.get_loc(mayores.index[-1])) if len(mayores) else None
+    cola = s.iloc[-(260 if diario else 52):]
+    return {"fuente": fuente, "valor": round(v, 2), "fecha": str(s.index[-1].date()),
+            "d1": (round(d1, 2) if d1 is not None else None), "d2": (round(d2, 2) if d2 is not None else None),
+            "pct": pct, "p_salto": p_salto, "salto": bool(p_salto is not None and p_salto >= 90 and (d2 or 0) > 0),
+            "max_desde": max_desde, "max_hace": max_hace, "comp": comp, "diario": diario,
+            "serie": [round(float(x), 3) for x in cola.values], "desde": str(s.index[0].date())}
+
+
+def fetch_estres():
+    """ESTRES FINANCIERO de la OFR (oficina de investigacion financiera del Tesoro de EE.UU.).
+    33 variables de mercado de todo el mundo en cinco familias: credito, valoracion de bolsa,
+    financiacion, activos refugio y volatilidad. Por encima de 0 = estres por encima de lo normal.
+    Publica con dos dias habiles de retraso. Si la OFR no responde: STLFSI4 de FRED (semanal).
+    Si no responde nadie: None. No se inventa."""
+    if not ESTRES_ON:
+        return None
+    for url in OFR_FSI_URLS:
+        try:
+            r = requests.get(url, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
+            if getattr(r, "status_code", 0) != 200 or len(r.text or "") < 2000:
+                continue
+            dfx = pd.read_csv(StringIO(r.text))
+            if dfx.shape[1] < 2:
+                continue
+            cols = list(dfx.columns)
+            dcol = next((c for c in cols if "date" in str(c).lower()), cols[0])
+            ix = pd.to_datetime(dfx[dcol], errors="coerce")
+            dfx = dfx.drop(columns=[dcol])
+            dfx.index = ix
+            dfx = dfx[dfx.index.notna()].sort_index()
+            low = {str(c).strip().lower(): c for c in dfx.columns}
+            def _c(*claves):
+                for k, c in low.items():
+                    if all(x in k for x in claves):
+                        return c
+                return None
+            ctot = _c("fsi")
+            cats = [(nm, _c(cl)) for nm, cl in (("Crédito", "credit"), ("Valoración de bolsa", "equity"),
+                                                ("Financiación", "funding"), ("Refugio", "safe"),
+                                                ("Volatilidad", "volat"))]
+            cats = [(nm, c) for nm, c in cats if c is not None]
+            if ctot is not None:
+                tot = pd.to_numeric(dfx[ctot], errors="coerce")
+            elif len(cats) >= 4:
+                tot = sum(pd.to_numeric(dfx[c], errors="coerce") for _, c in cats)
+            else:
+                continue
+            tot = tot.dropna()
+            if len(tot) < 500 or float(tot.abs().max()) > 60:
+                continue
+            comp = {}
+            for nm, c in cats:
+                sc = pd.to_numeric(dfx[c], errors="coerce").dropna()
+                if len(sc):
+                    comp[nm] = round(float(sc.iloc[-1]), 2)
+            return _estres_lectura(tot, "OFR", comp, diario=True)
+        except Exception as _dege:
+            _deg("fetch_estres:ofr", _dege)
+    s = _fred_csv("STLFSI4")
+    if s is not None and len(s) > 200:
+        return _estres_lectura(s, "STLFSI4", {}, diario=False)
+    return None
+
+
+def compute_presion_trump(long_close=None, spy_close=None):
+    """REPLICA APROXIMADA de la parte de mercado del 'Trump Pressure Index' de Deutsche Bank.
+    El original (Maximilian Uleer) mezcla el cambio a un mes de la aprobacion de Trump, la bolsa,
+    la inflacion esperada (de la gente y de los bonos) y el tipo del Tesoro.
+    Aqui FALTA la aprobacion: no hay fuente gratuita y automatica, y meterla a mano caduca
+    (la leccion de la cartera de brokers). Cada pieza es su cambio a un mes, medido en
+    desviaciones tipicas contra sus ultimos 5 anyos y orientado: arriba = mas presion.
+    Hace falta al menos 2 piezas; si no, None."""
+    if not ESTRES_ON:
+        return None
+    try:
+        base = None
+        for cand in (long_close, spy_close):
+            if cand is not None and len(cand.dropna()) > 400:
+                base = cand.dropna().astype(float)
+                break
+        if base is None:
+            return None
+        base = base[~base.index.duplicated(keep="last")]
+        base = base[base.index >= pd.Timestamp("2014-01-01")]
+        idx = base.index
+        desde = "2014-01-01"
+        piezas = [("Bolsa: S&P 500 a un mes (cae = presión)", "%", -(base / base.shift(21) - 1.0) * 100.0, -1)]
+        for sid, nombre, unidad, lim in (("DGS10", "Tipo del bono a 10 años (sube = presión)", "pp", 5),
+                                         ("T5YIE", "Inflación esperada por los bonos a 5 años (sube = presión)", "pp", 5),
+                                         ("MICH", "Inflación esperada por las familias, Michigan (sube = presión)", "pp", 45)):
+            s = _fred_csv(sid, desde=desde)
+            if s is None or len(s) < 24:
+                piezas.append((nombre, unidad, None, 1))
+                continue
+            s = s.reindex(s.index.union(idx)).sort_index().ffill(limit=lim).reindex(idx)
+            piezas.append((nombre, unidad, s - s.shift(21), 1))
+        zs, comps = [], []
+        for nombre, unidad, ch, signo in piezas:
+            if ch is None or ch.dropna().empty:
+                comps.append({"nombre": nombre, "z": None, "cambio": None, "unidad": unidad})
+                continue
+            ch = ch.astype(float)
+            mu = ch.rolling(1260, min_periods=250).mean()
+            sd = ch.rolling(1260, min_periods=250).std()
+            z = ((ch - mu) / sd.replace(0, np.nan)).clip(-4, 4)
+            zs.append(z.rename(nombre))
+            zl, raw = z.dropna(), ch.dropna()
+            cambio = (float(raw.iloc[-1]) * (-1 if signo < 0 else 1)) if len(raw) else None
+            comps.append({"nombre": nombre, "z": (round(float(zl.iloc[-1]), 2) if len(zl) else None),
+                          "cambio": (round(cambio, 2) if cambio is not None else None), "unidad": unidad})
+        ok = [c for c in comps if c["z"] is not None]
+        if len(ok) < 2:
+            return None
+        Z = pd.concat(zs, axis=1)
+        cnt = Z.notna().sum(axis=1)
+        comp = Z.mean(axis=1, skipna=True)[cnt >= 2].dropna()
+        if len(comp) < 60:
+            return None
+        v = float(comp.iloc[-1])
+        prev = comp.iloc[:-5]
+        mayores = prev[prev >= v]
+        max_desde = str(mayores.index[-1].date()) if len(mayores) else None
+        max_hace = (len(comp) - 1 - comp.index.get_loc(mayores.index[-1])) if len(mayores) else None
+        ult3 = comp.iloc[-756:]
+        return {"valor": round(v, 2), "fecha": str(comp.index[-1].date()),
+                "pct3a": int(round(100 * float((ult3 <= v).mean()))),
+                "d21": (round(v - float(comp.iloc[-22]), 2) if len(comp) > 22 else None),
+                "max_desde": max_desde, "max_hace": max_hace, "comps": comps,
+                "comps_ok": [c["nombre"] for c in ok],
+                "serie": [round(float(x), 3) for x in comp.iloc[-400:].values],
+                "serie_desde": str(comp.index[-min(400, len(comp))].date())}
+    except Exception as _dege:
+        _deg("compute_presion_trump", _dege)
+        return None
+
+
+def _estres_presion_html(es, pt):
+    tit = "<div class='panel full'><h2>🌡️ Estrés financiero y presión sobre la Casa Blanca — ¿se tensa el sistema?</h2>"
+    if not ESTRES_ON and not es and not pt:
+        return (tit + "<div class='note'>Apagado en este build (modo viaje: son datos de hoy, no de la fecha del "
+                "viaje).</div></div>")
+    caja = lambda cuerpo: ("<div style='flex:1 1 300px;min-width:260px;border:1px solid var(--line);border-radius:10px;"
+                           f"padding:12px 14px'>{cuerpo}</div>")
+    cajas = []
+    if es:
+        v = es["valor"]
+        col = "#2FD08A" if v < 0 else ("#F4B740" if v < 2 else "#F4607A")
+        if es["fuente"] == "OFR":
+            nom = "Índice de estrés financiero de la OFR (Tesoro de EE.UU.) · 33 variables de todo el mundo · diario"
+        else:
+            nom = "Índice de estrés de la Fed de San Luis (STLFSI4) · semanal · respaldo: la OFR no respondió"
+        lect = ("por debajo de lo normal: los mercados funcionan con calma" if v < 0 else
+                ("por encima de lo normal: hay tensión" if v < 2 else "estrés alto: el sistema está tensionado"))
+        k1 = "5 sesiones" if es["diario"] else "1 semana"
+        k2 = "21 sesiones" if es["diario"] else "4 semanas"
+        c1 = f"{es['d1']:+.2f}" if es.get("d1") is not None else "—"
+        c2 = f"{es['d2']:+.2f}" if es.get("d2") is not None else "—"
+        cu = (f"<div style='font-size:11px;color:var(--txt3)'>{esc(nom)}</div>"
+              f"<div style='margin:6px 0'><span style='font-size:30px;font-weight:800;color:{col}'>{v:+.2f}</span> "
+              f"<span style='color:{col};font-weight:700'>{esc(lect)}</span></div>"
+              f"<div style='font-size:12px;color:var(--txt2)'>Percentil <b>{es['pct']}</b> de su historia (desde "
+              f"{esc(es['desde'][:4])}) · cambio en {k1}: <b>{c1}</b> · en {k2}: <b>{c2}</b></div>")
+        if es.get("max_hace") is not None and es["max_hace"] >= 20 and es.get("max_desde"):
+            cu += f"<div style='font-size:12px;color:var(--txt2)'>Es el nivel más alto desde el <b>{esc(es['max_desde'])}</b>.</div>"
+        if es.get("salto"):
+            cu += (f"<div style='font-size:12px;color:#F4607A;margin-top:4px'>⚠ Subida brusca: el cambio de {k2} está en "
+                   f"el percentil {es['p_salto']} de su historia. El nivel importa menos que el salto.</div>")
+        if es.get("comp"):
+            mx = max(0.5, max(abs(x) for x in es["comp"].values()))
+            filas_c = ""
+            for nm, x in sorted(es["comp"].items(), key=lambda kv: -kv[1]):
+                w = min(50.0, 50.0 * abs(x) / mx)
+                cc = "#F4607A" if x > 0 else "#2FD08A"
+                lado = "left:50%" if x > 0 else "right:50%"
+                barra = ("<div style='position:relative;height:8px;background:var(--ink3);border-radius:3px'>"
+                         f"<div style='position:absolute;top:0;height:8px;{lado};width:{w:.1f}%;background:{cc};border-radius:3px'></div>"
+                         "<div style='position:absolute;left:50%;top:-2px;width:1px;height:12px;background:#9FB0C8'></div></div>")
+                filas_c += (f"<tr><td class='se-l'>{esc(nm)}</td><td class='r'>{x:+.2f}</td>"
+                            f"<td style='width:45%'>{barra}</td></tr>")
+            cu += ("<div class='scrollx' style='margin-top:8px'><table class='se'><tr><th class='se-l'>de dónde sale</th>"
+                   "<th class='r'>aporta</th><th></th></tr>" + filas_c + "</table></div>")
+        cu += _svg_linea_umbral(es["serie"], refs=[(0.0, "#9FB0C8", "0 normal")], color=col, w=520, h=100)
+        cu += (f"<div style='font-size:10px;color:var(--txt3);margin-top:4px'>Dato del {esc(es['fecha'])}"
+               + (" (la OFR publica con dos días hábiles de retraso)" if es["fuente"] == "OFR" else "") + ".</div>")
+        cajas.append(caja(cu))
+    else:
+        cajas.append(caja("<div style='font-size:12px;color:var(--txt3)'><b>Estrés financiero: sin dato.</b> Ni la OFR "
+                          "ni el respaldo de la Fed de San Luis respondieron en este build. No se inventa un valor.</div>"))
+    if pt:
+        v = pt["valor"]
+        col = "#2FD08A" if v < 0 else ("#F4B740" if v < 1 else "#F4607A")
+        lect = "presión baja" if v < 0 else ("presión media" if v < 1 else "presión alta")
+        maxtxt = ""
+        if pt.get("max_hace") is not None and pt["max_hace"] >= 20 and pt.get("max_desde"):
+            maxtxt = f"Es el nivel más alto desde el <b>{esc(pt['max_desde'])}</b>. "
+        elif pt.get("max_desde") is None:
+            maxtxt = "Es el nivel más alto de toda la serie. "
+        filas = ""
+        for c in pt["comps"]:
+            if c["z"] is None:
+                filas += (f"<tr><td class='se-l'>{esc(c['nombre'])}</td><td class='r' style='color:var(--txt3)'>sin dato</td>"
+                          "<td class='r'>—</td></tr>")
+                continue
+            if c["cambio"] is None:
+                chs = "—"
+            elif c["unidad"] == "%":
+                chs = f"{c['cambio']:+.1f}%"
+            else:
+                chs = f"{c['cambio']:+.2f} pp"
+            zc = "#F4607A" if c["z"] >= 1 else ("#2FD08A" if c["z"] < 0 else "#F4B740")
+            filas += (f"<tr><td class='se-l'>{esc(c['nombre'])}</td><td class='r'>{chs}</td>"
+                      f"<td class='r' style='color:{zc};font-weight:700'>{c['z']:+.2f}</td></tr>")
+        filas += ("<tr><td class='se-l'>Aprobación de Trump (está en el original)</td>"
+                  "<td class='r' style='color:var(--txt3)'>no incluida</td><td class='r'>—</td></tr>")
+        d21 = f"{pt['d21']:+.2f}" if pt.get("d21") is not None else "—"
+        cu = ("<div style='font-size:11px;color:var(--txt3)'>«Trump Pressure Index» · réplica aproximada de su parte de "
+              "mercado (el original es de Deutsche Bank)</div>"
+              f"<div style='margin:6px 0'><span style='font-size:30px;font-weight:800;color:{col}'>{v:+.2f}</span> "
+              f"<span style='color:{col};font-weight:700'>{esc(lect)}</span></div>"
+              f"<div style='font-size:12px;color:var(--txt2)'>{maxtxt}Percentil <b>{pt['pct3a']}</b> de los últimos 3 años · "
+              f"cambio en un mes: <b>{d21}</b></div>"
+              "<div class='scrollx' style='margin-top:8px'><table class='se'><tr><th class='se-l'>pieza (cambio a un mes)</th>"
+              "<th class='r'>cambio</th><th class='r'>desv. típicas</th></tr>" + filas + "</table></div>"
+              + _svg_linea_umbral(pt["serie"], refs=[(1.0, "#F4607A", "+1 alta"), (0.0, "#9FB0C8", "0")],
+                                  color=col, w=520, h=100)
+              + f"<div style='font-size:10px;color:var(--txt3);margin-top:4px'>Desde el {esc(pt['serie_desde'])} hasta el "
+              f"{esc(pt['fecha'])}. Cada pieza se mide contra sus últimos 5 años y se orienta para que arriba = más "
+              "presión; el índice es la media de las piezas.</div>")
+        cajas.append(caja(cu))
+    else:
+        cajas.append(caja("<div style='font-size:12px;color:var(--txt3)'><b>Presión: sin dato.</b> Hacen falta al menos dos "
+                          "piezas (bolsa + FRED) y no llegaron. No se inventa un valor.</div>"))
+    return (tit + "<div style='display:flex;gap:12px;flex-wrap:wrap'>" + "".join(cajas) + "</div>"
+            "<div class='note' style='margin-top:10px'><b>Cómo leerlo.</b> El índice de estrés mide si el sistema financiero "
+            "funciona con normalidad (0 = lo normal desde 2000): lo que avisa es el <b>salto</b>, no el nivel. La presión "
+            "mide cuánto aprietan a la Casa Blanca la bolsa, los tipos y la inflación esperada: quien lo usa espera giros de "
+            "política cuando sube; aquí <b>no está medido</b> si eso ocurre. Los dos son <b>contexto, no señal</b>: el flujo "
+            "manda y se decide con el cierre del viernes. No es asesoramiento.</div></div>")
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -15503,6 +16515,7 @@ def main():
             globals()["TRACK_BAK"] = os.path.join(SEGUIMIENTO_DIR, "track_record.bak.json")
             globals()["IA_AUTO"] = False
             globals()["DIX_ON"] = False
+            globals()["ESTRES_ON"] = False     # v7.4: OFR y FRED son de hoy, no de la fecha del viaje
             # v7.0 — LAS OPCIONES SE APAGAN DE VERDAD. El comentario de arriba decia desde
             # siempre que en modo viaje "las opciones se apagan", pero NO era cierto: nadie
             # las apagaba y compute_options seguia bajando las cadenas de HOY. Hasta ahora
@@ -15539,6 +16552,17 @@ def main():
     early = compute_early(df, rrg)
     meanrev = compute_mean_reversion(SECTORS + THEMATIC + EXTRA)
     fg_idx = fetch_fear_greed()
+    # v7.4 — estres financiero (OFR; respaldo STLFSI4 de FRED). Contexto, no senal.
+    _estres = None
+    try:
+        _estres = fetch_estres()
+        if _estres:
+            print(f"  🌡️ Estrés financiero ({_estres['fuente']}): {_estres['valor']:+.2f} · percentil {_estres['pct']} · {_estres['fecha']}")
+        elif ESTRES_ON:
+            _avisar("estres", "índice de estrés (OFR y respaldo STLFSI4) sin respuesta: el panel sale sin dato", nivel="info")
+    except Exception as _e_es:
+        _avisar("estres", f"índice de estrés no calculado: {_e_es}")
+        _estres = None
     probs = compute_probabilities(df, rrg)
     fred, fred_sig = fetch_fred()
     regime = detect_regime(df, rrg, risk, fred_sig)
@@ -15554,6 +16578,16 @@ def main():
     es_fut = fetch_es_futuro()
     if not es_fut:
         _avisar("es_futuro", "futuro ES no disponible: la referencia casi-24h no se muestra este build", nivel="info")
+    # v7.4 — replica APROXIMADA de la parte de mercado del Trump Pressure Index (Deutsche Bank)
+    _presion = None
+    try:
+        _spy_d = daily[BENCH]["Close"] if (daily and BENCH in daily and "Close" in daily[BENCH].columns) else None
+        _presion = compute_presion_trump(long_close, _spy_d)
+        if _presion:
+            print(f"  🏛️ Presión (réplica TPI, sin aprobación): {_presion['valor']:+.2f} · {len(_presion['comps_ok'])} piezas")
+    except Exception as _e_pt:
+        _avisar("presion", f"réplica del Trump Pressure Index no calculada: {_e_pt}")
+        _presion = None
     # SPY entra aqui aunque no sea un "sector": es la vara de medir del panel de cobertura
     # (¿se cubren MAS en semis que en el mercado entero?). Sin el, ese panel no tiene contra que comparar.
     # v7.0 — EL ORDEN IMPORTA: compute_options corta en max_syms. Antes el universo iba
@@ -15564,6 +16598,11 @@ def main():
     _pel_syms = [m for cfg in PELOTONES.values() for m in cfg["members"]]
     _uni_opt = list(dict.fromkeys([BENCH] + _pel_syms + SECTORS + THEMATIC + EXTRA))
     _uni_opt = [s for s in _uni_opt if s in df.columns or s in (daily or {})]
+    _pel_set = set(_pel_syms)
+    _opc_fuera = [s for s in _uni_opt[OPCIONES_MAX_SYMS:] if s in _pel_set]
+    if OPCIONES_ON and _opc_fuera:
+        _avisar("options", f"OPCIONES_MAX_SYMS={OPCIONES_MAX_SYMS} deja SIN cadena de opciones a miembros de pelotones: "
+                           f"{', '.join(_opc_fuera)} — súbelo a {OPCIONES_MAX_SYMS + len(_opc_fuera)}")
     if OPCIONES_ON:
         print("  OPTIONS DESK: descargando cadenas de opciones de Yahoo ...")
         options = compute_options(_uni_opt, flow=flow, daily=daily, max_syms=OPCIONES_MAX_SYMS)
@@ -15662,6 +16701,17 @@ def main():
                   f"· disparos historicos: {_mcc['bt_nyse']['n_disparos']}")
     except Exception as _e_mcc:
         _avisar("mcclellan", f"oscilador de amplitud no calculado: {_e_mcc}")
+    # v7.4 — ZWEIG BREADTH THRUST con el mismo universo de acciones (0 descargas extra)
+    _zweig = None
+    try:
+        _bz = daily[BENCH]["Close"] if (daily and BENCH in daily) else None
+        _zweig = compute_zweig(_stk_univ, bench=_bz)
+        if _zweig:
+            print(f"  🚀 Zweig (amplitud, {_zweig['n_acciones']} acciones): {_zweig['estado']} · media 10s {_zweig['hoy']:.3f}"
+                  + (f" · quedan {_zweig['quedan']} sesiones" if _zweig.get("quedan") else ""))
+    except Exception as _e_zw:
+        _avisar("zweig", f"empuje de amplitud no calculado: {_e_zw}")
+        _zweig = None
     _amp = None
     try:
         _amp = compute_amplitud(daily, _stk_univ)
@@ -15815,6 +16865,15 @@ def main():
             _snap_main += "\nEVENTOS CON FECHA proximos: " + " | ".join(_ev[:6]) + "."
     except Exception:
         pass
+    if _zweig:
+        _snap_main += (f"\nZWEIG (empuje de amplitud, proxy con {_zweig['n_acciones']} acciones): {_zweig['estado']}, "
+                       f"media 10 sesiones {_zweig['hoy']:.3f} (se arma por debajo de 0.40; dispara por encima de 0.615 en 10 sesiones).")
+    if _estres:
+        _snap_main += (f"\nESTRES FINANCIERO ({_estres['fuente']}): {_estres['valor']:+.2f} (0 = normal), "
+                       f"percentil {_estres['pct']} de su historia.")
+    if _presion:
+        _snap_main += (f"\nPRESION (replica de mercado del Trump Pressure Index, sin aprobacion): {_presion['valor']:+.2f} "
+                       "desviaciones tipicas (0 = normal).")
     ai_text = ai_commentary(_snap_main)
     ia_auto = run_ia_auto(_snap_main, str(df.index[-1].date()))
     if ai_text:
@@ -15852,6 +16911,8 @@ def main():
     for _r in (_suelo or []):
         if _r.get("fase") == "PRE-DESPERTAR" and _r["sym"] in SECTORES_EXPLOSIVOS:
             lines.append(f"• 🌱 {_r['sym']}: patrón pre-despertar {_r.get('pre', 0)}/4 con el precio aún quieto")
+    if _zweig and _zweig.get("senal_hoy"):
+        lines.append("• 🚀 ZWEIG: empuje de amplitud DISPARADO hoy (de menos de 0.40 a más de 0.615 en ≤10 sesiones)")
     for s, k, t in alerts:
         lines.append(f"• {s}: {t}")
     for s, d in (flow or {}).items():
@@ -15868,7 +16929,7 @@ def main():
             print("\nAviso enviado.")
 
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

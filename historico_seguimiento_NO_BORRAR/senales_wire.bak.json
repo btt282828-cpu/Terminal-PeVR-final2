@@ -2998,5 +2998,113 @@
 "tag": "EARLY",
 "sym": "UFO",
 "dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-10-06",
+"tag": "CLÍMAX",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-10-06",
+"tag": "CLÍMAX",
+"sym": "XLU",
+"dir": -1
+},
+{
+"date": "2026-10-06",
+"tag": "NOCTURNO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "GRADUADO",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "GRADUADO",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "GRADUADO",
+"sym": "GRID",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "GRADUADO",
+"sym": "UFO",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "GIRO",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-10-06",
+"tag": "0/3",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "SUELO",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "SUELO",
+"sym": "EWG",
+"dir": 0
+},
+{
+"date": "2026-10-06",
+"tag": "SUELO",
+"sym": "KWEB",
+"dir": 0
+},
+{
+"date": "2026-10-06",
+"tag": "SUELO",
+"sym": "ITA",
+"dir": 0
+},
+{
+"date": "2026-10-06",
+"tag": "EARLY",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "EARLY",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-10-06",
+"tag": "EARLY",
+"sym": "UFO",
+"dir": 1
 }
 ]

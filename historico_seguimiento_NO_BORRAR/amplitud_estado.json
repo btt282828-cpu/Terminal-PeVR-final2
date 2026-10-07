@@ -118,5 +118,20 @@
 "RSP": 212.33,
 "IWM": 281.34
 }
+},
+{
+"date": "2026-10-07",
+"rsp": "ESTRECHANDO",
+"iwm": "ESTRECHANDO",
+"p50": 28.4,
+"p200": 44.6,
+"nhnl10": -16.1,
+"div": true,
+"lectura": "NARRATIVA",
+"px": {
+"SPY": 775.27,
+"RSP": 211.23,
+"IWM": 278.28
+}
 }
 ]

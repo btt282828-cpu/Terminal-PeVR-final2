@@ -576,6 +576,12 @@ ZWEIG_BAJO = 0.40                                # v7.4: Zweig Breadth Thrust: p
 ZWEIG_ALTO = 0.615                               #       y si pasa de aqui en <= ZWEIG_VENTANA sesiones, se DISPARA
 ZWEIG_VENTANA = 10
 ZWEIG_SPAN = 10                                  #       media exponencial de 10 sesiones de avances / (avances + descensos)
+COMP_PESOS_ON = True                             # v7.6: baja cada noche la cartera OFICIAL de SPY y DIA (SSGA), QQQ (Invesco) e IWM (iShares). El MODO VIAJE lo apaga
+COMP_MIN_COBERTURA = 70                          # v7.6: % del peso de un indice que debe tener dato accion a accion; si no llega, ese indice se mide con ETFs de sector
+COMP_EXTRA_MAX = 60                              # v7.6: acciones de las carteras que no estan en el S&P 500 y se bajan aparte (tope por build)
+PEQ_CAIDA = 10.0                                 # v7.6: caida del IWM (desde su maximo de un anyo) que abre un episodio de suelo de las pequenas
+PEQ_POCO_VOL_USD = 1_000_000                     # v7.6: por debajo de este volumen medio diario (dolares) el CMF de un ETF de pequenas se marca 'poco volumen'
+PEQ_REBOTE = 5.0                                 # v7.6: rebote del IWM desde su minimo que se da por 'suelo provisional' (desde ahi se mira quien gira primero)
 # --- Analisis con IA (opcional): comentario automatico en el panel ---
 # --- EVENTOS PUNTUALES con fecha (editable): se pintan en la pestaña News. Formato ("YYYY-MM-DD", "texto") ---
 EVENTOS_MERCADO = [
@@ -859,6 +865,17 @@ NAMES = {
     #        (ISIN IE0002PG6CA6, WKN A3CRL9, en euros). El terminal lee el americano porque su volumen
     #        es el que de verdad dice si entra o sale dinero; se opera el UCITS.
     "REMX":("VanEck Rare Earth & Strategic Metals — en España: versión UCITS VVMX (Xetra, ISIN IE0002PG6CA6)","Tierras raras y metales estratégicos","ciclico"),
+    # v7.6 — ETFs de PEQUENAS por sector (Invesco S&P SmallCap 600). Solo para LEER el flujo de las
+    #        pequenas (barra del Russell y su RRG frente al IWM). Desde Espana no se compran.
+    "PSCH":("Invesco S&P SmallCap Health Care — salud de las pequeñas (solo lectura)","Salud (pequeñas)","defensivo"),
+    "PSCF":("Invesco S&P SmallCap Financials — financiero de las pequeñas (solo lectura)","Financiero (pequeñas)","ciclico"),
+    "PSCI":("Invesco S&P SmallCap Industrials — industria de las pequeñas (solo lectura)","Industria (pequeñas)","ciclico"),
+    "PSCT":("Invesco S&P SmallCap Information Technology — tecnología de las pequeñas (solo lectura)","Tecnología (pequeñas)","ciclico"),
+    "PSCD":("Invesco S&P SmallCap Consumer Discretionary — consumo de las pequeñas (solo lectura)","Consumo discrec. (pequeñas)","ciclico"),
+    "PSCE":("Invesco S&P SmallCap Energy — energía de las pequeñas (solo lectura)","Energía (pequeñas)","sensible"),
+    "PSCM":("Invesco S&P SmallCap Materials — materiales de las pequeñas (solo lectura)","Materiales (pequeñas)","sensible"),
+    "PSCU":("Invesco S&P SmallCap Utilities & Communication Services — utilities y comunicaciones de las pequeñas (solo lectura)","Utilities y comunic. (pequeñas)","defensivo"),
+    "PSCC":("Invesco S&P SmallCap Consumer Staples — consumo básico de las pequeñas (solo lectura)","Consumo básico (pequeñas)","defensivo"),
     "EWJ":("Japan","Japón","ciclico"),
     "INDA":("India","India","ciclico"),
     "EWZ":("Brazil","Brasil","ciclico"),
@@ -1495,8 +1512,11 @@ def add_sinteticos(df):
     return df
 
 
-def compute_rrg(df):
-    bench = df[BENCH]
+def compute_rrg(df, bench_sym=None):
+    # v7.6: bench_sym permite medir un grupo contra otro indice (las pequenas por sector frente al IWM).
+    # Sin el, todo sigue igual: contra BENCH (SPY).
+    _bsym = bench_sym or BENCH
+    bench = df[_bsym]
     n = len(df)
     smooth_span = max(4, min(10, n // 6))
     z_win = max(8, min(26, n // 2))
@@ -1505,7 +1525,7 @@ def compute_rrg(df):
     SCALE = 2.4
     out = {}
     for sym in df.columns:
-        if sym == BENCH:
+        if sym == _bsym:
             continue
         # v4.8: las acciones que solo existen para COMPONER una cesta (WDC/STX/SNDK,
         # ASML/LRCX/AMAT/KLAC) no son instrumentos que se vigilen sueltos: son
@@ -4556,128 +4576,937 @@ def laboratorio_suelos(df, daily, horizontes=(4, 8, 12), ruta=None, verbose=True
 # bloque pesa mucho o poco, no para calcular al decimal.
 # ======================================================================
 # ----------------------------------------------------------------------
-# v7.4 — LAS BARRAS SALEN DE LAS MISMAS BOLITAS DEL RRG
+# v7.6 — CON LA CARTERA OFICIAL Y ACCION A ACCION
 #
-# LO QUE FALLABA (lo vio Pedro): en el RRG habia anillo verde en SMH, SOXX, CIBR,
-# SKYY, PAVE o en los equipos de semis, y en estas barras el S&P solo decia
-# "entra tecnologia". No era que la regla fuera distinta: es que cada indice se
-# partia SOLO en los 11 sectores grandes (XLK, XLF...), asi que todo lo demas
-# quedaba escondido dentro de un XLK o un XLI y su anillo no sumaba en ningun sitio.
+# LO QUE FALLABA (lo comprobo Pedro con la ficha de iShares del IWM, y luego
+# se reviso todo contra las gestoras el 6-7 de octubre de 2026):
+#   1) Los pesos estaban escritos a mano y se habian quedado viejos. En el S&P
+#      la tecnologia pesa el 40,2% (aqui ponia 32%); en el QQQ los 7 Magnificos
+#      son el 37,6% (aqui 43%) y los semiconductores sin Nvidia rondan el 25%
+#      (aqui 15%); en el Dow el financiero es el 26% (aqui 21%); en el Russell
+#      faltaban utilities, comunicaciones y consumo basico (casi un 7%).
+#   2) En el QQQ las filas de Consumo (XLY) y Comunicaciones (XLC) volvian a
+#      contar el dinero de Amazon, Tesla, Meta y Google, que ya estaban en la
+#      fila de los 7 Magnificos: el mismo dinero salia dos veces.
+#   3) En el Russell media tabla se medía con ETFs de GRANDES (XLK es Nvidia,
+#      Apple y Microsoft): la unica fila verde era dinero de las grandes.
 #
 # AHORA:
-#   1) Cada sector se parte en las bolitas que el terminal YA descarga (las del
-#      RRG y las acciones de sus cestas). Si un bloque tiene varias, su peso se
-#      reparte A PARTES IGUALES entre ellas.
-#   2) Cada bolita se pinta con clasificar_flujo(), que usa _anillo_verde y
-#      _anillo_rojo: la MISMA regla que dibuja el anillo en el RRG.
-#   3) Un bloque sin dato ya NO cuenta como "plano": va aparte, como "sin medir".
-#   4) La barra es el indice ENTERO (100%). Antes estiraba solo la parte medida
-#      y el verde nunca coincidia con el numero de encima.
-#   5) La frase final mira "mas de la mitad del peso medido". Antes pedia que lo
-#      que sale fuera el DOBLE de lo que entra: el S&P con un 56% saliendo
-#      aparecia como "sin direccion clara".
-# Los TOTALES por sector son los de antes; el reparto interno de cada sector entre
-# sus bolitas es APROXIMADO y esta escrito a mano (cambia cada trimestre).
+#   · SPY, QQQ y DIA: la cartera OFICIAL se baja cada noche (SSGA e Invesco) y
+#     cada accion pesa lo que pesa en el fondo. El dinero se mide ACCION A
+#     ACCION con su CMF de 20 sesiones y la regla de siempre: por encima de
+#     +0,05 entra, por debajo de -0,05 sale, en medio plano. La barra es el
+#     indice entero: cada trozo es la suma del peso de las acciones de ese color.
+#   · IWM: los pesos por sector salen de la ficha oficial de iShares y cada
+#     sector se mide con un ETF de EMPRESAS PEQUENAS (Invesco S&P SmallCap,
+#     PSC*), mas KRE (bancos regionales) y XBI (biotecnologia).
+#   · Si una gestora no responde: se usan los ultimos pesos buenos guardados
+#     (historico_seguimiento_NO_BORRAR/pesos_indices.json) y, si tampoco hay,
+#     los escritos a mano con su fecha. El panel dice SIEMPRE cual ha usado.
+#   · Si faltan datos de demasiadas acciones (menos del COMP_MIN_COBERTURA% del
+#     peso), ese indice se mide con los ETFs de sector del S&P y se avisa.
 # ----------------------------------------------------------------------
-COMPOSICION = {
-    "NASDAQ 100 (QQQ)": {
-        "bench": "QQQ",
-        "bloques": [
-            ("7 Magnificos",               ["MAGS"],                          43),
-            ("Semiconductores",            ["SMH", "SOXX"],                   12),
-            ("Equipos de semis",           ["ASML", "LRCX", "AMAT", "KLAC"],   3),
-            ("Software y nube",            ["IGV", "SKYY"],                    9),
-            ("Ciberseguridad",             ["CIBR"],                           3),
-            ("Consumo discrec.",           ["XLY"],                            6),
-            ("Comunicaciones",             ["XLC"],                            5),
-            ("Biotecnologia",              ["XBI"],                            3),
-            ("Salud (resto)",              ["XLV"],                            3),
-            ("Industriales",               ["XLI"],                            4),
-            ("Consumo basico",             ["XLP"],                            5),   # Costco, Pepsi... antes no estaba
-        ],
-    },
-    "S&P 500 (SPY)": {
-        "bench": "SPY",
-        "bloques": [
-            # Tecnologia: 32 en total, como antes, partida en sus bolitas
-            ("Semiconductores",            ["SMH", "SOXX"],                   13),
-            ("Equipos de semis",           ["LRCX", "AMAT", "KLAC"],           1),
-            ("Software y nube",            ["IGV", "SKYY"],                    9),
-            ("Ciberseguridad",             ["CIBR"],                           1),
-            ("Almacenamiento",             ["WDC", "STX", "SNDK"],           0.5),
-            ("Tecnologia (resto: Apple, hardware)", ["XLK"],                 7.5),
-            # Financiero 13
-            ("Banca regional",             ["KRE"],                            1),
-            ("Financiero (resto)",         ["XLF"],                           12),
-            # Salud 10
-            ("Biotecnologia",              ["XBI"],                            2),
-            ("Salud (resto)",              ["XLV"],                            8),
-            # Consumo discrecional 10
-            ("Comercio minorista",         ["XRT"],                          2.5),
-            ("Constructoras",              ["ITB"],                          0.5),
-            ("Consumo discrec. (resto)",   ["XLY"],                            7),
-            ("Comunicaciones",             ["XLC"],                            9),
-            # Industriales 8
-            ("Aeroespacial y defensa",     ["ITA"],                            2),
-            ("Infraestructura y red",      ["PAVE", "GRID"],                 1.5),
-            ("Industriales (resto)",       ["XLI"],                          4.5),
-            ("Consumo basico",             ["XLP"],                            6),
-            # Energia 4
-            ("Petroleo E&P",               ["XOP"],                            1),
-            ("Servicios petroleros",       ["OIH"],                          0.5),
-            ("Energia (resto)",            ["XLE"],                          2.5),
-            ("Materiales",                 ["XLB"],                            2),
-            ("Utilities",                  ["XLU"],                            2),
-            ("Inmobiliario",               ["XLRE"],                           2),   # antes no estaba
-        ],
-    },
-    "RUSSELL 2000 (IWM)": {
-        "bench": "IWM",
-        "bloques": [
-            ("Banca regional",             ["KRE"],                           17),
-            ("Biotecnologia",              ["XBI"],                           14),
-            ("Aeroespacial y defensa",     ["ITA"],                            2),
-            ("Infraestructura",            ["PAVE"],                           2),
-            ("Industriales (resto)",       ["XLI"],                            9),
-            ("Comercio minorista",         ["XRT"],                            3),
-            ("Constructoras",              ["ITB"],                            2),
-            ("Consumo discrec. (resto)",   ["XLY"],                            6),
-            ("Inmobiliario",               ["XLRE"],                           7),
-            ("Petroleo E&P",               ["XOP"],                            3),
-            ("Energia (resto)",            ["XLE"],                            2),
-            ("Tecnologia",                 ["XLK"],                           12),
-            ("Salud (resto)",              ["XLV"],                            6),
-            ("Mineria y metales",          ["XME"],                            2),
-        ],
-    },
-    # v7.0 — DOW JONES. AVISO QUE NO ES EL MISMO QUE EN LOS OTROS TRES: el Dow se pondera
-    # POR PRECIO, no por capitalizacion. Consecuencias reales al leer esta tabla:
-    #   1) el peso de cada bloque se mueve solo con que suba o baje el precio de una accion;
-    #   2) un SPLIT cambia el peso de la noche a la manana sin que la empresa haya cambiado;
-    #   3) son 30 valores, asi que una sola accion cara pesa mas que un sector entero.
-    # Por eso estos pesos envejecen mas rapido que los de QQQ/SPY/IWM. Revisalos un par de
-    # veces al anyo; si un bloque te canta mucho, es que toca actualizarlos.
-    "DOW JONES (DIA)": {
-        "bench": "DIA",
-        "bloques": [
-            ("Financiero",                 ["XLF"],                           21),
-            ("Software",                   ["IGV"],                            9),   # Microsoft, Salesforce
-            ("Tecnologia (resto)",         ["XLK"],                           11),   # Apple, Cisco, IBM, Nvidia
-            ("Salud",                      ["XLV"],                           15),
-            ("Aeroespacial",               ["ITA"],                            3),   # Boeing
-            ("Industriales (resto)",       ["XLI"],                           11),
-            ("Consumo discrec.",           ["XLY"],                           13),
-            ("Consumo basico",             ["XLP"],                            6),
-            ("Comunicaciones",             ["XLC"],                            3),
-            ("Energia",                    ["XLE"],                            3),
-            ("Materiales",                 ["XLB"],                            2),
-        ],
-    },
+COMP_NOMBRES = {"QQQ": "NASDAQ 100 (QQQ)", "SPY": "S&P 500 (SPY)",
+                "DIA": "DOW JONES (DIA)", "IWM": "RUSSELL 2000 (IWM)"}
+COMP_PESOS_URLS = {
+    "SPY": ["https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx",
+            "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx"],
+    "DIA": ["https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-dia.xlsx",
+            "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/holdings-daily-us-en-dia.xlsx"],
+    "QQQ": ["https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/QQQ/holdings/fund?idType=ticker&productType=ETF"],
+    "IWM": ["https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv",
+            "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/1467271812596.ajax?fileType=csv&fileName=IWM_holdings&dataType=fund"],
 }
-# En las pequenas, un ETF de sector del S&P (XLK, XLI...) NO representa al indice: el flujo
-# de XLK es el de Nvidia, Apple y Microsoft. No hay bolita de pequenas para ese sector, asi
-# que se usa la que hay y se MARCA como "grandes". Se senala, no se esconde.
-COMPOSICION_PEQUENAS = {"RUSSELL 2000 (IWM)"}
+# sector GICS (nombre oficial en ingles) -> (etiqueta, ETF de ese sector del S&P, que es su bolita en el RRG)
+SECTOR_GICS = {
+    "Information Technology": ("Tecnología", "XLK"),
+    "Financials": ("Financiero", "XLF"),
+    "Health Care": ("Salud", "XLV"),
+    "Consumer Discretionary": ("Consumo discrecional", "XLY"),
+    "Communication Services": ("Comunicaciones", "XLC"),
+    "Industrials": ("Industria", "XLI"),
+    "Consumer Staples": ("Consumo básico", "XLP"),
+    "Energy": ("Energía", "XLE"),
+    "Utilities": ("Utilities", "XLU"),
+    "Real Estate": ("Inmobiliario", "XLRE"),
+    "Materials": ("Materiales", "XLB"),
+}
+MAG7 = ("AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA")   # GOOGL y GOOG: las dos clases de Alphabet
+# Valores del Nasdaq-100 que NO estan en el S&P 500 (la lista publica del S&P no les da sector).
+# Clasificacion GICS escrita a mano; la de SpaceX (SPCX) no esta confirmada: se pone en Industria
+# por ser aeroespacial. Lo que no este aqui ni en el S&P sale como "Sin clasificar", no se inventa.
+QQQ_SECTOR_EXTRA = {
+    "ASML": ("Information Technology", "Semiconductor Materials & Equipment"),
+    "ARM": ("Information Technology", "Semiconductors"),
+    "ALAB": ("Information Technology", "Semiconductors"),
+    "MRVL": ("Information Technology", "Semiconductors"),
+    "GFS": ("Information Technology", "Semiconductors"),
+    "SHOP": ("Information Technology", "Internet Services & Infrastructure"),
+    "MSTR": ("Information Technology", "Application Software"),
+    "NBIS": ("Information Technology", "Internet Services & Infrastructure"),
+    "CRWV": ("Information Technology", "Internet Services & Infrastructure"),
+    "TEAM": ("Information Technology", "Application Software"),
+    "ZS": ("Information Technology", "Systems Software"),
+    "MDB": ("Information Technology", "Application Software"),
+    "PDD": ("Consumer Discretionary", ""),
+    "MELI": ("Consumer Discretionary", ""),
+    "CCEP": ("Consumer Staples", ""),
+    "AZN": ("Health Care", ""),
+    "ALNY": ("Health Care", ""),
+    "RKLB": ("Industrials", ""),
+    "FER": ("Industrials", ""),
+    "TRI": ("Industrials", ""),
+    "SPCX": ("Industrials", ""),
+}
+# RESPALDO A MANO (solo si la gestora no responde y no hay pesos guardados). Fecha = la de la ficha.
+PESOS_SECTOR_MANO = {
+    "SPY": ("2026-10-07", {"Information Technology": 40.23, "Financials": 11.26, "Communication Services": 9.73,
+                           "Health Care": 9.11, "Consumer Discretionary": 8.70, "Industrials": 7.94,
+                           "Consumer Staples": 4.43, "Energy": 3.43, "Utilities": 1.92, "Real Estate": 1.65,
+                           "Materials": 1.60}),
+    "DIA": ("2026-10-07", {"Financials": 26.17, "Information Technology": 19.35, "Industrials": 15.94,
+                           "Health Care": 13.82, "Consumer Discretionary": 9.42, "Communication Services": 5.29,
+                           "Consumer Staples": 3.97, "Materials": 3.66, "Energy": 2.38}),
+    "IWM": ("2026-10-05", {"Health Care": 20.43, "Financials": 18.91, "Industrials": 14.01,
+                           "Information Technology": 13.93, "Consumer Discretionary": 8.79, "Energy": 6.85,
+                           "Real Estate": 5.58, "Materials": 4.20, "Utilities": 2.67,
+                           "Communication Services": 2.38, "Consumer Staples": 1.91}),
+}
+# El QQQ entero a mano (Invesco, 6-oct-2026): con esto el QQQ se puede medir accion a accion aunque
+# Invesco no responda. Liquidez y futuros fuera (suman ~0,4%).
+QQQ_PESOS_MANO = ("2026-10-06",
+    "NVDA:8.51 AAPL:7.18 MSFT:5.80 MU:4.81 AMD:4.32 AMZN:4.08 META:3.24 GOOGL:3.01 SPCX:3.00 TSLA:2.95 "
+    "GOOG:2.81 AVGO:2.64 INTC:2.41 WMT:2.12 CSCO:1.90 PLTR:1.80 AMAT:1.71 LRCX:1.70 COST:1.69 PANW:1.39 "
+    "NFLX:1.16 CRWD:1.16 TXN:1.11 KLAC:1.05 MRVL:1.02 SNDK:0.99 LIN:0.92 AMGN:0.89 ADI:0.83 SHOP:0.81 "
+    "QCOM:0.77 STX:0.74 GILD:0.73 TMUS:0.72 ASML:0.70 PEP:0.70 WDC:0.60 ISRG:0.58 FTNT:0.57 ARM:0.54 "
+    "VRTX:0.52 BKNG:0.48 SBUX:0.45 CEG:0.43 ADP:0.42 LITE:0.41 CDNS:0.40 SNPS:0.39 ADBE:0.39 MAR:0.38 "
+    "MELI:0.38 DDOG:0.38 CSX:0.36 APP:0.35 MNST:0.34 INTU:0.32 DASH:0.32 CTAS:0.32 WBD:0.32 MDLZ:0.31 "
+    "CMCSA:0.31 REGN:0.30 MPWR:0.30 ROST:0.29 ORLY:0.28 ALAB:0.28 HON:0.27 ABNB:0.27 TER:0.27 AEP:0.27 "
+    "NXPI:0.25 MSTR:0.24 NBIS:0.24 FAST:0.24 PCAR:0.23 BKR:0.23 PDD:0.21 FANG:0.21 HONA:0.20 ADSK:0.20 "
+    "PYPL:0.19 XEL:0.19 RKLB:0.18 CCEP:0.18 MCHP:0.18 EXC:0.18 KDP:0.17 CRWV:0.17 IDXX:0.17 TTWO:0.15 "
+    "FER:0.15 TRI:0.15 ODFL:0.15 WDAY:0.15 PAYX:0.15 ROP:0.15 AXON:0.14 DXCM:0.13 ALNY:0.12 GEHC:0.12 "
+    "CPRT:0.10")
+# IWM: cada sector oficial se mide con ETFs de PEQUENAS. Si un sector tiene dos, su peso se reparte a
+# partes iguales entre ellos (la misma regla de siempre). Inmobiliario no tiene ETF de pequenas: va con
+# XLRE y se MARCA "grandes". Utilities y comunicaciones van juntas porque Invesco las junta en PSCU.
+PEQ_BLOQUES = [
+    ("Salud", ("Health Care",), ("PSCH", "XBI")),
+    ("Financiero", ("Financials",), ("KRE", "PSCF")),
+    ("Industria", ("Industrials",), ("PSCI",)),
+    ("Tecnología", ("Information Technology",), ("PSCT",)),
+    ("Consumo discrecional", ("Consumer Discretionary",), ("PSCD",)),
+    ("Energía", ("Energy",), ("PSCE",)),
+    ("Inmobiliario", ("Real Estate",), ("XLRE",)),
+    ("Materiales", ("Materials",), ("PSCM",)),
+    ("Utilities y comunicaciones", ("Utilities", "Communication Services"), ("PSCU",)),
+    ("Consumo básico", ("Consumer Staples",), ("PSCC",)),
+]
+PEQ_ETFS = ["PSCH", "PSCF", "PSCI", "PSCT", "PSCD", "PSCE", "PSCM", "PSCU", "PSCC"]
+PEQ_TODOS = ["PSCH", "XBI", "KRE", "PSCF", "PSCI", "PSCT", "PSCD", "PSCE", "XLRE", "PSCM", "PSCU", "PSCC"]
+PEQ_GRANDES = {"XLRE"}
+PEQ_SECTOR_DE = {s: b[0] for b in PEQ_BLOQUES for s in b[2]}
+_SUB_TECH_ETQ = {"semis": "semis y equipos", "software": "software y servicios",
+                 "hardware": "hardware y redes", None: "otros"}
+
+
+def _tk_norm(t):
+    """Ticker al formato de Yahoo: BRK.B -> BRK-B, MOG A -> MOG-A."""
+    return "-".join(str(t).strip().upper().replace(".", " ").replace("/", " ").split())
+
+
+def _sector_canon(s):
+    """Sector GICS canonico (en ingles). None = liquidez/derivados (no es una empresa).
+       'Sin clasificar' si no se sabe: no se inventa."""
+    try:
+        if s is None or (isinstance(s, float) and s != s):
+            return "Sin clasificar"
+        k = " ".join(str(s).strip().lower().replace("&", "and").split())
+        if not k or k in ("-", "nan", "none", "n/a", "unassigned", "other", "others", "sin clasificar"):
+            return "Sin clasificar"
+        if any(w in k for w in ("cash", "derivative", "futur", "currency", "money market", "collateral",
+                                "forward", "swap")):
+            return None
+        if "technology" in k:
+            return "Information Technology"
+        if "health" in k:
+            return "Health Care"
+        if "financ" in k:
+            return "Financials"
+        if "discretionary" in k or "cyclical" in k:
+            return "Consumer Discretionary"
+        if "staples" in k or "defensive" in k:
+            return "Consumer Staples"
+        if "communication" in k or "telecom" in k:
+            return "Communication Services"
+        if "industrial" in k:
+            return "Industrials"
+        if "energy" in k:
+            return "Energy"
+        if "utilit" in k:
+            return "Utilities"
+        if "real estate" in k or "reit" in k:
+            return "Real Estate"
+        if "material" in k:
+            return "Materials"
+        return "Sin clasificar"
+    except Exception:
+        return "Sin clasificar"
+
+
+def _sub_tech(sub):
+    """Subgrupo de la tecnologia a partir de la subindustria GICS."""
+    if not sub or not isinstance(sub, str):
+        return None
+    k = sub.lower()
+    if "semiconductor" in k:
+        return "semis"
+    if ("software" in k or "internet services" in k or "it consulting" in k or "data processing" in k
+            or "it services" in k):
+        return "software"
+    return "hardware"
+
+
+def _num(x):
+    try:
+        if x is None:
+            return None
+        if isinstance(x, (int, float)):
+            return float(x) if x == x else None
+        v = str(x).strip().replace(",", "").replace("%", "")
+        if v in ("", "-", "--", "n/a", "NaN"):
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _fecha_txt(s):
+    """'As of 07-Oct-2026', 'Oct 06, 2026', '2026-10-06' -> '2026-10-06' (o None)."""
+    try:
+        t = str(s)
+        t = t.replace("As of", "").replace("as of", "").replace("Holdings:", "").strip().strip('"').strip()
+        f = pd.to_datetime(t, errors="coerce")
+        if f is None or f != f:
+            return None
+        return str(f.date())
+    except Exception:
+        return None
+
+
+def _descarga_pesos(url, timeout=40):
+    r = requests.get(url, timeout=timeout, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/124.0 Safari/537.36",
+        "Accept": "*/*"})
+    code = getattr(r, "status_code", 200)
+    if code != 200:
+        raise ValueError(f"HTTP {code}")
+    return r
+
+
+def _parse_ssga(contenido):
+    """Excel diario de SSGA (SPY, DIA): unas filas de presentacion, luego la tabla con
+       Ticker / Weight / Sector. Se busca la cabecera en vez de fiarse de su posicion."""
+    opx = ensure("openpyxl", optional=True)
+    if opx is None:
+        raise ValueError("falta la libreria openpyxl para leer el Excel de SSGA")
+    from io import BytesIO
+    raw = pd.read_excel(BytesIO(contenido), header=None, engine="openpyxl")
+    hdr, fecha = None, None
+    for i in range(min(60, len(raw))):
+        vals = [str(x).strip() for x in raw.iloc[i].tolist()]
+        low = [v.lower() for v in vals]
+        if fecha is None:
+            for v in vals:
+                if "as of" in v.lower():
+                    fecha = _fecha_txt(v)
+                    break
+        if "ticker" in low and any(v.startswith("weight") for v in low):
+            hdr = i
+            break
+    if hdr is None:
+        raise ValueError("no encuentro la cabecera Ticker/Weight")
+    cols = [str(x).strip().lower() for x in raw.iloc[hdr].tolist()]
+    it = cols.index("ticker")
+    iw = next(j for j, c in enumerate(cols) if c.startswith("weight"))
+    isec = next((j for j, c in enumerate(cols) if c.startswith("sector")), None)
+    filas = []
+    for i in range(hdr + 1, len(raw)):
+        row = raw.iloc[i].tolist()
+        tk = row[it]
+        w = _num(row[iw])
+        if w is None or tk is None or (isinstance(tk, float) and tk != tk):
+            continue
+        tk = str(tk).strip()
+        if not tk or tk in ("-", "--"):
+            continue
+        sec = row[isec] if isec is not None else None
+        if tk.upper().startswith("CASH") or tk.upper() in ("USD", "US DOLLAR"):
+            sec = "Cash"
+        filas.append([_tk_norm(tk), w, (None if sec is None or (isinstance(sec, float) and sec != sec) else str(sec))])
+    return {"fecha": fecha, "filas": filas}
+
+
+def _parse_invesco(r):
+    """API de Invesco (QQQ): JSON con 'holdings' -> ticker y percentageOfTotalNetAssets.
+       Liquidez, futuros y garantias van fuera (no son empresas)."""
+    j = r.json()
+    filas = []
+    for h in (j.get("holdings") or []):
+        tk = h.get("ticker")
+        w = _num(h.get("percentageOfTotalNetAssets"))
+        tipo = str(h.get("securityTypeName") or "").lower()
+        if not tk or w is None:
+            continue
+        if any(x in tipo for x in ("currency", "cash", "future", "collateral", "money")):
+            filas.append([_tk_norm(tk), w, "Cash"])
+            continue
+        filas.append([_tk_norm(tk), w, None])
+    return {"fecha": _fecha_txt(j.get("effectiveDate") or j.get("effectiveBusinessDate") or ""), "filas": filas}
+
+
+def _parse_ishares(texto):
+    """CSV de iShares (IWM): unas lineas de presentacion, la cabecera 'Ticker,Name,Sector,...' y la
+       tabla. Para el Russell solo hace falta el peso de cada SECTOR."""
+    import csv as _csv
+    lineas = str(texto).replace("﻿", "").splitlines()
+    fecha, i0 = None, None
+    for i, l in enumerate(lineas[:40]):
+        if l.lower().startswith("fund holdings as of"):
+            fecha = _fecha_txt(l.split(",", 1)[1] if "," in l else l)
+        if l.startswith("Ticker,") or l.startswith('"Ticker"'):
+            i0 = i
+            break
+    if i0 is None:
+        raise ValueError("no encuentro la cabecera Ticker,Name,Sector")
+    rd = _csv.reader(lineas[i0:])
+    hdr = [h.strip() for h in next(rd)]
+    isec = hdr.index("Sector")
+    iw = next(j for j, h in enumerate(hdr) if h.lower().startswith("weight"))
+    sect, n = {}, 0
+    for row in rd:
+        if len(row) <= max(isec, iw):
+            continue
+        w = _num(row[iw])
+        if w is None:
+            continue
+        c = _sector_canon(row[isec])
+        key = "Cash" if c is None else c
+        sect[key] = sect.get(key, 0.0) + w
+        n += 1
+    return {"fecha": fecha, "sectores": {k: round(v, 3) for k, v in sect.items()}, "n": n}
+
+
+def _valida_pesos(idx, res):
+    """Un fichero a medias parece un fichero bueno. Se comprueba antes de usarlo."""
+    try:
+        if idx == "IWM":
+            tot = sum(res["sectores"].values())
+            return res.get("n", 0) >= 800 and 90 <= tot <= 102
+        filas = res.get("filas") or []
+        tot = sum(f[1] for f in filas)
+        if 0.8 <= tot <= 1.2:                       # vino en tanto por uno
+            for f in filas:
+                f[1] = f[1] * 100.0
+            tot *= 100.0
+        minimo = {"SPY": 400, "QQQ": 90, "DIA": 25}.get(idx, 20)
+        return len(filas) >= minimo and 90 <= tot <= 102
+    except Exception:
+        return False
+
+
+def _pesos_a_mano(idx):
+    if idx == "QQQ":
+        filas = []
+        for par in QQQ_PESOS_MANO[1].split():
+            t, w = par.split(":")
+            filas.append([t, float(w), None])
+        return {"fecha": QQQ_PESOS_MANO[0], "filas": filas, "fuente": "Invesco", "estado": "a mano"}
+    f, sect = PESOS_SECTOR_MANO[idx]
+    return {"fecha": f, "sectores": dict(sect), "fuente": {"IWM": "iShares"}.get(idx, "SSGA"),
+            "estado": "a mano"}
+
+
+def cargar_pesos_indices():
+    """Pesos de SPY, QQQ, DIA e IWM: de la gestora (vivo) -> los ultimos buenos guardados -> a mano.
+       Cada resultado dice de donde ha salido y de que fecha es."""
+    ruta = os.path.join(SEGUIMIENTO_DIR, "pesos_indices.json")
+    try:
+        cache = json.load(open(ruta, encoding="utf-8")) if os.path.exists(ruta) else {}
+    except Exception as _dege:
+        _deg("pesos:cache", _dege)
+        cache = {}
+    fuentes = {"SPY": "SSGA", "DIA": "SSGA", "QQQ": "Invesco", "IWM": "iShares"}
+    out, nuevos = {}, {}
+    for idx in ("SPY", "QQQ", "DIA", "IWM"):
+        res, err = None, ""
+        if COMP_PESOS_ON:
+            for url in COMP_PESOS_URLS.get(idx, []):
+                try:
+                    r = _descarga_pesos(url)
+                    if idx in ("SPY", "DIA"):
+                        res = _parse_ssga(r.content)
+                    elif idx == "QQQ":
+                        res = _parse_invesco(r)
+                    else:
+                        res = _parse_ishares(r.text)
+                    if res and _valida_pesos(idx, res):
+                        break
+                    err = "fichero incompleto"
+                    res = None
+                except Exception as _dege:
+                    err = f"{type(_dege).__name__}: {str(_dege)[:60]}"
+                    _deg(f"pesos:{idx}", _dege)
+                    res = None
+        if res:
+            res["fuente"] = fuentes[idx]
+            res["descargado"] = str(dt.date.today())
+            res["fecha"] = res.get("fecha") or str(dt.date.today())
+            nuevos[idx] = dict(res)
+            res["estado"] = "vivo"
+            out[idx] = res
+            continue
+        c = cache.get(idx)
+        if isinstance(c, dict) and (c.get("filas") or c.get("sectores")):
+            c = dict(c)
+            c["estado"] = "guardado"
+            out[idx] = c
+            if COMP_PESOS_ON:
+                _avisar("pesos", f"{idx}: la cartera oficial de {fuentes[idx]} no respondió ({err or 'sin respuesta'}); "
+                                 f"se usan los pesos guardados del {c.get('fecha')}")
+            try:
+                if (dt.date.today() - dt.date.fromisoformat(str(c.get("fecha"))[:10])).days > 21:
+                    _avisar("pesos", f"{idx}: los pesos guardados tienen más de 3 semanas ({c.get('fecha')}): "
+                                     "las barras de ese índice pueden estar desfasadas")
+            except Exception:
+                pass
+            continue
+        out[idx] = _pesos_a_mano(idx)
+        if COMP_PESOS_ON:
+            _avisar("pesos", f"{idx}: sin cartera oficial ni pesos guardados ({err or 'sin respuesta'}); "
+                             f"se usan los escritos a mano del {out[idx]['fecha']}")
+    if nuevos:
+        try:
+            merged = dict(cache)
+            merged.update(nuevos)
+            guardar_json_seguro(ruta, merged, indent=0)
+        except Exception as _dege:
+            _deg("pesos:guardar", _dege)
+    return out
+
+
+def _mapa_sectores(pesos):
+    """ticker -> (sector GICS, subindustria). Orden de confianza: la ficha de la gestora (SPY, DIA),
+       la lista publica del S&P 500, la tabla a mano del Nasdaq. El resto: 'Sin clasificar'."""
+    m = {}
+    for t, v in QQQ_SECTOR_EXTRA.items():
+        m[t] = (v[0], v[1])
+    for t, v in (SP500_SECTOR or {}).items():
+        m[t] = (_sector_canon(v[0]) or "Sin clasificar", v[1])
+    for idx in ("DIA", "SPY"):
+        for f in ((pesos or {}).get(idx) or {}).get("filas") or []:
+            c = _sector_canon(f[2]) if f[2] else "Sin clasificar"
+            if c and c != "Sin clasificar":
+                m[f[0]] = (c, (m.get(f[0]) or (None, ""))[1])
+    return m
+
+
+def _cmf_serie(d, win=20):
+    """CMF de 20 sesiones dia a dia, la MISMA formula que compute_volume_flow (con acciones, no euros)."""
+    try:
+        c = d["Close"].astype(float); hi = d["High"].astype(float); lo = d["Low"].astype(float)
+        v = d["Volume"].astype(float)
+        rng = (hi - lo).replace(0, np.nan)
+        mfm = (((c - lo) - (hi - c)) / rng).fillna(0.0)
+        return ((mfm * v).rolling(win).sum() / v.rolling(win).sum().replace(0, np.nan))
+    except Exception as _dege:
+        _deg("_cmf_serie", _dege)
+        return None
+
+
+def _cmf_partes(d):
+    """(money-flow en euros, euros negociados) diarios: para agregar varias acciones como manda Chaikin."""
+    c = d["Close"].astype(float); hi = d["High"].astype(float); lo = d["Low"].astype(float)
+    v = d["Volume"].astype(float)
+    rng = (hi - lo).replace(0, np.nan)
+    mfm = (((c - lo) - (hi - c)) / rng).fillna(0.0)
+    dv = c * v
+    return mfm * dv, dv
+
+
+def _cmf_grupo(partes, win=20):
+    """CMF de un GRUPO de acciones: suma de money-flow en euros / suma de euros negociados.
+       Cada accion pesa por el dinero que mueve, no a partes iguales (igual que en los pelotones)."""
+    try:
+        if not partes:
+            return None
+        M = pd.concat([p[0] for p in partes], axis=1).sum(axis=1, min_count=1)
+        D = pd.concat([p[1] for p in partes], axis=1).sum(axis=1, min_count=1)
+        return (M.rolling(win).sum() / D.rolling(win).sum().replace(0, np.nan)).dropna()
+    except Exception as _dege:
+        _deg("_cmf_grupo", _dege)
+        return None
+
+
+def _tramos_de(serie):
+    """[hace 3 semanas, 2, 1, hoy]: el CMF muestreado cada 5 sesiones (la regla de tramos)."""
+    try:
+        if serie is None:
+            return None
+        s = serie.dropna()
+        if len(s) < 16:
+            return None
+        return [round(float(s.iloc[-k]), 3) for k in (16, 11, 6, 1)]
+    except Exception:
+        return None
+
+
+def _estado_por_peso(rep):
+    """Estado de un bloque por la MAYORIA de su peso medido: entra/sale/plano, o mixto."""
+    med = rep["entra"] + rep["plano"] + rep["sale"]
+    if med <= 0:
+        return "sin dato", None
+    fe, fp, fs = rep["entra"] / med, rep["plano"] / med, rep["sale"] / med
+    if fe > 0.5:
+        return "entra", 1
+    if fs > 0.5:
+        return "sale", -1
+    if fp > 0.5:
+        return "plano", 0
+    return "mixto", (1 if rep["entra"] > rep["sale"] else (-1 if rep["sale"] > rep["entra"] else 0))
+
+
+def _lectura_comp(tot, filas):
+    """La frase de abajo: mira 'mas de la mitad del peso MEDIDO' (no el doble, como antes)."""
+    med = tot["entra"] + tot["plano"] + tot["sale"]
+    if med <= 0:
+        return "Sin datos suficientes para leer la composición.", "ambar"
+    medidas = [fb for fb in filas if fb.get("signo") is not None]
+    dom = max(medidas, key=lambda fb: fb["peso"]) if medidas else None
+    fe, fs, fp = tot["entra"] / med, tot["sale"] / med, tot["plano"] / med
+    if fs > 0.5:
+        return (f"Más de la mitad del peso medido ({100 * fs:.0f}%) tiene el dinero saliendo. "
+                f"Lo que entra ({100 * fe:.0f}%) no lo compensa."), "rojo"
+    if fe > 0.5:
+        return (f"Más de la mitad del peso medido ({100 * fe:.0f}%) tiene el dinero entrando: "
+                "el índice tiene el viento a favor por composición."), "verde"
+    if fp >= 0.5:
+        return (f"La mayor parte del peso medido ({100 * fp:.0f}%) está plana: ni entra ni sale. "
+                + (f"Manda hacia dónde se incline {dom['etq']} ({_pct_comp(dom['peso'])})." if dom else "")), "ambar"
+    if dom is not None and dom.get("estado") == "mixto":
+        return (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) va mixto: "
+                "el índice no tiene una dirección clara por composición."), "ambar"
+    if dom is not None and dom["signo"] < 0:
+        return (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero saliendo. "
+                "Es difícil que el índice tire sin él."), "ambar"
+    if dom is not None and dom["signo"] > 0:
+        return (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero entrando, "
+                "pero el resto está dividido: tira, sin apoyo amplio."), "ambar"
+    return "Peso repartido entre los dos lados: el índice no tiene una dirección clara por composición.", "ambar"
+
+
+def _contraste_etf(spdr, flow, rrg, signo_bloque):
+    if not spdr:
+        return None
+    f = (flow or {}).get(spdr)
+    e2, s2 = clasificar_flujo(f)
+    q = ((rrg or {}).get(spdr) or {}).get("quad")
+    distinto = bool(s2 is not None and signo_bloque is not None and s2 != signo_bloque)
+    return {"sym": spdr, "estado": e2, "signo": s2, "cmf": (f or {}).get("cmf"),
+            "quad": (QUAD.get(q, (q,))[0] if q else None), "distinto": distinto}
+
+
+def composicion_acciones(idx, pesos, mapa, flow, rrg, propio=None):
+    """Composicion ACCION A ACCION con los pesos oficiales del fondo.
+       Devuelve el dict del panel, o {'cobertura_baja': x} si no hay datos de suficientes acciones."""
+    try:
+        filas_in = (pesos or {}).get("filas") or []
+        if not filas_in:
+            return None
+        ults = [STK_OHLCV[f[0]].index[-1] for f in filas_in if f[0] in STK_OHLCV and len(STK_OHLCV[f[0]])]
+        if not ults:
+            return {"cobertura_baja": 0.0}
+        ref = max(ults)
+        grupos, fuera, acc = {}, 0.0, []
+        for t, w, sec_raw in filas_in:
+            w = float(w or 0.0)
+            if w <= 0:
+                continue
+            canon = _sector_canon(sec_raw) if sec_raw else "Sin clasificar"
+            if canon is None:
+                fuera += w
+                continue
+            if canon == "Sin clasificar":
+                canon = (mapa.get(t) or ("Sin clasificar", None))[0] or "Sin clasificar"
+            sub = _sub_tech((mapa.get(t) or (None, ""))[1]) if canon == "Information Technology" else None
+            d = STK_OHLCV.get(t)
+            cmf, partes = None, None
+            if d is not None and len(d) >= 25 and (ref - d.index[-1]).days <= 4:
+                sr = _cmf_serie(d)
+                if sr is not None and sr.notna().any() and sr.iloc[-1] == sr.iloc[-1]:
+                    cmf = float(sr.iloc[-1])
+                    try:
+                        partes = _cmf_partes(d.iloc[-60:])
+                    except Exception:
+                        partes = None
+            k = "sin" if cmf is None else ("entra" if cmf > 0.05 else ("sale" if cmf < -0.05 else "plano"))
+            g = "7 Magníficos" if (idx == "QQQ" and t in MAG7) else canon
+            a = {"t": t, "w": w, "cmf": cmf, "k": k, "canon": canon, "sub": sub, "partes": partes, "g": g}
+            acc.append(a)
+            grupos.setdefault(g, []).append(a)
+        if not acc:
+            return None
+        tot = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+        for a in acc:
+            tot[a["k"]] += a["w"]
+        peso_acc = sum(tot.values())
+        med = tot["entra"] + tot["plano"] + tot["sale"]
+        cobertura = 100.0 * med / peso_acc if peso_acc else 0.0
+        if cobertura < COMP_MIN_COBERTURA:
+            return {"cobertura_baja": round(cobertura, 1)}
+        filas = []
+        for g, mem in grupos.items():
+            rep = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+            for a in mem:
+                rep[a["k"]] += a["w"]
+            peso = sum(rep.values())
+            estado, signo = _estado_por_peso(rep)
+            serie = _cmf_grupo([a["partes"] for a in mem if a["partes"] is not None])
+            tr = _tramos_de(serie)
+            # tiran / frenan: solo acciones que pesen algo (>= 0,05% del indice); las migajas no orientan
+            tiran = sorted([a for a in mem if a["k"] == "entra" and a["w"] >= 0.05], key=lambda a: -a["w"])[:3]
+            frenan = sorted([a for a in mem if a["k"] == "sale" and a["w"] >= 0.05], key=lambda a: -a["w"])[:3]
+            subs = None
+            if g == "Information Technology":
+                subs = []
+                for sk in ("semis", "software", "hardware", None):
+                    sm = [a for a in mem if a["sub"] == sk]
+                    if not sm:
+                        continue
+                    srep = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+                    for a in sm:
+                        srep[a["k"]] += a["w"]
+                    subs.append({"etq": _SUB_TECH_ETQ.get(sk, "otros"), "peso": sum(srep.values()), "rep": srep})
+            if g in SECTOR_GICS:
+                etq = SECTOR_GICS[g][0]
+                if idx == "QQQ" and g in ("Information Technology", "Consumer Discretionary", "Communication Services"):
+                    etq += " (sin los 7)"
+                spdr = SECTOR_GICS[g][1]
+            else:
+                etq, spdr = g, ("MAGS" if g == "7 Magníficos" else None)
+            filas.append({"etq": etq, "peso": peso, "rep": rep, "estado": estado, "signo": signo,
+                          "tramos": tr, "n": len(mem), "n_med": sum(1 for a in mem if a["k"] != "sin"),
+                          "tiran": [(a["t"], a["w"], a["cmf"]) for a in tiran],
+                          "frenan": [(a["t"], a["w"], a["cmf"]) for a in frenan],
+                          "subs": subs, "contraste": _contraste_etf(spdr, flow, rrg, signo), "chips": None})
+        filas.sort(key=lambda fb: -fb["peso"])
+        mag = None
+        if idx != "QQQ":
+            mm = [a for a in acc if a["t"] in MAG7]
+            if mm:
+                mrep = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+                for a in mm:
+                    mrep[a["k"]] += a["w"]
+                mag = {"peso": sum(mrep.values()), "rep": mrep}
+        lectura, color = _lectura_comp(tot, filas)
+        top = filas[0] if filas else None
+        aviso = ""
+        if top is not None and top["signo"] is None:
+            aviso = (f"Ojo: el bloque que más pesa ({top['etq']}, {_pct_comp(top['peso'])}) no tiene dato hoy; "
+                     "la lectura se hace sin él.")
+        return {"idx": idx, "nombre": COMP_NOMBRES[idx], "bench": idx, "modo": "acciones", "filas": filas,
+                "p_entra": tot["entra"], "p_plano": tot["plano"], "p_sale": tot["sale"], "p_sin": tot["sin"],
+                "p_fuera": max(0.0, 100.0 - peso_acc), "cobertura": round(cobertura, 1),
+                "n_acc": len(acc), "n_med": sum(1 for a in acc if a["k"] != "sin"),
+                "fuente": pesos.get("fuente"), "fecha_pesos": pesos.get("fecha"), "estado_pesos": pesos.get("estado"),
+                "ref": str(pd.Timestamp(ref).date()), "lectura": lectura, "color": color, "aviso": aviso,
+                "propio": _propio_comp(idx, propio, color), "mag7": mag, "nota_modo": ""}
+    except Exception as _dege:
+        _deg(f"composicion_acciones:{idx}", _dege)
+        return None
+
+
+def _propio_comp(idx, flujo_propio, color):
+    if not flujo_propio:
+        return None
+    e_p, s_p = clasificar_flujo(flujo_propio)
+    nota = ""
+    if s_p is not None and ((color == "rojo" and s_p > 0) or (color == "verde" and s_p < 0)):
+        nota = ("no cuadra con la suma de lo que lleva dentro: el propio ETF puede estar moviendose por coberturas "
+                "o arbitraje. Se señala, no se reconcilia.")
+    return {"sym": idx, "estado": e_p, "signo": s_p, "cmf": flujo_propio.get("cmf"), "nota": nota}
+
+
+def _sectores_de_filas(filas, mapa):
+    """Pesos por sector a partir de la cartera accion a accion (para el modo de respaldo)."""
+    sect = {}
+    for t, w, sec_raw in filas or []:
+        c = _sector_canon(sec_raw) if sec_raw else "Sin clasificar"
+        if c is None:
+            continue
+        if c == "Sin clasificar":
+            c = (mapa.get(t) or ("Sin clasificar", None))[0] or "Sin clasificar"
+        sect[c] = sect.get(c, 0.0) + float(w or 0.0)
+    return sect
+
+
+def composicion_sectores(idx, sect_w, flow, rrg, daily, pesos, motivo, propio=None):
+    """RESPALDO: cada sector oficial medido con su ETF de sector del S&P (su bolita del RRG)."""
+    try:
+        filas, tot = [], {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+        suma = 0.0
+        for canon, w in sorted(sect_w.items(), key=lambda kv: -kv[1]):
+            w = float(w or 0.0)
+            if w <= 0 or canon in (None, "Cash"):
+                continue
+            suma += w
+            spdr = SECTOR_GICS.get(canon, (None, None))[1]
+            f = (flow or {}).get(spdr) if spdr else None
+            estado, signo = clasificar_flujo(f)
+            k = "sin" if signo is None else ("entra" if signo > 0 else ("sale" if signo < 0 else "plano"))
+            rep = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+            rep[k] = w
+            tot[k] += w
+            d = (daily or {}).get(spdr) if spdr else None
+            q = ((rrg or {}).get(spdr) or {}).get("quad") if spdr else None
+            filas.append({"etq": SECTOR_GICS.get(canon, (canon,))[0], "peso": w, "rep": rep, "estado": estado,
+                          "signo": signo, "tramos": (_tramos_de(_cmf_serie(d)) if d is not None else None),
+                          "n": 1, "n_med": (0 if signo is None else 1), "tiran": [], "frenan": [], "subs": None,
+                          "contraste": None,
+                          "chips": ([{"sym": spdr, "cmf": (f or {}).get("cmf"), "estado": estado, "signo": signo,
+                                      "quad": (QUAD.get(q, (q,))[0] if q else None), "grande": False,
+                                      "poco": False, "respaldo": False}] if spdr else [])})
+        if not filas:
+            return None
+        lectura, color = _lectura_comp(tot, filas)
+        return {"idx": idx, "nombre": COMP_NOMBRES[idx], "bench": idx, "modo": "sectores", "filas": filas,
+                "p_entra": tot["entra"], "p_plano": tot["plano"], "p_sale": tot["sale"], "p_sin": tot["sin"],
+                "p_fuera": max(0.0, 100.0 - suma), "cobertura": None, "n_acc": None, "n_med": None,
+                "fuente": (pesos or {}).get("fuente"), "fecha_pesos": (pesos or {}).get("fecha"),
+                "estado_pesos": (pesos or {}).get("estado"), "ref": None, "lectura": lectura, "color": color,
+                "aviso": "", "propio": _propio_comp(idx, propio, color), "mag7": None, "nota_modo": motivo}
+    except Exception as _dege:
+        _deg(f"composicion_sectores:{idx}", _dege)
+        return None
+
+
+def composicion_pequenas(pesos, flow_peq, rrg_peq, flow, rrg, largo, propio=None):
+    """IWM: peso OFICIAL de cada sector (iShares) medido con ETFs de empresas PEQUENAS."""
+    try:
+        sect = dict((pesos or {}).get("sectores") or {})
+        if not sect:
+            return None
+        filas, tot, suma = [], {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}, 0.0
+        usados = set()
+        for etq, secs, syms in PEQ_BLOQUES:
+            w = sum(float(sect.get(s, 0.0) or 0.0) for s in secs)
+            usados.update(secs)
+            if w <= 0:
+                continue
+            suma += w
+            con_dato = [s for s in syms if (flow_peq or {}).get(s, {}).get("cmf") is not None]
+            chips, rep = [], {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
+            respaldo = False
+            miembros = list(syms)
+            if not con_dato:
+                spdr = SECTOR_GICS.get(secs[0], (None, None))[1]
+                if spdr and (flow or {}).get(spdr, {}).get("cmf") is not None:
+                    miembros, respaldo = [spdr], True
+            cuota = w / max(1, len(miembros))
+            trs = []
+            for s in miembros:
+                f = (flow if respaldo else flow_peq or {}).get(s)
+                e, sg = clasificar_flujo(f)
+                k = "sin" if sg is None else ("entra" if sg > 0 else ("sale" if sg < 0 else "plano"))
+                rep[k] += cuota
+                tot[k] += cuota
+                q = ((rrg if respaldo else rrg_peq) or {}).get(s, {}).get("quad")
+                d = (largo or {}).get(s)
+                poco = False
+                if d is not None and len(d) >= 20:
+                    if not respaldo:
+                        try:
+                            poco = float((d["Close"].astype(float) * d["Volume"].astype(float)).iloc[-20:].mean()) < PEQ_POCO_VOL_USD
+                        except Exception:
+                            poco = False
+                    trs.append(_tramos_de(_cmf_serie(d)))
+                chips.append({"sym": s, "cmf": (f or {}).get("cmf"), "estado": e, "signo": sg,
+                              "quad": (QUAD.get(q, (q,))[0] if q else None),
+                              "grande": (s in PEQ_GRANDES or respaldo), "poco": poco, "respaldo": respaldo})
+            estado, signo = _estado_por_peso(rep)
+            trs = [t for t in trs if t]
+            tr = [round(sum(t[i] for t in trs) / len(trs), 3) for i in range(4)] if trs else None
+            filas.append({"etq": etq, "peso": w, "rep": rep, "estado": estado, "signo": signo, "tramos": tr,
+                          "n": len(miembros), "n_med": sum(1 for c in chips if c["signo"] is not None),
+                          "tiran": [], "frenan": [], "subs": None, "contraste": None, "chips": chips})
+        if not filas:
+            return None
+        filas.sort(key=lambda fb: -fb["peso"])
+        lectura, color = _lectura_comp(tot, filas)
+        otros = sum(float(v or 0) for k, v in sect.items() if k not in usados)
+        return {"idx": "IWM", "nombre": COMP_NOMBRES["IWM"], "bench": "IWM", "modo": "pequenas", "filas": filas,
+                "p_entra": tot["entra"], "p_plano": tot["plano"], "p_sale": tot["sale"], "p_sin": tot["sin"],
+                "p_fuera": max(0.0, 100.0 - suma), "p_otros": otros, "cobertura": None, "n_acc": None,
+                "n_med": None, "fuente": pesos.get("fuente"), "fecha_pesos": pesos.get("fecha"),
+                "estado_pesos": pesos.get("estado"), "ref": None, "lectura": lectura, "color": color,
+                "aviso": "", "propio": _propio_comp("IWM", propio, color), "mag7": None, "nota_modo": ""}
+    except Exception as _dege:
+        _deg("composicion_pequenas", _dege)
+        return None
+
+
+def _minibar(rep, peso, ancho=74, alto=9):
+    seg = ""
+    p = max(peso, 1e-9)
+    for k, c in (("entra", "#00E676"), ("plano", "#2A3648"), ("sale", "#FF5252"),
+                 ("sin", "repeating-linear-gradient(45deg,#1A2230 0 3px,#0B0F17 3px 6px)")):
+        v = rep.get(k, 0.0)
+        if v > 0:
+            seg += f"<div style='flex:0 0 {100.0 * v / p:.2f}%;background:{c}'></div>"
+    return (f"<div style='display:flex;width:{ancho}px;height:{alto}px;border-radius:2px;overflow:hidden;"
+            f"border:1px solid #222C3A;display:inline-flex;vertical-align:middle'>{seg}</div>")
+
+
+def _tend_html(tr):
+    """'hace 3 sem -> hoy' del CMF, con la flecha de la regla de tramos."""
+    if not tr:
+        return "<span style='color:#5E708A'>—</span>"
+    c = "#00E676" if tr[3] > 0.05 else ("#FF5252" if tr[3] < -0.05 else "#8A96A8")
+    if tr[0] < tr[1] < tr[2] < tr[3]:
+        fl = "<span style='color:#7BD88F' title='mejora 3 tramos seguidos'> ↗3t</span>"
+    elif tr[0] > tr[1] > tr[2] > tr[3]:
+        fl = "<span style='color:#FF8A80' title='empeora 3 tramos seguidos'> ↘3t</span>"
+    else:
+        fl = ""
+    return (f"<span style='color:#5E708A;font-size:10px'>{tr[0]:+.2f}→</span>"
+            f"<b style='color:{c}'>{tr[3]:+.2f}</b>{fl}")
+
+
+def _comp_html(dc):
+    """Caja de un indice (pestana Detector de suelos)."""
+    GRN, RED, GRY, AMB = "#00E676", "#FF5252", "#8A96A8", "#FFB000"
+    col = {"verde": GRN, "rojo": RED, "ambar": AMB}.get(dc["color"], GRY)
+    sin_medir = max(0.0, dc["p_sin"] + dc["p_fuera"])
+    t = (f"<div style='font-size:12px;margin-bottom:8px'>"
+         f"<span style='color:{GRN};font-weight:700'>{_pct_comp(dc['p_entra'])} entra</span> · "
+         f"<span style='color:{GRY}'>{_pct_comp(dc['p_plano'])} plano</span> · "
+         f"<span style='color:{RED};font-weight:700'>{_pct_comp(dc['p_sale'])} sale</span> · "
+         f"<span style='color:#5E708A'>{_pct_comp(sin_medir)} sin medir</span></div>")
+    t += ("<div style='display:flex;height:16px;border-radius:4px;overflow:hidden;margin-bottom:3px;"
+          "border:1px solid #222C3A'>")
+    for v, c, nm in ((dc["p_entra"], GRN, "entra"), (dc["p_plano"], "#2A3648", "plano"), (dc["p_sale"], RED, "sale"),
+                     (sin_medir, "repeating-linear-gradient(45deg,#1A2230 0 4px,#0B0F17 4px 8px)", "sin medir")):
+        if v > 0:
+            t += f"<div title='{nm} {_pct_comp(v)}' style='flex:0 0 {v:.2f}%;background:{c}'></div>"
+    t += ("</div><div style='font-size:9.5px;color:#5E708A;margin-bottom:6px'>la barra es el índice entero · "
+          "rayado = sin dato hoy, liquidez o lo que el panel no sigue</div>")
+    # de donde salen los pesos y como se mide
+    _ep = dc.get("estado_pesos")
+    _ecol = {"vivo": "#7BD88F", "guardado": AMB, "a mano": AMB}.get(_ep, GRY)
+    if _ep == "a mano":
+        t += (f"<div style='font-size:10.5px;color:{GRY};margin-bottom:4px'>Pesos: <span style='color:{_ecol}'>copiados "
+              f"a mano</span> de la ficha oficial de <b>{esc(dc.get('fuente') or '?')}</b> del "
+              f"{esc(dc.get('fecha_pesos') or '?')} <span style='color:{_ecol}'>(hoy no respondió y no había pesos "
+              f"guardados)</span>")
+    else:
+        _est = {"vivo": "bajada hoy", "guardado": "la última buena guardada: hoy no respondió"}.get(_ep, "")
+        t += (f"<div style='font-size:10.5px;color:{GRY};margin-bottom:4px'>Pesos: cartera oficial de "
+              f"<b>{esc(dc.get('fuente') or '?')}</b> del {esc(dc.get('fecha_pesos') or '?')} "
+              f"<span style='color:{_ecol}'>({_est})</span>")
+    if dc["modo"] == "acciones":
+        t += (f" · medido <b>acción a acción</b>: {dc['n_med']} de {dc['n_acc']} con dato "
+              f"({dc['cobertura']:.0f}% del peso) · datos al {esc(dc.get('ref') or '?')}")
+    elif dc["modo"] == "pequenas":
+        t += " · cada sector medido con ETFs de <b>empresas pequeñas</b>"
+    else:
+        t += " · medido con los <b>ETFs de sector del S&amp;P</b>"
+    t += "</div>"
+    if dc.get("nota_modo"):
+        t += f"<div style='font-size:10.5px;color:{AMB};margin-bottom:4px'>⚠ {esc(dc['nota_modo'])}</div>"
+    if dc.get("mag7"):
+        m = dc["mag7"]
+        t += (f"<div style='font-size:10.5px;color:{GRY};margin-bottom:6px'>De ese total, los <b>7 Magníficos</b> pesan "
+              f"<b>{_pct_comp(m['peso'])}</b>: {_minibar(m['rep'], m['peso'], 60, 8)} "
+              f"<span style='color:{GRN}'>{_pct_comp(m['rep']['entra'])} entra</span> · "
+              f"{_pct_comp(m['rep']['plano'])} plano · <span style='color:{RED}'>{_pct_comp(m['rep']['sale'])} sale</span></div>")
+    t += ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'><table style='min-width:470px;width:100%'>"
+          "<tr style='color:#888;font-size:10px'><td>bloque</td><td>peso</td><td>reparto</td><td>dinero</td>"
+          "<td title='CMF del bloque hace 3 semanas y hoy; ↗3t = mejora tres tramos seguidos'>flujo 3 sem</td></tr>")
+    for fb in dc["filas"]:
+        cb = {1: GRN, -1: RED, 0: GRY}.get(fb["signo"], "#5E708A")
+        est = fb["estado"]
+        t += (f"<tr><td style='font-weight:700'>{esc(fb['etq'])}</td>"
+              f"<td style='font-weight:700'>{_pct_comp(fb['peso'])}</td>"
+              f"<td>{_minibar(fb['rep'], fb['peso'])}</td>"
+              f"<td style='color:{cb};font-weight:700;font-size:11px'>{esc(est)}</td>"
+              f"<td style='font-size:11px;white-space:nowrap'>{_tend_html(fb.get('tramos'))}</td></tr>")
+        det = []
+        if fb.get("chips"):
+            ch = []
+            for x in fb["chips"]:
+                cc = {1: GRN, -1: RED, 0: GRY}.get(x["signo"], "#3A4658")
+                cm = f"{x['cmf']:+.2f}" if x.get("cmf") is not None else "sin dato"
+                qd = f" · {x['quad']}" if x.get("quad") else ""
+                marca = ""
+                if x.get("respaldo"):
+                    marca += " <span style='color:#FFB000;font-size:9px'>grandes (respaldo: sin dato de las pequeñas)</span>"
+                elif x.get("grande"):
+                    marca += " <span style='color:#FFB000;font-size:9px'>grandes</span>"
+                if x.get("poco"):
+                    marca += " <span style='color:#FFB000;font-size:9px'>poco volumen</span>"
+                ch.append(f"<span style='white-space:nowrap'><span style='color:{cc}'>●</span> {esc(x['sym'])} "
+                          f"<span style='color:{GRY}'>{cm}{esc(qd)}</span>{marca}</span>")
+            det.append(" &nbsp; ".join(ch))
+        if fb.get("tiran"):
+            det.append("<span style='color:#00E676'>tiran:</span> " + ", ".join(
+                f"{esc(a)} {_pct_comp(w)} ({c:+.2f})" for a, w, c in fb["tiran"]))
+        if fb.get("frenan"):
+            det.append("<span style='color:#FF5252'>frenan:</span> " + ", ".join(
+                f"{esc(a)} {_pct_comp(w)} ({c:+.2f})" for a, w, c in fb["frenan"]))
+        if fb.get("subs"):
+            det.append(" · ".join(
+                f"{esc(s['etq'])} {_pct_comp(s['peso'])} {_minibar(s['rep'], s['peso'], 44, 7)}" for s in fb["subs"]))
+        cx = fb.get("contraste")
+        if cx:
+            ccx = {1: GRN, -1: RED, 0: GRY}.get(cx["signo"], "#3A4658")
+            cmx = f"{cx['cmf']:+.2f}" if cx.get("cmf") is not None else "sin dato"
+            det.append(f"bolita {esc(cx['sym'])}: <span style='color:{ccx}'>{esc(cx['estado'])}</span> ({cmx})"
+                       + (" <span style='color:#FFB000' title='el ETF del sector y la suma de sus acciones dicen "
+                          "cosas distintas: manda la suma de las acciones del índice, pero míralo'>≠</span>"
+                          if cx.get("distinto") else ""))
+        if det:
+            t += ("<tr><td colspan='5' style='font-size:10px;color:#8A96A8;padding:0 4px 6px 10px;line-height:1.6;"
+                  "border-top:none'>" + " &nbsp;|&nbsp; ".join(det) + "</td></tr>")
+    t += "</table></div>"
+    t += f"<div style='color:{col};font-size:12px;margin-top:8px'>{esc(dc['lectura'])}</div>"
+    if dc.get("aviso"):
+        t += f"<div style='color:{AMB};font-size:11px;margin-top:4px'>{esc(dc['aviso'])}</div>"
+    pr = dc.get("propio")
+    if pr:
+        pc = {1: GRN, -1: RED, 0: GRY}.get(pr["signo"], "#5E708A")
+        pcm = f"{pr['cmf']:+.2f}" if pr.get("cmf") is not None else "—"
+        t += (f"<div style='font-size:11px;margin-top:6px;color:{GRY}'>El propio {esc(pr['sym'])}: "
+              f"<b style='color:{pc}'>{esc(pr['estado'])}</b> · CMF {pcm}"
+              + (f" — <span style='color:{AMB}'>{esc(pr['nota'])}</span>" if pr.get("nota") else "") + "</div>")
+    if dc["modo"] == "acciones":
+        expl = ("Cada acción del fondo con su peso oficial y su CMF de 20 sesiones: por encima de +0,05 <b>entra</b>, "
+                "por debajo de −0,05 <b>sale</b>, en medio <b>plano</b>. El estado de cada bloque es el de la mayor parte de "
+                "su peso; <b>mixto</b> si ninguno pasa de la mitad. <b>tiran / frenan</b> = las acciones que más pesan con el "
+                "dinero entrando / saliendo. <b>bolita</b> = el ETF de ese sector en el RRG, para contrastar (≠ si dice otra cosa). "
+                "<b>flujo 3 sem</b> = CMF del bloque entero (cada acción pesa por el dinero que mueve) hace 3 semanas y hoy.")
+    elif dc["modo"] == "pequenas":
+        expl = ("Peso oficial de cada sector según iShares, medido con ETFs de <b>empresas pequeñas</b> (Invesco S&amp;P "
+                "SmallCap, más KRE y XBI) con la regla del anillo del RRG. Si un sector tiene dos ETFs, su peso se reparte a "
+                "partes iguales. <b>Ojo</b>: los PSC siguen el S&amp;P SmallCap 600, primo del Russell 2000 pero no gemelo "
+                "(el 600 exige beneficios y deja fuera muchas biotecnológicas que pierden dinero). <b>poco volumen</b> = "
+                "negocia menos de 1 millón de dólares al día: su CMF es más ruidoso. El cuadrante es <b>frente al IWM</b>. "
+                "Son para <b>leer el flujo</b>: desde España no se compran.")
+    else:
+        expl = ("Cada sector con su peso oficial, medido con su ETF de sector del S&amp;P (su bolita del RRG) con la regla "
+                "del anillo. Es el respaldo: menos fino que acción a acción.")
+    t += ("<div style='font-size:10px;color:#666;margin-top:6px'><b>Esto NO es una predicción.</b> Es aritmética de "
+          "composición. " + expl + "</div>")
+    return t
 
 
 def clasificar_flujo(f):
@@ -4700,179 +5529,6 @@ def clasificar_flujo(f):
 def _pct_comp(v):
     v = float(v or 0)
     return (f"{v:.1f}" if 0 < v < 1 else f"{v:.0f}") + "%"
-
-
-def descomponer_indice(nombre, rrg, flow, scores, flujo_propio=None):
-    """Reparte el peso del indice segun si a cada bolita le ENTRA o le SALE dinero.
-       Devuelve None si se mide menos del 40% del indice."""
-    try:
-        cfg = COMPOSICION.get(nombre)
-        if not cfg:
-            return None
-        pequenas = nombre in COMPOSICION_PEQUENAS
-        filas = []
-        tot = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
-        hay_grandes = False
-        for etq, miembros, peso in cfg["bloques"]:
-            miembros = list(miembros) if isinstance(miembros, (list, tuple)) else [miembros]
-            cuota = float(peso) / max(1, len(miembros))
-            mem = []
-            bl = {"entra": 0.0, "plano": 0.0, "sale": 0.0, "sin": 0.0}
-            for sym in miembros:
-                f = (flow or {}).get(sym)
-                estado, signo = clasificar_flujo(f)
-                q = ((rrg or {}).get(sym) or {}).get("quad")
-                grande = bool(pequenas and sym in SECTORS)
-                hay_grandes = hay_grandes or grande
-                k = "sin" if signo is None else ("entra" if signo > 0 else ("sale" if signo < 0 else "plano"))
-                bl[k] += cuota
-                tot[k] += cuota
-                mem.append({"sym": sym, "estado": estado, "signo": signo,
-                            "cmf": (f or {}).get("cmf"),
-                            "quad": (QUAD.get(q, (q,))[0] if q else None),
-                            "grande": grande})
-            medidos = [x for x in mem if x["signo"] is not None]
-            if not medidos:
-                est_b, sig_b = "sin dato", None
-            elif len({x["signo"] for x in medidos}) == 1:
-                est_b, sig_b = medidos[0]["estado"], medidos[0]["signo"]
-                if len(medidos) > 1 and sig_b < 0:
-                    est_b = "sale"
-                if len(medidos) < len(mem):
-                    est_b += f" ({len(mem) - len(medidos)} sin dato)"
-            else:
-                ne = sum(1 for x in medidos if x["signo"] > 0)
-                ns = sum(1 for x in medidos if x["signo"] < 0)
-                npl = len(medidos) - ne - ns
-                partes = []
-                if ne:
-                    partes.append(f"{ne} entra")
-                if npl:
-                    partes.append(f"{npl} plano")
-                if ns:
-                    partes.append(f"{ns} sale")
-                est_b = "mixto: " + " · ".join(partes)
-                sig_b = 1 if bl["entra"] > bl["sale"] else (-1 if bl["sale"] > bl["entra"] else 0)
-            filas.append({"etq": etq, "peso": float(peso), "miembros": mem, "estado": est_b,
-                          "signo": sig_b, "reparto": bl})
-        med = tot["entra"] + tot["plano"] + tot["sale"]
-        p_tabla = sum(fb["peso"] for fb in filas)
-        p_fuera = max(0.0, 100.0 - p_tabla)
-        if med < 40:
-            return None
-        medidas = [fb for fb in filas if fb["signo"] is not None]
-        dom = max(medidas, key=lambda fb: fb["peso"]) if medidas else None
-        top = max(filas, key=lambda fb: fb["peso"]) if filas else None
-        fe, fs, fp = tot["entra"] / med, tot["sale"] / med, tot["plano"] / med
-        if fs > 0.5:
-            lectura = (f"Más de la mitad del peso medido ({100 * fs:.0f}%) tiene el dinero saliendo. "
-                       f"Lo que entra ({100 * fe:.0f}%) no lo compensa.")
-            color = "rojo"
-        elif fe > 0.5:
-            lectura = (f"Más de la mitad del peso medido ({100 * fe:.0f}%) tiene el dinero entrando: "
-                       "el índice tiene el viento a favor por composición.")
-            color = "verde"
-        elif fp >= 0.5:
-            lectura = (f"La mayor parte del peso medido ({100 * fp:.0f}%) está plana: ni entra ni sale. "
-                       + (f"Manda hacia dónde se incline {dom['etq']} ({_pct_comp(dom['peso'])})." if dom else ""))
-            color = "ambar"
-        elif dom is not None and dom["signo"] is not None and str(dom["estado"]).startswith("mixto"):
-            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) va mixto "
-                       f"({dom['estado'][7:]}): el índice no tiene una dirección clara por composición.")
-            color = "ambar"
-        elif dom is not None and dom["signo"] is not None and dom["signo"] < 0:
-            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero saliendo. "
-                       "Es difícil que el índice tire sin él.")
-            color = "ambar"
-        elif dom is not None and dom["signo"] is not None and dom["signo"] > 0:
-            lectura = (f"El bloque que más pesa ({dom['etq']}, {_pct_comp(dom['peso'])}) tiene el dinero entrando, "
-                       "pero el resto está dividido: tira, sin apoyo amplio.")
-            color = "ambar"
-        else:
-            lectura = "Peso repartido entre los dos lados: el índice no tiene una dirección clara por composición."
-            color = "ambar"
-        aviso = ""
-        if top is not None and top["signo"] is None:
-            aviso = (f"Ojo: el bloque que más pesa ({top['etq']}, {_pct_comp(top['peso'])}) no tiene dato hoy; "
-                     "la lectura se hace sin él.")
-        propio = None
-        if flujo_propio:
-            e_p, s_p = clasificar_flujo(flujo_propio)
-            nota = ""
-            if s_p is not None and ((color == "rojo" and s_p > 0) or (color == "verde" and s_p < 0)):
-                nota = ("no cuadra con la suma por bloques: puede que las bolitas no representen bien al índice. "
-                        "Se señala, no se reconcilia.")
-            propio = {"sym": cfg["bench"], "estado": e_p, "signo": s_p, "cmf": flujo_propio.get("cmf"), "nota": nota}
-        return {"nombre": nombre, "bench": cfg["bench"], "filas": filas,
-                "p_entra": tot["entra"], "p_plano": tot["plano"], "p_sale": tot["sale"],
-                "p_sin": tot["sin"], "p_fuera": p_fuera, "peso_visto": med,
-                "dominante": dom, "lectura": lectura, "color": color, "aviso": aviso,
-                "propio": propio, "grandes": hay_grandes}
-    except Exception as _dege:
-        _deg(f"descomponer_indice:{nombre}", _dege)
-        return None
-
-
-def _composicion_html(dc):
-    """Caja de un indice (pestana Detector de suelos, estetica PRO)."""
-    GRN, RED, GRY, AMB = "#00E676", "#FF5252", "#8A96A8", "#FFB000"
-    col = {"verde": GRN, "rojo": RED, "ambar": AMB}.get(dc["color"], GRY)
-    sin_medir = max(0.0, dc["p_sin"] + dc["p_fuera"])
-    t = (f"<div style='font-size:12px;margin-bottom:8px'>"
-         f"<span style='color:{GRN};font-weight:700'>{_pct_comp(dc['p_entra'])} entra</span> · "
-         f"<span style='color:{GRY}'>{_pct_comp(dc['p_plano'])} plano</span> · "
-         f"<span style='color:{RED};font-weight:700'>{_pct_comp(dc['p_sale'])} sale</span> · "
-         f"<span style='color:#5E708A'>{_pct_comp(sin_medir)} sin medir</span></div>")
-    t += ("<div style='display:flex;height:16px;border-radius:4px;overflow:hidden;margin-bottom:3px;"
-          "border:1px solid #222C3A'>")
-    for v, c, nm in ((dc["p_entra"], GRN, "entra"), (dc["p_plano"], "#2A3648", "plano"),
-                     (dc["p_sale"], RED, "sale"),
-                     (sin_medir, "repeating-linear-gradient(45deg,#1A2230 0 4px,#0B0F17 4px 8px)", "sin medir")):
-        if v > 0:
-            t += f"<div title='{nm} {_pct_comp(v)}' style='flex:0 0 {v:.2f}%;background:{c}'></div>"
-    t += ("</div><div style='font-size:9.5px;color:#5E708A;margin-bottom:10px'>la barra es el índice entero · "
-          "rayado = peso que el panel no sigue o sin dato hoy</div>")
-    t += ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'><table style='min-width:440px'>"
-          "<tr style='color:#888;font-size:10px'><td>bloque</td><td>bolitas del RRG (anillo · CMF · cuadrante)</td>"
-          "<td>peso</td><td>dinero</td></tr>")
-    for fb in dc["filas"]:
-        chips = []
-        for x in fb["miembros"]:
-            cc = {1: GRN, -1: RED, 0: GRY}.get(x["signo"], "#3A4658")
-            cm = f"{x['cmf']:+.2f}" if x["cmf"] is not None else "—"
-            qd = f" · {x['quad']}" if x["quad"] else ""
-            gr = " <span style='color:#FFB000;font-size:9px'>grandes</span>" if x["grande"] else ""
-            chips.append(f"<span style='white-space:nowrap'><span style='color:{cc}'>●</span> "
-                         f"{esc(x['sym'])} <span style='color:{GRY};font-size:10px'>{cm}{esc(qd)}</span>{gr}</span>")
-        cb = {1: GRN, -1: RED, 0: GRY}.get(fb["signo"], "#5E708A")
-        t += (f"<tr><td style='font-weight:700'>{esc(fb['etq'])}</td>"
-              f"<td style='font-size:11px;line-height:1.7'>{'<br>'.join(chips)}</td>"
-              f"<td style='font-weight:700'>{_pct_comp(fb['peso'])}</td>"
-              f"<td style='color:{cb};font-weight:700;font-size:11px'>{esc(fb['estado'])}</td></tr>")
-    t += "</table></div>"
-    t += f"<div style='color:{col};font-size:12px;margin-top:8px'>{esc(dc['lectura'])}</div>"
-    if dc.get("aviso"):
-        t += f"<div style='color:{AMB};font-size:11px;margin-top:4px'>{esc(dc['aviso'])}</div>"
-    pr = dc.get("propio")
-    if pr:
-        pc = {1: GRN, -1: RED, 0: GRY}.get(pr["signo"], "#5E708A")
-        pcm = f"{pr['cmf']:+.2f}" if pr.get("cmf") is not None else "—"
-        t += (f"<div style='font-size:11px;margin-top:6px;color:{GRY}'>El propio {esc(pr['sym'])} (su bolita en el RRG): "
-              f"<b style='color:{pc}'>{esc(pr['estado'])}</b> · CMF {pcm}"
-              + (f" — <span style='color:{AMB}'>{esc(pr['nota'])}</span>" if pr.get("nota") else "") + "</div>")
-    elif dc.get("bench") == "QQQ":
-        t += ("<div style='font-size:10px;color:#5E708A;margin-top:6px'>El QQQ no tiene bolita en el RRG "
-              "(no se descarga como ETF): aquí no hay contraste con su propio flujo.</div>")
-    if dc.get("grandes"):
-        t += ("<div style='font-size:10px;color:#FFB000;margin-top:5px'>⚠ Lo marcado «grandes» se mide con el ETF "
-              "del sector del S&amp;P porque no hay bolita de pequeñas para ese sector: su flujo es el de las grandes "
-              "empresas, no el de las del Russell.</div>")
-    t += ("<div style='font-size:10px;color:#666;margin-top:6px'><b>Esto NO es una predicción.</b> Es aritmética de "
-          "composición con las <b>mismas bolitas del RRG</b> y la misma regla del anillo: verde = entra (CMF por encima "
-          "de +0,05), rojo = sale (por debajo de −0,05 o distribución oculta), gris = plano. Si un bloque tiene varias "
-          "bolitas, su peso se reparte a partes iguales entre ellas. Los pesos son aproximados y cambian cada "
-          "trimestre.</div>")
-    return t
 
 
 def resumen_por_familias(rrg, flow):
@@ -7580,6 +8236,7 @@ def fetch_stock_universe():
                 for t in extra:
                     try:
                         d, _ = get_ohlcv(t, start, dt.date.today())
+                        _guarda_ohlcv(t, d)
                         if d is not None and "Close" in d.columns and len(d) > 200:
                             closes[t] = d["Close"].dropna()
                         else:
@@ -7614,6 +8271,7 @@ def fetch_stock_universe():
     print(f"\nDescargando {len(tickers)} acciones para el ranking de lideres...")
     for i, t in enumerate(tickers):
         d, _ = get_ohlcv(t, start, dt.date.today())
+        _guarda_ohlcv(t, d)
         if d is not None and "Close" in d.columns and len(d) > 200:
             closes[t] = d["Close"].dropna()
         if (i + 1) % 20 == 0:
@@ -7621,6 +8279,26 @@ def fetch_stock_universe():
         time.sleep(0.15)
     print(f"  acciones con datos: {len(closes)}")
     return closes
+
+# v7.6 — ALMACEN DE LAS ACCIONES PARA LA COMPOSICION. El universo del S&P ya se bajaba cada noche,
+# pero solo se guardaba el cierre. Para medir si entra o sale dinero en CADA accion (su CMF) hacen
+# falta maximos, minimos y volumen: vienen en la misma descarga, asi que no cuesta nada mas.
+# Se guardan solo las ultimas STK_OHLCV_SES sesiones (el CMF y sus tramos usan menos de 40).
+STK_OHLCV = {}          # ticker -> DataFrame High/Low/Close/Volume
+SP500_SECTOR = {}       # ticker -> (sector GICS, subindustria GICS) de la lista publica del S&P 500
+STK_OHLCV_SES = 140
+
+
+def _guarda_ohlcv(t, d):
+    try:
+        if d is None or not {"High", "Low", "Close", "Volume"}.issubset(getattr(d, "columns", [])):
+            return
+        x = d[["High", "Low", "Close", "Volume"]].dropna()
+        if len(x) >= 30:
+            STK_OHLCV[str(t)] = x.iloc[-STK_OHLCV_SES:].astype(float)
+    except Exception as _dege:
+        _deg("_guarda_ohlcv", _dege)
+
 
 def sp500_tickers():
     for url in ("https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv",
@@ -7631,6 +8309,16 @@ def sp500_tickers():
             col = "Symbol" if "Symbol" in df.columns else df.columns[0]
             ts = [str(t).strip().upper().replace(".", "-") for t in df[col].dropna()]
             ts = list(dict.fromkeys(ts))
+            # v7.6: la misma lista trae el sector GICS de cada empresa: hace falta para la composicion
+            try:
+                if "GICS Sector" in df.columns:
+                    for _t0, _s0, _u0 in zip(df[col], df["GICS Sector"],
+                                             (df["GICS Sub-Industry"] if "GICS Sub-Industry" in df.columns
+                                              else [""] * len(df))):
+                        if isinstance(_t0, str) and _t0.strip():
+                            SP500_SECTOR[_t0.strip().upper().replace(".", "-")] = (str(_s0 or ""), str(_u0 or ""))
+            except Exception as _dege:
+                _deg("sp500_tickers:sectores", _dege)
             if len(ts) > 400:
                 print(f"  lista S&P 500 obtenida: {len(ts)} valores")
                 return ts
@@ -7658,6 +8346,17 @@ def _yf_batch_closes(tickers):
                 s = cl[t].dropna()
                 if len(s) > 200:
                     closes[str(t)] = s
+            # v7.6 — tambien maximos, minimos y volumen (para el CMF de cada accion en la composicion)
+            try:
+                if isinstance(data.columns, pd.MultiIndex):
+                    _lv0 = set(data.columns.get_level_values(0))
+                    if {"High", "Low", "Close", "Volume"}.issubset(_lv0):
+                        for t in cl.columns:
+                            _guarda_ohlcv(str(t), pd.DataFrame({k: data[k][t] for k in ("High", "Low", "Close", "Volume")}))
+                elif {"High", "Low", "Close", "Volume"}.issubset(data.columns):
+                    _guarda_ohlcv(chunk[0], data)
+            except Exception as _dege:
+                _deg("_yf_batch_closes:ohlcv", _dege)
         except Exception as _dege:
             _deg("_yf_batch_closes:3800", _dege)
             continue
@@ -7676,6 +8375,7 @@ def fetch_sp500_universe():
         start = dt.date.today() - dt.timedelta(days=500)
         for i, t in enumerate(missing):
             d, _ = get_ohlcv(t, start, dt.date.today())
+            _guarda_ohlcv(t, d)
             if d is not None and "Close" in d.columns and len(d) > 200:
                 closes[t] = d["Close"].dropna()
             time.sleep(0.12)
@@ -10881,7 +11581,7 @@ def _amplitud_html(amp):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -12706,6 +13406,22 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     for _g in GRUPO_ORDEN:
         _rrgd += "<div id='rrg-" + _g + "' style='max-width:1040px;margin:0 auto;display:none'>" + render_svg(rrg_g[_g], flow, quality) + "</div>"
     _rrgk = "['all'," + ",".join("'" + _g + "'" for _g in GRUPO_ORDEN) + "]"
+    # v7.6 — PEQUENAS POR SECTOR: su propio RRG, medido frente al IWM (no frente al S&P)
+    try:
+        _peq_rrg_v = (pequenas or {}).get("rrg") if isinstance(pequenas, dict) else None
+        if _peq_rrg_v:
+            _peq_flow_v = (pequenas or {}).get("flow") or {}
+            _rrgt += "<button class='viewtab rrgtab' onclick=\"rrgView('peq',this)\">Pequeñas por sector (vs IWM)</button>"
+            _rrgd += ("<div id='rrg-peq' style='max-width:1040px;margin:0 auto;display:none'>"
+                      "<div class='note' style='margin:6px 0;border-left:3px solid #FFB000;padding-left:8px'>"
+                      "<b>Este grupo se mide frente al Russell 2000 (IWM), no frente al S&amp;P.</b> Dice qué sector de las "
+                      "empresas pequeñas va por delante <b>dentro de las pequeñas</b>. Son los mismos ETFs que miden la barra "
+                      "del Russell en Detector de suelos (Invesco S&amp;P SmallCap por sector, más KRE, XBI y XLRE). "
+                      "Solo se leen: no entran en puntuación, cartera ni CENTINELA, y desde España no se compran.</div>"
+                      + render_svg(_peq_rrg_v, _peq_flow_v, None) + "</div>")
+            _rrgk = _rrgk[:-1] + ",'peq']"
+    except Exception as _dege:
+        _deg("rrg:pequenas", _dege)
     html.append("<div class='panel full'><h2>Grafico de rotacion relativa (RRG)</h2>"
                 "<div class='note'>Cada punto pequeño de la estela es una <b>semana</b> (pasa el ratón o toca para la fecha). "
                 "La <b>flecha</b> marca hacia dónde se mueve. El <b>tamaño de la bola</b> = calidad global de la señal "
@@ -13830,14 +14546,23 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 _su_sb.append(_mod("🟢 ¿DÓNDE ENTRA EL DINERO? — LAS MISMAS BOLITAS DEL RRG", _familias_html(_rf)))
         except Exception as _dege:
             _deg("vista_suelos:familias", _dege)
-        # --- 1) DE QUE ESTA HECHO EL INDICE (v7.4: partido en las bolitas del RRG)
-        for _su_ix in ("NASDAQ 100 (QQQ)", "S&P 500 (SPY)", "DOW JONES (DIA)", "RUSSELL 2000 (IWM)"):
-            _su_b = (COMPOSICION.get(_su_ix) or {}).get("bench")
-            _su_fp = spy_flow if _su_b == BENCH else (flow or {}).get(_su_b)
-            _su_dc = descomponer_indice(_su_ix, rrg, flow, scores, flujo_propio=_su_fp)
-            if not _su_dc:
-                continue
-            _su_sb.append(_mod(f"⚖️ DE QUÉ ESTÁ HECHO EL {esc(_su_dc['nombre'])}", _composicion_html(_su_dc)))
+        # --- 1) DE QUE ESTA HECHO EL INDICE (v7.6: cartera oficial, accion a accion; IWM con ETFs de pequenas)
+        for _cp_dc in (composicion or []):
+            try:
+                if not _cp_dc:
+                    continue
+                _su_sb.append(_mod(f"⚖️ DE QUÉ ESTÁ HECHO EL {esc(_cp_dc['nombre'])}", _comp_html(_cp_dc)))
+                if _cp_dc.get("idx") == "IWM" and isinstance(pequenas, dict):
+                    _su_sb.append(_mod("🔄 ¿POR DÓNDE VUELVE A ENTRAR EL DINERO EN LAS PEQUEÑAS?",
+                                       _peq_giro_html(pequenas.get("giro"))))
+                    _su_sb.append(_mod(f"📚 CAÍDAS ANTERIORES DEL IWM DE MÁS DEL {PEQ_CAIDA:.0f}%: ¿QUIÉN GIRÓ PRIMERO?",
+                                       _peq_historia_html(pequenas.get("historia"))))
+            except Exception as _dege:
+                _deg("vista_suelos:composicion", _dege)
+        if not composicion:
+            _su_sb.append(_mod("⚖️ DE QUÉ ESTÁ HECHO CADA ÍNDICE",
+                               "<div class='note'>La composición de los índices no se ha podido calcular en este build. "
+                               "Mira SALUD DEL BUILD en la pestaña PRO.</div>"))
         # --- 2) v7.4 — EMPUJE DE AMPLITUD (Zweig Breadth Thrust)
         try:
             _su_sb.append(_mod("🚀 EMPUJE DE AMPLITUD (ZWEIG) — " + esc((zweig or {}).get("estado", "SIN DATO")),
@@ -16462,6 +17187,622 @@ def _estres_presion_html(es, pt):
             "manda y se decide con el cierre del viernes. No es asesoramiento.</div></div>")
 
 
+# ======================================================================
+# v7.6 — LAS PEQUENAS POR SECTOR: ¿POR DONDE VUELVE A ENTRAR EL DINERO?
+#
+# LA PREGUNTA DE PEDRO: "cuando el IWM haga suelo despues de la caida del
+# 10%, quiero ver en que sectores de las pequenas empieza a entrar dinero".
+#
+# Tres piezas, todas con los MISMOS ETFs de pequenas que miden la barra del
+# Russell (asi lo que ves en el RRG, en la barra y aqui es siempre lo mismo):
+#   1) RRG propio de las pequenas, medido FRENTE AL IWM (no frente al S&P):
+#      dice que sector va por delante DENTRO de las pequenas.
+#   2) El giro de hoy: CMF de cada sector hace 3, 2 y 1 semanas y hoy, la
+#      marca de tres tramos mejorando, la acumulacion oculta, el cambio de
+#      cuadrante y cuanto ha rebotado desde su minimo.
+#   3) Lo que paso en las caidas anteriores del IWM de mas del 10% (desde
+#      2010, cuando nacen los ETFs de pequenas por sector): que sector giro
+#      primero y si comprarlo ese dia batio al IWM. Frecuencia historica con N
+#      visible y Wilson, NO prediccion. Son pocas caidas: es una pista.
+#
+# NO entran en scoring, cartera, CENTINELA, amplitud ni track record: se descargan
+# aparte y solo se leen.
+# ======================================================================
+
+def _tabla_df(x):
+    return x if (x is not None and hasattr(x, "columns") and len(x)) else None
+
+
+def descargar_pequenas(corte=None):
+    """Historico largo (desde 2008) de los ETFs de pequenas por sector + KRE, XBI, XLRE e IWM.
+       El largo hace falta para la historia de caidas; lo reciente sale de la misma descarga."""
+    largo, fallos = {}, []
+    ini, fin = dt.date(2008, 6, 1), dt.date.today()
+    for s in PEQ_ETFS + ["KRE", "XBI", "XLRE", "IWM"]:
+        try:
+            d, _src = get_ohlcv(s, ini, fin)
+        except Exception as _dege:
+            _deg(f"pequenas:{s}", _dege)
+            d = None
+        time.sleep(0.2)                       # cortesia con la fuente, como en la descarga principal
+        if d is not None and "Close" in d.columns and len(d) >= 60:
+            d = d.sort_index()
+            if corte is not None:
+                d = d[d.index <= pd.Timestamp(corte)]
+            if len(d) >= 60:
+                largo[s] = d
+                continue
+        fallos.append(s)
+    if fallos:
+        _avisar("pequenas", f"sin datos de {', '.join(fallos)}: esos sectores de las pequeñas salen sin dato "
+                            "(o con el ETF de grandes como respaldo)")
+    return largo
+
+
+def pequenas_rrg(df, largo):
+    """RRG de las pequenas por sector FRENTE AL IWM, con las mismas semanas que el RRG principal."""
+    try:
+        if df is None or "IWM" not in df.columns:
+            return None
+        cols = {"IWM": df["IWM"]}
+        for s in PEQ_TODOS:
+            if s in df.columns:
+                cols[s] = df[s]
+                continue
+            d = _tabla_df((largo or {}).get(s))
+            if d is None or "Close" not in d.columns:
+                continue
+            cols[s] = to_weekly_close(d["Close"]).reindex(df.index)
+        dp = pd.DataFrame(cols, index=df.index).ffill(limit=1)
+        n6 = min(len(dp), 6)
+        dp = dp[[c for c in dp.columns if not dp[c].iloc[-n6:].isna().any()]]
+        if "IWM" not in dp.columns or dp.shape[1] < 3:
+            return None
+        return compute_rrg(dp, bench_sym="IWM")
+    except Exception as _dege:
+        _deg("pequenas_rrg", _dege)
+        return None
+
+
+def pequenas_flujo(largo, flow, desde):
+    """Flujo (CMF, divergencias, clima...) de los ETFs de pequenas con compute_volume_flow, el mismo
+       calculo que el resto del terminal. KRE, XBI y XLRE reutilizan el del panel principal."""
+    try:
+        sub = {}
+        for s in PEQ_ETFS:
+            d = _tabla_df((largo or {}).get(s))
+            if d is not None:
+                sub[s] = d[d.index >= pd.Timestamp(desde)] if desde is not None else d
+        fp = compute_volume_flow(sub) if sub else {}
+        for s in ("KRE", "XBI", "XLRE"):
+            if s in (flow or {}):
+                fp[s] = flow[s]
+            else:
+                d = _tabla_df((largo or {}).get(s))
+                if d is not None:
+                    fp.update(compute_volume_flow({s: d.iloc[-500:]}))
+        return fp
+    except Exception as _dege:
+        _deg("pequenas_flujo", _dege)
+        return {}
+
+
+def _episodios_iwm(close, umbral=None):
+    """Caidas del IWM de mas de `umbral`% desde su maximo de un anyo (252 sesiones).
+       Empieza el dia que cruza el umbral; termina cuando recupera la MITAD de la caida (la misma
+       regla que la tabla de caidas del S&P). Para que empiece otra, antes tiene que haber vuelto a
+       menos de la mitad del umbral: sin esto, una caida del 40% abriria otra nada mas cerrarse."""
+    umbral = PEQ_CAIDA if umbral is None else float(umbral)
+    s = close.dropna().astype(float)
+    if len(s) < 260:
+        return []
+    pico = s.rolling(252, min_periods=120).max()
+    dd = (s / pico - 1).values
+    vals, idx, pk = s.values, s.index, pico.values
+    eps, en, armado = [], None, True
+    for i in range(len(s)):
+        if dd[i] != dd[i]:
+            continue
+        if en is None:
+            if not armado:
+                if dd[i] > -umbral / 200.0:
+                    armado = True
+                continue
+            if dd[i] <= -umbral / 100.0:
+                en = {"i0": i, "inicio": idx[i], "pico": float(pk[i]), "imin": i, "minimo": float(vals[i])}
+        else:
+            if vals[i] < en["minimo"]:
+                en["minimo"], en["imin"] = float(vals[i]), i
+            elif i > en["imin"] and vals[i] >= en["minimo"] + 0.5 * (en["pico"] - en["minimo"]):
+                en["ifin"], en["fin"], en["abierto"] = i, idx[i], False
+                en["caida"] = round((en["minimo"] / en["pico"] - 1) * 100, 1)
+                en["fecha_min"] = idx[en["imin"]]
+                eps.append(en)
+                en, armado = None, False
+    if en is not None:
+        en["ifin"], en["fin"], en["abierto"] = None, None, True
+        en["caida"] = round((en["minimo"] / en["pico"] - 1) * 100, 1)
+        en["fecha_min"] = idx[en["imin"]]
+        eps.append(en)
+    return eps
+
+
+def _ret_h(close, fecha, h):
+    """Rentabilidad en % de `fecha` a `h` sesiones despues. None si aun no se sabe."""
+    try:
+        c = close.dropna()
+        p = int(c.index.searchsorted(pd.Timestamp(fecha)))
+        if p >= len(c) or p + h >= len(c):
+            return None
+        return round(float(c.iloc[p + h] / c.iloc[p] - 1) * 100, 2)
+    except Exception:
+        return None
+
+
+def _cruces_arriba(cs, desde, hasta, sostenido=0):
+    """Dias en que el CMF CRUZA +0,05 hacia arriba (el dia anterior no llegaba). Eso es un giro;
+       tener ya el CMF por encima no lo es. sostenido=N: ademas, el CMF no vuelve a cero o menos en
+       las N sesiones siguientes (mira el futuro: SOLO para la lectura a toro pasado, nunca para la regla)."""
+    try:
+        prev = cs.shift(1)
+        m = (cs > 0.05) & (prev <= 0.05) & (cs.index >= pd.Timestamp(desde)) & (cs.index <= pd.Timestamp(hasta))
+        hit = cs[m]
+        if sostenido and len(hit):
+            ok = []
+            for t in hit.index:
+                p = int(cs.index.get_loc(t))
+                ok.append(bool((cs.iloc[p:p + sostenido + 1] > 0).all()))
+            hit = hit[ok]
+        return hit
+    except Exception:
+        return cs.iloc[0:0]
+
+
+def _suelo_provisional(iwm, i_desde, i_hasta, rebote=None):
+    """Primer dia, desde i_desde, en que el IWM rebota `rebote`% desde su minimo de ese tramo. Se sabe
+       en el momento (no usa el futuro): es la senal de 'parece que ha hecho suelo'. None si no llega."""
+    rebote = PEQ_REBOTE if rebote is None else float(rebote)
+    v = iwm.values
+    mn = float("inf")
+    for j in range(int(i_desde), int(min(i_hasta, len(v) - 1)) + 1):
+        mn = min(mn, v[j])
+        if v[j] >= mn * (1 + rebote / 100.0):
+            return j
+    return None
+
+
+def pequenas_giro(largo, flow_peq, rrg_peq, daily):
+    """La foto de hoy: por donde empieza (o no) a entrar el dinero en las pequenas."""
+    try:
+        src = _tabla_df((largo or {}).get("IWM"))
+        if src is None:
+            src = _tabla_df((daily or {}).get("IWM"))
+        if src is None:
+            return None
+        iwm = src["Close"].dropna().astype(float)
+        pico = iwm.rolling(252, min_periods=120).max()
+        dd = round(float(iwm.iloc[-1] / pico.iloc[-1] - 1) * 100, 1) if pico.notna().iloc[-1] else None
+        eps = _episodios_iwm(iwm)
+        ep = eps[-1] if (eps and eps[-1].get("abierto")) else None
+        hoy = iwm.index[-1]
+        filas, desde_min, regla = [], [], []
+        cruces = []
+        j_conf, t_conf, lim_regla = None, None, None
+        if ep is not None:
+            j_conf = _suelo_provisional(iwm, ep["imin"], len(iwm) - 1)
+            if j_conf is not None:
+                t_conf = iwm.index[j_conf]
+                lim_regla = iwm.index[min(len(iwm) - 1, j_conf + 63)]
+        for s in PEQ_TODOS:
+            d = _tabla_df((largo or {}).get(s))
+            if d is None:
+                d = _tabla_df((daily or {}).get(s))
+            f = (flow_peq or {}).get(s) or {}
+            estado, signo = clasificar_flujo(f if f else None)
+            fila = {"sym": s, "sector": PEQ_SECTOR_DE.get(s, ""), "estado": estado, "signo": signo,
+                    "cmf": f.get("cmf"), "tramos": None, "mejora": False, "empeora": False,
+                    "oculta": f.get("diverg") == "acumulacion oculta", "dist": f.get("diverg") == "distribucion oculta",
+                    "quad": None, "pquad": None, "rel4": None, "rebote": None, "poco": False,
+                    "cruce_hoy": False, "cruce_min": None, "sigue": None, "grande": s in PEQ_GRANDES}
+            r = (rrg_peq or {}).get(s) or {}
+            fila["quad"], fila["pquad"], fila["rel4"] = r.get("quad"), r.get("pquad"), r.get("rel4")
+            if d is not None:
+                cs = _cmf_serie(d)
+                tr = _tramos_de(cs)
+                fila["tramos"] = tr
+                if tr:
+                    fila["mejora"] = tr[0] < tr[1] < tr[2] < tr[3]
+                    fila["empeora"] = tr[0] > tr[1] > tr[2] > tr[3]
+                c = d["Close"].dropna().astype(float)
+                if len(c) >= 60:
+                    fila["rebote"] = round(float(c.iloc[-1] / c.iloc[-60:].min() - 1) * 100, 1)
+                try:
+                    fila["poco"] = (s not in PEQ_GRANDES and s not in ("KRE", "XBI") and
+                                    float((c * d["Volume"].astype(float)).iloc[-20:].mean()) < PEQ_POCO_VOL_USD)
+                except Exception:
+                    pass
+                if cs is not None:
+                    c2 = cs.dropna()
+                    if len(c2) >= 2 and c2.iloc[-1] > 0.05 and c2.iloc[-2] <= 0.05:
+                        fila["cruce_hoy"] = True
+                        cruces.append(s)
+                    if ep is not None and len(c2):
+                        hm = _cruces_arriba(c2, ep["fecha_min"], hoy)
+                        if len(hm):
+                            fila["cruce_min"] = str(hm.index[0].date())
+                            fila["sigue"] = bool(c2.iloc[-1] > 0.05)
+                            desde_min.append((hm.index[0], s, fila["sigue"]))
+                        if t_conf is not None:
+                            hr = _cruces_arriba(c2, t_conf, lim_regla)
+                            if len(hr):
+                                regla.append((hr.index[0], s))
+            cm = fila["cmf"]
+            if cm is not None and cm > 0.05 and fila["mejora"]:
+                tier = 5
+            elif signo == 1:
+                tier = 4
+            elif fila["mejora"] or fila["oculta"]:
+                tier = 3
+            elif signo == 0:
+                tier = 2
+            elif signo is None:
+                tier = 0
+            else:
+                tier = 1
+            fila["tier"] = tier
+            filas.append(fila)
+        filas.sort(key=lambda x: (-x["tier"], -(x["cmf"] if x["cmf"] is not None else -9)))
+        desde_min.sort()
+        regla.sort()
+        epd = None
+        if ep is not None:
+            epd = {"inicio": str(ep["inicio"].date()), "fecha_min": str(ep["fecha_min"].date()),
+                   "caida": ep["caida"], "desde_min": round(float(iwm.iloc[-1] / ep["minimo"] - 1) * 100, 1),
+                   "sesiones": int(len(iwm) - 1 - ep["i0"]),
+                   "conf": (str(t_conf.date()) if t_conf is not None else None),
+                   "falta": (round(PEQ_REBOTE - (float(iwm.iloc[-1] / ep["minimo"] - 1) * 100), 1)
+                             if t_conf is None else None),
+                   "regla": ([str(regla[0][0].date()), regla[0][1]] if regla else None),
+                   "regla_caducada": bool(j_conf is not None and len(iwm) - 1 - j_conf > 63)}
+        return {"dd": dd, "fecha": str(hoy.date()), "ep": epd, "filas": filas,
+                "desde_min": [(str(t.date()), s, sg) for t, s, sg in desde_min], "cruces_hoy": cruces}
+    except Exception as _dege:
+        _deg("pequenas_giro", _dege)
+        return None
+
+
+def historia_suelos_peq(largo, umbral=None):
+    """En cada caida del IWM de mas del umbral (desde 2010, cuando nacen los ETFs de pequenas):
+       1) ALREDEDOR DEL MINIMO (20 sesiones antes a 40 despues): que sectores GIRARON primero (su CMF
+          cruza +0,05 hacia arriba). Se sabe a toro pasado: sirve para saber a quien mirar, no para comprar.
+       2) LA REGLA QUE SE PUEDE SEGUIR EN VIVO: desde que el IWM cruza el umbral, el primer sector cuyo
+          CMF cruza +0,05 hacia arriba; comprado ese dia, ¿bate al IWM comprado ese mismo dia?"""
+    try:
+        d0 = _tabla_df((largo or {}).get("IWM"))
+        if d0 is None:
+            return None
+        iwm = d0["Close"].dropna().astype(float)
+        eps = _episodios_iwm(iwm, umbral)
+        cmfs, closes = {}, {}
+        for s in PEQ_TODOS:
+            d = _tabla_df((largo or {}).get(s))
+            if d is not None and len(d) > 60:
+                sr = _cmf_serie(d)
+                if sr is not None:
+                    cmfs[s] = sr.dropna()
+                    closes[s] = d["Close"].dropna().astype(float)
+        filas = []
+        n_iwm = len(iwm)
+        for ep in eps:
+            t0 = ep["inicio"]
+            disp = [s for s, cs in cmfs.items() if len(cs.loc[:t0]) >= 5]
+            if len(disp) < 6:
+                continue                      # antes de 2010 no existian los ETFs de pequenas por sector
+            # 1) alrededor del minimo (a toro pasado): giros SOSTENIDOS de 10 sesiones antes a 30 despues
+            a = iwm.index[max(0, ep["imin"] - 10)]
+            b = iwm.index[min(n_iwm - 1, ep["imin"] + 30)]
+            alrededor = []
+            for s in disp:
+                h = _cruces_arriba(cmfs[s], a, b, sostenido=5)
+                if len(h):
+                    alrededor.append({"sym": s, "fecha": str(h.index[0].date()),
+                                      "vs_min": int(iwm.index.searchsorted(h.index[0])) - int(ep["imin"])})
+            alrededor.sort(key=lambda g: g["fecha"])
+            # 2) la regla en vivo: cuando el IWM rebota PEQ_REBOTE% desde su minimo (suelo provisional),
+            #    el primer sector que cruza a "entra" en los 63 dias siguientes
+            i_fin = n_iwm - 1 if ep.get("ifin") is None else ep["ifin"]
+            j_conf = _suelo_provisional(iwm, ep["i0"], min(i_fin, ep["i0"] + 189))
+            regla = []
+            if j_conf is not None:
+                t_c, t_lim = iwm.index[j_conf], iwm.index[min(n_iwm - 1, j_conf + 63)]
+                for s in disp:
+                    h = _cruces_arriba(cmfs[s], t_c, t_lim)
+                    if len(h):
+                        regla.append((h.index[0], s))
+            regla.sort()
+            fila = {"inicio": str(t0.date()), "fecha_min": str(ep["fecha_min"].date()), "caida": ep["caida"],
+                    "abierto": bool(ep.get("abierto")), "n_disp": len(disp), "alrededor": alrededor[:3],
+                    "conf": (str(iwm.index[j_conf].date()) if j_conf is not None else None), "regla": None}
+            if regla:
+                tg, sg = regla[0]
+                fila["regla"] = {"sym": sg, "fecha": str(tg.date()),
+                                 "vs_min": int(iwm.index.searchsorted(tg)) - int(ep["imin"])}
+                for hz in (21, 63):
+                    re_, ri_ = _ret_h(closes[sg], tg, hz), _ret_h(iwm, tg, hz)
+                    fila[f"r{hz}"], fila[f"i{hz}"] = re_, ri_
+                    fila[f"x{hz}"] = (round(re_ - ri_, 2) if (re_ is not None and ri_ is not None) else None)
+            filas.append(fila)
+        val = [f for f in filas if f.get("x63") is not None and not f["abierto"]]
+        n = len(val)
+        k = sum(1 for f in val if f["x63"] > 0)
+        lo, hi = _bt_wilson(k / n, n) if n else (None, None)
+        ki = sum(1 for f in val if (f.get("i63") or 0) > 0)
+        loi, hii = _bt_wilson(ki / n, n) if n else (None, None)
+        frec = {}
+        for f in filas:
+            if f["abierto"]:
+                continue
+            for g in f["alrededor"]:
+                frec[g["sym"]] = frec.get(g["sym"], 0) + 1
+        return {"filas": filas, "n": n, "k": k, "p": (round(100.0 * k / n, 1) if n else None), "lo": lo, "hi": hi,
+                "media_x63": (round(sum(f["x63"] for f in val) / n, 2) if n else None),
+                "ki": ki, "pi": (round(100.0 * ki / n, 1) if n else None), "loi": loi, "hii": hii,
+                "frec": sorted(frec.items(), key=lambda kv: -kv[1]),
+                "n_cerradas": sum(1 for f in filas if not f["abierto"]),
+                "umbral": (PEQ_CAIDA if umbral is None else umbral),
+                "desde": (filas[0]["inicio"] if filas else None)}
+    except Exception as _dege:
+        _deg("historia_suelos_peq", _dege)
+        return None
+
+
+def _peq_giro_html(g):
+    GRN, RED, GRY, AMB, CYN = "#00E676", "#FF5252", "#8A96A8", "#FFB000", "#4CC2E0"
+    if not g:
+        return "<div class='note'>Sin datos de las pequeñas por sector en este build.</div>"
+    dd = g.get("dd")
+    ep = g.get("ep")
+    t = "<div style='font-size:12px;margin-bottom:6px'>"
+    if dd is not None:
+        cdd = RED if dd <= -10 else (AMB if dd <= -5 else GRY)
+        t += f"IWM <b style='color:{cdd}'>{dd:+.1f}%</b> desde su máximo de un año (cierre del {esc(g['fecha'])})"
+    t += "</div>"
+    if ep:
+        t += (f"<div style='font-size:11.5px;margin-bottom:8px;padding:6px 8px;border-left:3px solid {AMB};line-height:1.6'>"
+              f"<b>Caída en curso</b>: cruzó el −{PEQ_CAIDA:.0f}% el {esc(ep['inicio'])}; mínimo hasta hoy el "
+              f"{esc(ep['fecha_min'])} ({ep['caida']:+.1f}% desde el máximo); desde ese mínimo lleva "
+              f"<b>{ep['desde_min']:+.1f}%</b>.<br>")
+        if g.get("desde_min"):
+            t += ("<b>Desde ese mínimo</b> ha cruzado a «entra» (CMF de abajo a arriba de +0,05), por orden: "
+                  + ", ".join((f"<b style='color:{GRN}'>{esc(s)}</b>" if sg else f"<span style='color:{GRY}'>{esc(s)}</span>")
+                              + f" <span style='color:#5E708A'>({esc(f)}{'' if sg else ', ya ha vuelto a salir'})</span>"
+                              for f, s, sg in g["desde_min"]) + ".<br>")
+        else:
+            t += "<b>Desde ese mínimo</b> todavía ningún sector de las pequeñas ha cruzado a «entra».<br>"
+        if not ep.get("conf"):
+            t += (f"<b>Suelo provisional</b>: todavía no. Se da por bueno cuando el IWM rebota un {PEQ_REBOTE:.0f}% desde "
+                  f"su mínimo; le falta un <b>{max(0.0, ep.get('falta') or 0):.1f}%</b>.")
+        elif ep.get("regla"):
+            t += (f"<b>Suelo provisional</b> el {esc(ep['conf'])} (rebote del {PEQ_REBOTE:.0f}% desde el mínimo). "
+                  f"Regla de la tabla de abajo: el primero en cruzar a «entra» desde entonces fue "
+                  f"<b style='color:{GRN}'>{esc(ep['regla'][1])}</b> ({esc(ep['regla'][0])}).")
+        elif ep.get("regla_caducada"):
+            t += (f"<b>Suelo provisional</b> el {esc(ep['conf'])}, pero en los 63 días siguientes ningún sector cruzó "
+                  "a «entra»: la regla no disparó.")
+        else:
+            t += (f"<b>Suelo provisional</b> el {esc(ep['conf'])} (rebote del {PEQ_REBOTE:.0f}% desde el mínimo). "
+                  "Todavía ningún sector ha cruzado a «entra» desde entonces: es lo que hay que vigilar.")
+        t += "</div>"
+    else:
+        t += (f"<div style='font-size:11px;color:{GRY};margin-bottom:8px'>Ahora no hay una caída del IWM de más del "
+              f"{PEQ_CAIDA:.0f}% abierta: la tabla sirve igual para ver qué sector lleva el dinero.</div>")
+    t += ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'><table style='min-width:560px;width:100%'>"
+          "<tr style='color:#888;font-size:10px'><td>sector · ETF</td><td>dinero hoy</td>"
+          "<td title='CMF hace 3, 2 y 1 semanas y hoy'>CMF −3s · −2s · −1s · hoy</td><td>marcas</td>"
+          "<td>cuadrante vs IWM</td><td title='rebote desde su mínimo de 60 sesiones'>desde mín.</td>"
+          "<td title='lo que ha hecho frente al IWM en 4 semanas'>vs IWM 4s</td></tr>")
+    for f in g["filas"]:
+        cc = {1: GRN, -1: RED, 0: GRY}.get(f["signo"], "#5E708A")
+        cmf = f"{f['cmf']:+.2f}" if f.get("cmf") is not None else "—"
+        tr = f.get("tramos")
+        trs = " · ".join(f"{v:+.2f}" for v in tr) if tr else "—"
+        marcas = []
+        if f["mejora"]:
+            marcas.append("<span style='color:#7BD88F'>↗3t</span>")
+        if f["empeora"]:
+            marcas.append("<span style='color:#FF8A80'>↘3t</span>")
+        if f["oculta"]:
+            marcas.append(f"<span style='color:{CYN}' title='el precio baja pero el dinero entra'>acum. oculta</span>")
+        if f["dist"]:
+            marcas.append(f"<span style='color:{RED}' title='el precio sube pero el dinero sale'>dist. oculta</span>")
+        if f["cruce_hoy"]:
+            marcas.append(f"<b style='color:{GRN}'>cruza hoy</b>")
+        elif f.get("cruce_min"):
+            marcas.append(f"<span style='color:{GRN if f.get('sigue') else GRY}'>cruzó {esc(f['cruce_min'][5:])}"
+                          f"{'' if f.get('sigue') else ' y salió'}</span>")
+        if f["poco"]:
+            marcas.append(f"<span style='color:{AMB}'>poco volumen</span>")
+        if f["grande"]:
+            marcas.append(f"<span style='color:{AMB}'>grandes</span>")
+        q, pq = f.get("quad"), f.get("pquad")
+        qtxt = "—"
+        if q:
+            qtxt = QUAD.get(q, (q,))[0]
+            if pq and pq != q:
+                qtxt = QUAD.get(pq, (pq,))[0] + " → <b>" + qtxt + "</b>"
+        reb = f"{f['rebote']:+.1f}%" if f.get("rebote") is not None else "—"
+        r4 = f"{f['rel4']:+.1f}%" if f.get("rel4") is not None else "—"
+        t += (f"<tr><td><b>{esc(f['sector'])}</b> <span style='color:{GRY};font-size:10px'>{esc(f['sym'])}</span></td>"
+              f"<td style='color:{cc};font-weight:700;font-size:11px'>{esc(f['estado'])} <span style='font-weight:400'>{cmf}</span></td>"
+              f"<td style='font-size:10.5px;color:{GRY};white-space:nowrap'>{trs}</td>"
+              f"<td style='font-size:10px'>{' '.join(marcas) or '<span style=color:#3A4658>·</span>'}</td>"
+              f"<td style='font-size:10.5px'>{qtxt}</td>"
+              f"<td style='font-size:10.5px;color:{GRY}'>{reb}</td>"
+              f"<td style='font-size:10.5px;color:{GRY}'>{r4}</td></tr>")
+    t += "</table></div>"
+    t += ("<div style='font-size:10px;color:#666;margin-top:8px'><b>Cómo leerlo.</b> Arriba, lo que antes empieza a "
+          "recibir dinero: primero lo que ya entra <b>y</b> mejora tres tramos seguidos (↗3t), luego lo que entra, luego "
+          "lo que aún no entra pero mejora o tiene acumulación oculta (el precio baja y el dinero entra). Es tu regla de "
+          "tramos: tres tramos mejorando justifican manga pequeña, no posición completa. <b>cruza hoy</b> / "
+          "<b>cruzó</b> = su CMF ha pasado de abajo a arriba de +0,05 (hoy, o desde el mínimo de la caída). El "
+          "cuadrante es <b>frente al IWM</b>: dice qué sector va por delante dentro de las pequeñas. Contexto, no "
+          "disparador: se decide con el cierre del viernes. No es asesoramiento.</div>")
+    return t
+
+
+def _peq_historia_html(h):
+    GRN, RED, GRY, AMB = "#00E676", "#FF5252", "#8A96A8", "#FFB000"
+    if not h or not h.get("filas"):
+        return ("<div class='note'>Aún no hay caídas del IWM de más del "
+                f"{PEQ_CAIDA:.0f}% con datos de los ETFs de pequeñas por sector (existen desde 2010).</div>")
+
+    def _c(v):
+        return "—" if v is None else f"<span style='color:{GRN if v > 0 else RED}'>{v:+.1f}%</span>"
+    t = ("<div style='overflow-x:auto;-webkit-overflow-scrolling:touch'><table style='min-width:600px;width:100%'>"
+         "<tr style='color:#888;font-size:10px'><td>cruzó el umbral</td><td>mínimo (caída)</td>"
+         "<td title='los tres primeros que giraron de forma sostenida entre 10 sesiones antes y 30 después del mínimo; "
+         "entre paréntesis, sesiones antes (−) o después (+) del mínimo'>alrededor del mínimo</td>"
+         "<td title='tras el suelo provisional (rebote desde el mínimo), el primer sector en cruzar a entra, comprado ese "
+         "día: a 1 y 3 meses, y la diferencia frente al IWM comprado ese mismo día'>regla: tras el suelo, el 1º · 1 m · 3 m</td></tr>")
+    for f in reversed(h["filas"]):
+        gs = [f"<b>{esc(g['sym'])}</b> <span style='color:#5E708A'>({g['vs_min']:+d}s)</span>" for g in f["alrededor"]]
+        if not gs:
+            gs = ["<span style='color:#5E708A'>ninguno</span>"]
+        rg = f.get("regla")
+        if rg:
+            res = (f"<b>{esc(rg['sym'])}</b> <span style='color:#5E708A'>{esc(rg['fecha'])} ({rg['vs_min']:+d}s)</span> · "
+                   f"{_c(f.get('r21'))} · {_c(f.get('r63'))}")
+            if f.get("x63") is not None:
+                res += f" <span style='color:#5E708A'>(vs IWM {f['x63']:+.1f})</span>"
+            elif f.get("r63") is None:
+                res += " <span style='color:#5E708A'>(3 m aún sin dato)</span>"
+        elif f.get("conf"):
+            res = f"<span style='color:#5E708A'>suelo provisional {esc(f['conf'])}; nadie cruzó en 63 días</span>"
+        else:
+            res = "<span style='color:#5E708A'>sin suelo provisional todavía</span>"
+        t += (f"<tr><td style='font-size:11px'>{esc(f['inicio'])}{' <b style=color:#FFB000>abierta</b>' if f['abierto'] else ''}</td>"
+              f"<td style='font-size:11px'>{esc(f['fecha_min'])} <span style='color:{RED}'>{f['caida']:+.1f}%</span></td>"
+              f"<td style='font-size:10.5px'>{' · '.join(gs)}</td>"
+              f"<td style='font-size:10.5px'>{res}</td></tr>")
+    t += "</table></div>"
+    if h.get("n"):
+        t += (f"<div style='font-size:12px;margin-top:8px'><b>La regla</b>: en <b>{h['n']}</b> caídas ya cerradas con "
+              f"3 meses vividos, el primer sector en cruzar tras el suelo provisional batió al IWM a 3 meses "
+              f"<b>{h['k']} de {h['n']}</b> veces "
+              f"(<b>{h['p']:.0f}%</b>, IC95 {h['lo']:.0f}–{h['hi']:.0f}%; diferencia media {h['media_x63']:+.1f} puntos). "
+              f"El IWM, comprado ese mismo día, estaba más arriba 3 meses después {h['ki']} de {h['n']} veces "
+              f"({h['pi']:.0f}%, IC95 {h['loi']:.0f}–{h['hii']:.0f}%).</div>")
+        if h["n"] < 12:
+            t += (f"<div style='font-size:11px;color:{AMB};margin-top:4px'>⚠ Muestra pequeña (N={h['n']}): el intervalo "
+                  "es muy ancho. Es una pista, no una prueba.</div>")
+    else:
+        t += ("<div style='font-size:11px;color:#8A96A8;margin-top:6px'>Todavía no hay caídas cerradas con 3 meses "
+              "vividos tras el giro: no se puede medir la regla.</div>")
+    if h.get("frec"):
+        t += (f"<div style='font-size:11px;color:#8A96A8;margin-top:6px'>Veces entre los tres primeros en girar "
+              f"alrededor del mínimo (de {h['n_cerradas']} caídas cerradas): "
+              + ", ".join(f"{esc(s)} {n}" for s, n in h["frec"][:8]) + ". <i>Esto se sabe a toro pasado: dice a quién "
+              "mirar, no cuándo comprar.</i></div>")
+    t += ("<div style='font-size:10px;color:#666;margin-top:8px'><b>Qué se mide.</b> Cada vez que el IWM cae más de un "
+          f"{h['umbral']:.0f}% desde su máximo de un año (desde {esc(h.get('desde') or '?')}). <b>Girar</b> = que el CMF "
+          "pase de abajo a arriba de +0,05; tenerlo ya por encima no cuenta. <b>Alrededor del mínimo</b> = giros que se "
+          "sostienen (el CMF no vuelve a cero en 5 sesiones) entre 10 sesiones antes y 30 después del mínimo: solo se sabe "
+          f"cuando el mínimo ya ha pasado. <b>La regla</b> se puede seguir en el día: cuando el IWM rebota un "
+          f"{PEQ_REBOTE:.0f}% desde su mínimo (suelo provisional), el primer sector que cruza a «entra» en los 63 días "
+          "siguientes, comprado ese día, frente al IWM comprado ese mismo día. Si después hace un mínimo más bajo, la "
+          "regla ya disparó: así se cuentan también los suelos falsos. Frecuencia histórica, <b>no predicción</b>. Los "
+          "PSC siguen el S&amp;P SmallCap 600, no el Russell. No es asesoramiento.</div>")
+    return t
+
+
+def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
+    """Junta todo: mapa de sectores, acciones que faltan, flujo propio del QQQ y una caja por indice.
+       Orden: QQQ, SPY, DIA, IWM (como siempre)."""
+    out = []
+    if not pesos:
+        return out
+    if not SP500_SECTOR:
+        try:
+            sp500_tickers()                       # solo para tener el sector de cada accion del S&P
+        except Exception as _dege:
+            _deg("componer:sp500", _dege)
+    mapa = _mapa_sectores(pesos)
+    # acciones de las carteras que no se han bajado con el S&P (Nasdaq fuera del S&P, altas recientes)
+    try:
+        cand = {}
+        for idx in ("QQQ", "SPY", "DIA"):
+            for t, w, sec in (pesos.get(idx) or {}).get("filas") or []:
+                if t in STK_OHLCV or _sector_canon(sec) is None or not t or len(t) > 8:
+                    continue
+                cand[t] = max(cand.get(t, 0.0), float(w or 0.0))
+        faltan = [t for t, _ in sorted(cand.items(), key=lambda kv: -kv[1])][:COMP_EXTRA_MAX]
+        if faltan:
+            print(f"  Composición: bajando {len(faltan)} acciones de las carteras que no están en el S&P...")
+            ini = dt.date.today() - dt.timedelta(days=260)
+            for t in faltan:
+                try:
+                    d, _src = get_ohlcv(t, ini, dt.date.today())
+                    if d is not None and corte is not None:
+                        d = d[d.index <= pd.Timestamp(corte)]
+                    _guarda_ohlcv(t, d)
+                except Exception as _dege:
+                    _deg("componer:extra", _dege)
+                time.sleep(0.12)
+    except Exception as _dege:
+        _deg("componer:faltan", _dege)
+    # el propio QQQ: no es una bolita del RRG, se baja solo para contrastar
+    qqq_flow = None
+    try:
+        d, _src = get_ohlcv("QQQ", dt.date.today() - dt.timedelta(days=260), dt.date.today())
+        if d is not None and corte is not None:
+            d = d[d.index <= pd.Timestamp(corte)]
+        if d is not None and len(d) >= 30:
+            qqq_flow = compute_volume_flow({"QQQ": d}, only="QQQ").get("QQQ")
+    except Exception as _dege:
+        _deg("componer:qqq", _dege)
+    propios = {"QQQ": qqq_flow, "SPY": spy_flow, "DIA": (flow or {}).get("DIA"), "IWM": (flow or {}).get("IWM")}
+    for idx in ("QQQ", "SPY", "DIA"):
+        p = pesos.get(idx) or {}
+        dc = None
+        motivo = ""
+        if p.get("filas"):
+            dc = composicion_acciones(idx, p, mapa, flow, rrg, propio=propios[idx])
+            if isinstance(dc, dict) and dc.get("cobertura_baja") is not None:
+                motivo = (f"solo hay dato de acciones para el {dc['cobertura_baja']:.0f}% del peso (hace falta un "
+                          f"{COMP_MIN_COBERTURA}%): este build mide {idx} con los ETFs de sector del S&P")
+                _avisar("composicion", f"{idx}: {motivo}")
+                dc = None
+        if dc is None:
+            if p.get("sectores"):
+                sect = p["sectores"]
+            elif p.get("filas"):
+                sect = _sectores_de_filas(p["filas"], mapa)
+            else:
+                sect = PESOS_SECTOR_MANO.get(idx, ("", {}))[1]
+            if not motivo and p.get("filas") is None and idx != "QQQ":
+                motivo = "sin la cartera acción a acción: se mide por sectores"
+            dc = composicion_sectores(idx, sect, flow, rrg, daily, p, motivo, propio=propios[idx])
+        if dc:
+            out.append(dc)
+    try:
+        # datos diarios: los largos de las pequenas y, para el respaldo con ETFs de grandes, los del panel principal
+        _dd = dict(daily or {})
+        _dd.update((peq or {}).get("largo") or {})
+        dc = composicion_pequenas(pesos.get("IWM") or {}, (peq or {}).get("flow") or {}, (peq or {}).get("rrg") or {},
+                                  flow, rrg, _dd, propio=propios["IWM"])
+        if dc:
+            out.append(dc)
+    except Exception as _dege:
+        _deg("componer:iwm", _dege)
+    if corte is not None:
+        # MODO VIAJE: no hay carteras historicas gratis. Los pesos son los de hoy aplicados a esa fecha.
+        for dc in out:
+            dc["nota_modo"] = ((dc.get("nota_modo") + " · ") if dc.get("nota_modo") else "") + (
+                "modo viaje: los pesos son los de hoy, no los de esa fecha (no hay carteras históricas "
+                "gratis); tómalo como aproximación")
+    return out
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -16516,6 +17857,7 @@ def main():
             globals()["IA_AUTO"] = False
             globals()["DIX_ON"] = False
             globals()["ESTRES_ON"] = False     # v7.4: OFR y FRED son de hoy, no de la fecha del viaje
+            globals()["COMP_PESOS_ON"] = False  # v7.6: la cartera oficial es la de hoy: en el viaje se usan los pesos a mano
             # v7.0 — LAS OPCIONES SE APAGAN DE VERDAD. El comentario de arriba decia desde
             # siempre que en modo viaje "las opciones se apagan", pero NO era cierto: nadie
             # las apagaba y compute_options seguia bajando las cadenas de HOY. Hasta ahora
@@ -16676,6 +18018,13 @@ def main():
             _c_v = daily[BENCH].index[-1]
             _stk_univ = {k: v[v.index <= _c_v] for k, v in _stk_univ.items() if v is not None}
             _stk_univ = {k: v for k, v in _stk_univ.items() if len(v) > 60}
+            # v7.6: lo mismo con los maximos/minimos/volumen de cada accion (composicion de los indices)
+            for _k in list(STK_OHLCV):
+                _v = STK_OHLCV[_k][STK_OHLCV[_k].index <= _c_v]
+                if len(_v) >= 30:
+                    STK_OHLCV[_k] = _v
+                else:
+                    del STK_OHLCV[_k]
         except Exception as _e_cv:
             _avisar("viaje", f"no se pudo recortar el universo de acciones: {_e_cv}")
             _stk_univ = {}
@@ -16729,6 +18078,38 @@ def main():
                                     "muestra solo los ratios RSP/SPY e IWM/SPY")
     except Exception as _e_amp:
         _avisar("amplitud", f"amplitud no calculada: {_e_amp}")
+    # v7.6 — PEQUENAS POR SECTOR (RRG frente al IWM, giro y caidas anteriores) y DE QUE ESTA HECHO
+    # CADA INDICE con su cartera oficial. Todo aparte: no toca scoring, cartera, CENTINELA ni track record.
+    _peq_res = None
+    try:
+        _peq_corte = df.index[-1] if VIAJE_A else None
+        print("  Pequeñas por sector: descargando ETFs de pequeñas (histórico largo)...")
+        _peq_largo = descargar_pequenas(_peq_corte)
+        if _peq_largo:
+            _peq_res = {"largo": _peq_largo}
+            _peq_res["rrg"] = pequenas_rrg(df, _peq_largo)
+            _peq_res["flow"] = pequenas_flujo(_peq_largo, flow, df.index[0])
+            _peq_res["giro"] = pequenas_giro(_peq_largo, _peq_res["flow"], _peq_res["rrg"], daily)
+            _peq_res["historia"] = historia_suelos_peq(_peq_largo)
+            _peq_q = _peq_res.get("giro") or {}
+            print(f"  🔄 Pequeñas: {len(_peq_largo)} ETFs · IWM {(_peq_q.get('dd') if _peq_q.get('dd') is not None else 0):+.1f}% "
+                  f"desde máximo" + (f" · desde el mínimo cruzan a entra: {', '.join(x[1] for x in _peq_q.get('desde_min', []))}"
+                                     if _peq_q.get("desde_min") else ""))
+    except Exception as _peq_e:
+        _avisar("pequenas", f"pequeñas por sector no calculadas: {_peq_e}")
+        _peq_res = None
+    _comp_res = None
+    try:
+        _pesos_ix = cargar_pesos_indices()
+        _comp_res = componer_indices(_pesos_ix, flow, rrg, daily, spy_flow, _peq_res,
+                                     corte=(df.index[-1] if VIAJE_A else None))
+        for _cp_dc in (_comp_res or []):
+            print(f"  ⚖️ {_cp_dc['nombre']}: {_cp_dc['p_entra']:.0f}% entra · {_cp_dc['p_plano']:.0f}% plano · "
+                  f"{_cp_dc['p_sale']:.0f}% sale · pesos {_cp_dc.get('fuente')} {_cp_dc.get('fecha_pesos')} "
+                  f"({_cp_dc.get('estado_pesos')}) · medido por {_cp_dc['modo']}")
+    except Exception as _comp_e:
+        _avisar("composicion", f"composición de los índices no calculada: {_comp_e}")
+        _comp_res = None
     print("  Vigilancia: descargando acciones de la watchlist...")
     watch = compute_watchlist(WATCHLIST)
     # --- CENTINELA y compañía ANTES del snapshot: así la IA automática conoce el régimen ---
@@ -16874,6 +18255,17 @@ def main():
     if _presion:
         _snap_main += (f"\nPRESION (replica de mercado del Trump Pressure Index, sin aprobacion): {_presion['valor']:+.2f} "
                        "desviaciones tipicas (0 = normal).")
+    try:
+        if _comp_res:
+            _cp_txt = "; ".join(f"{d['nombre']} entra {d['p_entra']:.0f}% / plano {d['p_plano']:.0f}% / sale {d['p_sale']:.0f}%"
+                                for d in _comp_res)
+            _snap_main += f"\nCOMPOSICION (peso del indice con dinero entrando/saliendo, cartera oficial): {_cp_txt}."
+        _gp_v = (_peq_res or {}).get("giro") or {}
+        if _gp_v.get("filas"):
+            _snap_main += ("\nPEQUENAS POR SECTOR (IWM " + (f"{_gp_v['dd']:+.1f}%" if _gp_v.get("dd") is not None else "?")
+                           + " desde maximo): " + ", ".join(f"{f['sym']} {f['estado']}" for f in _gp_v["filas"][:6]) + ".")
+    except Exception as _dege:
+        _deg("snap:composicion", _dege)
     ai_text = ai_commentary(_snap_main)
     ia_auto = run_ia_auto(_snap_main, str(df.index[-1].date()))
     if ai_text:
@@ -16913,6 +18305,13 @@ def main():
             lines.append(f"• 🌱 {_r['sym']}: patrón pre-despertar {_r.get('pre', 0)}/4 con el precio aún quieto")
     if _zweig and _zweig.get("senal_hoy"):
         lines.append("• 🚀 ZWEIG: empuje de amplitud DISPARADO hoy (de menos de 0.40 a más de 0.615 en ≤10 sesiones)")
+    try:
+        _gp_v = (_peq_res or {}).get("giro") or {}
+        if _gp_v.get("ep") and _gp_v.get("cruces_hoy"):
+            lines.append(f"• 🔄 Pequeñas: empieza a entrar dinero en {', '.join(_gp_v['cruces_hoy'])} "
+                         f"con el IWM {_gp_v['dd']:+.1f}% desde su máximo (caída en curso)")
+    except Exception as _dege:
+        _deg("aviso:pequenas", _dege)
     for s, k, t in alerts:
         lines.append(f"• {s}: {t}")
     for s, d in (flow or {}).items():
@@ -16929,7 +18328,7 @@ def main():
             print("\nAviso enviado.")
 
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

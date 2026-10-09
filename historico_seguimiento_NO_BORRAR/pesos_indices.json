@@ -2524,7 +2524,7 @@
 ]
 ],
 "fuente": "SSGA",
-"descargado": "2026-10-08"
+"descargado": "2026-10-09"
 },
 "DIA": {
 "fecha": "2026-10-07",
@@ -2681,26 +2681,26 @@
 ]
 ],
 "fuente": "SSGA",
-"descargado": "2026-10-08"
+"descargado": "2026-10-09"
 },
 "IWM": {
-"fecha": "2026-10-06",
+"fecha": "2026-10-07",
 "sectores": {
-"Health Care": 19.72,
-"Information Technology": 14.05,
-"Industrials": 14.17,
-"Financials": 18.94,
-"Real Estate": 5.63,
-"Energy": 6.91,
-"Consumer Discretionary": 8.83,
-"Cash": 0.34,
-"Materials": 4.2,
-"Utilities": 2.72,
-"Communication Services": 2.39,
-"Consumer Staples": 1.94
+"Health Care": 19.84,
+"Information Technology": 14.0,
+"Industrials": 14.02,
+"Financials": 18.9,
+"Real Estate": 5.59,
+"Energy": 6.96,
+"Consumer Discretionary": 8.88,
+"Materials": 4.18,
+"Utilities": 2.78,
+"Cash": 0.43,
+"Communication Services": 2.41,
+"Consumer Staples": 1.95
 },
-"n": 1992,
+"n": 1991,
 "fuente": "iShares",
-"descargado": "2026-10-08"
+"descargado": "2026-10-09"
 }
 }

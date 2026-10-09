@@ -123,15 +123,15 @@
 "date": "2026-10-07",
 "rsp": "ESTRECHANDO",
 "iwm": "ESTRECHANDO",
-"p50": 28.4,
-"p200": 44.6,
-"nhnl10": -16.1,
+"p50": 27.7,
+"p200": 44.1,
+"nhnl10": -16.8,
 "div": true,
 "lectura": "NARRATIVA",
 "px": {
-"SPY": 775.27,
-"RSP": 211.23,
-"IWM": 278.28
+"SPY": 777.22,
+"RSP": 210.6,
+"IWM": 277.7
 }
 },
 {

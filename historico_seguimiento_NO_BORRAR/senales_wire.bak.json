@@ -3308,14 +3308,20 @@
 {
 "date": "2026-10-08",
 "tag": "GIRO",
-"sym": "INDA",
+"sym": "MSTR",
 "dir": 1
 },
 {
 "date": "2026-10-08",
-"tag": "FLOW",
-"sym": "MAGS",
-"dir": -1
+"tag": "GIRO",
+"sym": "JETS",
+"dir": 1
+},
+{
+"date": "2026-10-08",
+"tag": "GIRO",
+"sym": "INDA",
+"dir": 1
 },
 {
 "date": "2026-10-08",
@@ -3332,7 +3338,7 @@
 {
 "date": "2026-10-08",
 "tag": "SUELO",
-"sym": "JETS",
+"sym": "KWEB",
 "dir": 0
 },
 {

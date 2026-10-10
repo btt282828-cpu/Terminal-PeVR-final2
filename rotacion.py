@@ -952,7 +952,9 @@ from io import StringIO
 # Descarga de datos (Stooq -> Yahoo -> cache)
 # ----------------------------------------------------------------------
 def fetch_stooq(sym, start, end):
-    """Descarga OHLCV diario directamente de Stooq (sin libreria intermedia)."""
+    """v7.6.2: Stooq FUERA. No devolvia nada desde hace semanas y cada intento era tiempo perdido.
+    Se deja la funcion (devuelve None) para que nada que la llame se rompa."""
+    return None
     url = f"https://stooq.com/q/d/l/?s={sym.lower()}.us&i=d"
     try:
         r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
@@ -1076,7 +1078,98 @@ def semana_trading(fecha):
         return str(fecha)
 
 
-def update_track_record(basket, px_now, datestr, marked=None):
+def _cierre_real(daily, df):
+    """v7.6.1 — fecha del ULTIMO cierre diario real del indice (no la etiqueta de la semana).
+    La etiqueta semanal dice 'viernes' desde el viernes por la manyana aunque el ultimo dato sea el jueves."""
+    try:
+        b = (daily or {}).get(BENCH)
+        if b is not None and len(b):
+            return pd.Timestamp(b.index[-1]).date()
+    except Exception as _dege:
+        _deg("cierre_real", _dege)
+    return pd.Timestamp(df.index[-1]).date()
+
+def _semana_cerrada(cierre):
+    """v7.6.1 — True si ya tenemos el cierre del VIERNES de esa semana.
+    Tambien si ya es domingo o despues (viernes festivo: el jueves fue el cierre de la semana).
+    El sabado NO basta: si Yahoo aun no ha dado el viernes, se grabaria el jueves."""
+    try:
+        u = pd.Timestamp(cierre).normalize()
+        wd = u.weekday()
+        if wd == 4:
+            return True
+        viernes = u + pd.Timedelta(days=(4 - wd)) if wd < 4 else u - pd.Timedelta(days=(wd - 4))
+        return pd.Timestamp(dt.date.today()) >= viernes + pd.Timedelta(days=2)
+    except Exception as _dege:
+        _deg("semana_cerrada", _dege)
+        return dt.date.today().weekday() >= 4
+
+# v7.6.1 — la semana 2026-W41 se grabo el viernes 9 por la manyana con el cierre del JUEVES 8
+# (SPY 777.22) y la cesta de ese momento (con SMH y SOXX). El build con el cierre del viernes daba
+# MAGS, XLE, IBIT, EWJ, ARKF, ARKK, XLV. Se corrige UNA vez, con los precios reales del viernes,
+# y se guarda lo original dentro del registro para que se vea que se corrigio y por que.
+_W41_CESTA_VIERNES = ["MAGS", "XLE", "IBIT", "EWJ", "ARKF", "ARKK", "XLV"]
+
+# v7.6.1 — con que cierre se grabo de verdad cada semana antigua. Sale de la hora de cada commit
+# del historico: las ejecuciones de la noche del jueves terminan pasada la medianoche UTC (ya es
+# viernes para el servidor) y grababan la semana con el cierre del JUEVES. No se cambia nada de
+# esas semanas: solo se anota, para que se sepa que se midieron de jueves a jueves.
+_CIERRE_LEGADO = {"2026-W33": "2026-08-13", "2026-W34": "2026-08-21", "2026-W35": "2026-08-27",
+                  "2026-W38": "2026-09-17", "2026-W39": "2026-09-25", "2026-W40": "2026-09-30"}
+# (v7.6.2: comprobado precio a precio con el historico de Yahoo. W40 se grabo con el MIERCOLES 30,
+#  no con el jueves: aquella noche Yahoo tampoco daba el cierre del jueves.)
+
+def _reparar_w41(df, nq_close=None):
+    try:
+        if not os.path.exists(TRACK_FILE):
+            return
+        with open(TRACK_FILE, "r", encoding="utf-8") as fh:
+            recs = json.load(fh) or []
+        _anot = 0
+        for _r in recs:
+            _c = _CIERRE_LEGADO.get(_r.get("week"))
+            if _c and not _r.get("cierre"):
+                _r["cierre"] = _c
+                _anot += 1
+        if _anot and guardar_json_seguro(TRACK_FILE, recs, backup=TRACK_BAK, indent=0):
+            print(f"  TRACK: anotado el cierre real de {_anot} semana(s) antiguas.")
+        reg = next((r for r in recs if r.get("week") == "2026-W41"), None)
+        if reg is None or reg.get("corregido") or reg.get("cierre"):
+            return
+        if abs(float(reg.get("px", {}).get("SPY", 0)) - 777.22) > 0.05:
+            return                                   # no es el registro provisional: no se toca
+        vie = pd.Timestamp("2026-10-09")
+        if vie not in df.index:
+            print("  TRACK: W41 pendiente de corregir (aun no hay fila del viernes 9).")
+            return
+        fila = df.loc[vie]
+        spy_v = float(fila.get(BENCH, float("nan")))
+        if not (spy_v == spy_v) or abs(spy_v - 777.22) < 0.005:
+            print("  TRACK: W41 pendiente de corregir (el dato del viernes 9 aun no ha llegado).")
+            return
+        px = {k: float(v) for k, v in fila.to_dict().items() if v is not None and v == v}
+        px["SPY"] = spy_v
+        if nq_close is not None and len(nq_close.dropna()):
+            _q = nq_close.dropna()
+            _q = _q[_q.index <= vie + pd.Timedelta(hours=23)]
+            if len(_q) and pd.Timestamp(_q.index[-1]).normalize() == vie:
+                px["QQQ"] = float(_q.iloc[-1])
+        falta = [s for s in _W41_CESTA_VIERNES if s not in px]
+        if falta:
+            print(f"  TRACK: W41 no se corrige: faltan precios del viernes para {falta}.")
+            return
+        reg["original"] = {"basket": reg.get("basket", []), "px": reg.get("px", {}),
+                           "nota": "grabado en la noche del jueves 8 con el cierre del MIERCOLES 7 (SPY 777.22)"}
+        reg["basket"] = list(_W41_CESTA_VIERNES)
+        reg["px"] = px
+        reg["cierre"] = "2026-10-09"
+        reg["corregido"] = "v7.6.1: cesta y precios del cierre del viernes 9 (la 'marked' sigue siendo la del jueves)"
+        if guardar_json_seguro(TRACK_FILE, recs, backup=TRACK_BAK, indent=0):
+            print(f"  TRACK: W41 corregida con el cierre del viernes (SPY {spy_v:.2f}).")
+    except Exception as _dege:
+        _deg("reparar_w41", _dege)
+
+def update_track_record(basket, px_now, datestr, marked=None, cierre=None):
     # Guarda un snapshot por semana ISO {week, date, basket, marked, px:{ticker:cierre}} y devuelve el historico ordenado.
     # px_now debe incluir los tickers del basket + SPY/QQQ/IWM. Asi cada semana puede valorar la cesta de la anterior.
     os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
@@ -1097,13 +1190,38 @@ def update_track_record(basket, px_now, datestr, marked=None):
     wk = semana_trading(datestr)
     px_clean = {k: float(v) for k, v in px_now.items() if v is not None and v == v}
     ya_existe = any(r.get("week") == wk for r in recs)
+    # v7.6.1 — antes se miraba el dia de HOY: el viernes por la manyana (antes de abrir Wall Street)
+    # contaba como 'semana cerrada' y se grababa la semana con el cierre del JUEVES. Ahora manda la
+    # fecha del ultimo cierre REAL: se graba con el cierre del viernes (o desde el domingo si el
+    # viernes fue festivo).
+    if cierre is not None:
+        _cerr = _semana_cerrada(cierre)
+        if not ya_existe and not _cerr:
+            print(f"  TRACK: semana {wk}: el ultimo cierre es del {pd.Timestamp(cierre).strftime('%A %d')}. "
+                  "No se graba hasta tener el cierre del VIERNES.")
+            recs.sort(key=lambda r: r.get("week", ""))
+            return recs
+        if ya_existe:
+            _reg = next(r for r in recs if r.get("week") == wk)
+            _rc = _reg.get("cierre")
+            # un registro PROVISIONAL (tomado antes del cierre del viernes) se sustituye UNA vez
+            if (_rc and _cerr and str(cierre) > str(_rc) and semana_trading(str(cierre)) == wk
+                    and pd.Timestamp(_rc).weekday() != 4):
+                _reg.update({"date": str(datestr), "basket": list(basket), "marked": list(marked or []),
+                             "px": {k: float(v) for k, v in px_now.items() if v is not None and v == v},
+                             "cierre": str(cierre), "provisional_previo": _rc})
+                if not guardar_json_seguro(TRACK_FILE, recs, backup=TRACK_BAK, indent=0):
+                    print("  ⛔ NO se pudo guardar el track record. El anterior sigue intacto.")
+                print(f"  TRACK: semana {wk}: el registro provisional ({_rc}) se sustituye por el cierre del {cierre}.")
+                recs.sort(key=lambda r: r.get("week", ""))
+                return recs
     # Solo se GRABA una cesta nueva cuando la semana ha cerrado (viernes o fin de semana).
     # Entre semana (lun-jue) se observa pero NO se registra: evita abrir una semana a medias con datos provisionales.
     try:
         _hoy_wd = dt.date.today().weekday()   # 0=lun..6=dom
     except Exception:
         _hoy_wd = 4
-    if not ya_existe and _hoy_wd < 4:
+    if cierre is None and not ya_existe and _hoy_wd < 4:
         print(f"  TRACK: semana {wk} aun en curso (hoy es {['lunes','martes','miercoles','jueves','viernes','sabado','domingo'][_hoy_wd]}). "
               "No se graba hasta el cierre del VIERNES — entre semana solo se observa.")
         recs.sort(key=lambda r: r.get("week", ""))
@@ -1119,6 +1237,8 @@ def update_track_record(basket, px_now, datestr, marked=None):
         recs.sort(key=lambda r: r.get("week", ""))
         return recs
     snap = {"week": wk, "date": str(datestr), "basket": list(basket), "marked": list(marked or []), "px": px_clean}
+    if cierre is not None:
+        snap["cierre"] = str(cierre)          # v7.6.1: fecha del cierre REAL con el que se grabo
     recs.append(snap)
     recs.sort(key=lambda r: r.get("week", ""))
     # v6.9: aqui estaba el caso exacto del que se hablaba. Escribia el fichero
@@ -1275,9 +1395,156 @@ def _ohlcv_valido(sym, d, fuente):
         pass
     return True
 
+# ----------------------------------------------------------------------
+# v7.6.2 — CONTROL DE FRESCURA. El historico demostro que las ejecuciones de la noche (GitHub las
+# arranca con 3-4 horas de retraso, ya pasada la medianoche UTC) recibian de Yahoo la serie diaria
+# SIN la barra de ese dia: 8 de 10 noches del 28-sep al 9-oct se quedaron con el cierre de la
+# vispera. Ahora se calcula que sesion deberia estar, se reintenta y, si Yahoo sigue sin darla,
+# se reconstruye ese dia con sus barras de 1 hora. Si ni asi: se dice bien grande.
+# ----------------------------------------------------------------------
+ESTADO_CIERRE = {}
+
+def sesion_esperada(ahora_ny=None):
+    """Ultima sesion de Nueva York ya CERRADA (a partir de las 16:20 hora de NY). No conoce festivos:
+    si ese dia no hubo mercado, el control lo detecta porque no hay ni barras horarias."""
+    try:
+        from zoneinfo import ZoneInfo
+        ny = ahora_ny or dt.datetime.now(ZoneInfo("America/New_York"))
+    except Exception:
+        ny = ahora_ny or (dt.datetime.utcnow() - dt.timedelta(hours=4))
+    d = ny.date()
+    if d.weekday() < 5 and (ny.hour, ny.minute) >= (16, 20):
+        return d
+    d -= dt.timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= dt.timedelta(days=1)
+    return d
+
+def _barras_horarias(tickers, fecha):
+    """El dia 'fecha' rehecho con las barras de 1 hora de Yahoo: apertura, maximo, minimo, cierre y volumen.
+    Solo si la sesion esta completa (ultima barra de las 15:30 de NY). {ticker: {...}}"""
+    out = {}
+    if yf is None or not tickers:
+        return out
+    for i in range(0, len(tickers), 60):
+        chunk = list(tickers[i:i + 60])
+        try:
+            data = yf.download(chunk if len(chunk) > 1 else chunk[0], period="5d", interval="60m",
+                               progress=False, auto_adjust=True, threads=True, prepost=False)
+        except Exception as _dege:
+            _deg("barras_horarias", _dege)
+            continue
+        if data is None or not len(data):
+            continue
+        try:
+            ix = data.index
+            ix = ix.tz_localize("UTC") if ix.tz is None else ix
+            ny = ix.tz_convert("America/New_York")
+            m = np.array([x.date() == fecha for x in ny])
+            if not m.any():
+                continue
+            sub, sny = data[m], ny[m]
+            if (sny[-1].hour, sny[-1].minute) < (15, 0):
+                continue                              # sesion a medias: no se inventa el cierre
+            multi = isinstance(data.columns, pd.MultiIndex)
+            for t in chunk:
+                try:
+                    g = (lambda k: sub[k][t]) if multi else (lambda k: sub[k] if not hasattr(sub[k], "columns") else sub[k].iloc[:, 0])
+                    c = g("Close").dropna()
+                    if not len(c):
+                        continue
+                    out[t] = {"Open": float(g("Open").dropna().iloc[0]), "High": float(g("High").max()),
+                              "Low": float(g("Low").min()), "Close": float(c.iloc[-1]),
+                              "Volume": float(g("Volume").fillna(0).sum())}
+                except Exception:
+                    continue
+        except Exception as _dege:
+            _deg("barras_horarias:proc", _dege)
+        time.sleep(0.5)
+    return out
+
+def _falta_dia(d, esp):
+    try:
+        return d is None or not len(d) or pd.Timestamp(d.index[-1]).normalize() < pd.Timestamp(esp)
+    except Exception:
+        return True
+
+def _barra_a_medias(d, esp):
+    """La ultima barra es la del dia esperado pero con menos del 35% del volumen normal: una foto de
+    media sesion que se quedo congelada (paso el 7-oct: 775.27 a las 9:45 de NY)."""
+    try:
+        if pd.Timestamp(d.index[-1]).normalize() != pd.Timestamp(esp) or "Volume" not in d.columns:
+            return False
+        v = d["Volume"].astype(float)
+        med = float(v.iloc[-21:-1].median())
+        return med > 0 and float(v.iloc[-1]) < 0.35 * med
+    except Exception:
+        return False
+
+def _pega_dia(d, esp, barra):
+    d = d[d.index.normalize() < pd.Timestamp(esp)]
+    fila = pd.DataFrame([{k: barra[k] for k in d.columns if k in barra}], index=[pd.Timestamp(esp)])
+    return pd.concat([d, fila]).sort_index()
+
+def _asegurar_cierre(daily, sources, esperado):
+    """Comprueba que cada serie diaria trae la ultima sesion cerrada. Reintenta y, si hace falta,
+    reconstruye el dia con barras horarias. Devuelve el estado (tambien en ESTADO_CIERRE)."""
+    esp = pd.Timestamp(esperado).normalize()
+    est = {"esperado": str(esp.date()), "reintento": [], "horario": [], "faltan": [], "festivo": False}
+    # la barra 'a medias' se mira en el SPY: un ETF poco negociado puede tener un dia flojo de verdad.
+    # Si el SPY la tiene congelada, la descarga entera es sospechosa y se mira en todos.
+    _spy_medias = BENCH in daily and _barra_a_medias(daily[BENCH], esp)
+    malos = [s for s, d in daily.items() if _falta_dia(d, esp) or (_spy_medias and _barra_a_medias(d, esp))]
+    if not malos:
+        print(f"  Frescura: todo trae el cierre del {esp.date()}.")
+        ESTADO_CIERRE.clear(); ESTADO_CIERRE.update(est); return est
+    print(f"  Frescura: {len(malos)} de {len(daily)} series SIN el cierre del {esp.date()} "
+          f"(o con una barra a medias). Reintento...")
+    # 1) el indice primero: si el SPY no tiene ni barras horarias de ese dia, no hubo sesion (festivo)
+    orden = ([BENCH] if BENCH in malos else []) + [s for s in malos if s != BENCH]
+    time.sleep(20)
+    for s in orden:
+        try:
+            d0 = daily[s]
+            d2 = fetch_yahoo(s, pd.Timestamp(d0.index[0]).date(), dt.date.today())
+            if d2 is not None and len(d2) >= 30 and not _falta_dia(d2, esp) and not (_spy_medias and _barra_a_medias(d2, esp)):
+                daily[s] = d2; sources[s] = "yahoo (reintento)"; est["reintento"].append(s)
+                save_cache(s, d2)
+        except Exception as _dege:
+            _deg(f"frescura:{s}", _dege)
+        time.sleep(0.3)
+        if s == BENCH and BENCH not in est["reintento"]:
+            hb = _barras_horarias([BENCH], esp.date())
+            if BENCH not in hb:
+                est["festivo"] = True
+                print(f"  Frescura: Yahoo no tiene ni barras horarias del {esp.date()} para {BENCH}: "
+                      "o fue festivo o Yahoo no da nada de ese dia. No se fuerza.")
+                break
+    if not est["festivo"]:
+        quedan = [s for s in malos if s not in est["reintento"]]
+        if quedan:
+            hb = _barras_horarias(quedan, esp.date())
+            for s in quedan:
+                if s in hb:
+                    daily[s] = _pega_dia(daily[s], esp, hb[s])
+                    sources[s] = str(sources.get(s, "yahoo")) + "+horario"
+                    est["horario"].append(s)
+        est["faltan"] = [s for s in malos if s not in est["reintento"] and s not in est["horario"]]
+    else:
+        est["faltan"] = [s for s in malos if s not in est["reintento"]]
+    print(f"  Frescura: reintento ok {len(est['reintento'])} · rehechas con barras horarias {len(est['horario'])} · "
+          f"siguen sin el {esp.date()}: {len(est['faltan'])}")
+    if est["horario"]:
+        _avisar("frescura", f"{len(est['horario'])} series con el cierre del {esp.date()} REHECHO con barras de 1 hora "
+                            "(Yahoo aun no daba la barra diaria). Cierre aproximado: puede diferir unas centésimas del oficial")
+    if est["faltan"] and not est["festivo"]:
+        _avisar("frescura", f"Yahoo no ha dado el cierre del {esp.date()} para {len(est['faltan'])} de {len(daily)} series "
+                            f"({', '.join(est['faltan'][:8])}{'…' if len(est['faltan']) > 8 else ''}): esas van con el día anterior")
+    ESTADO_CIERRE.clear(); ESTADO_CIERRE.update(est)
+    return est
+
 def get_ohlcv(sym, start, end):
-    pairs = ([(fetch_yahoo, "yahoo"), (fetch_stooq, "stooq")] if DATA_PRIMARY == "yahoo"
-             else [(fetch_stooq, "stooq"), (fetch_yahoo, "yahoo")])
+    pairs = [(fetch_yahoo, "yahoo")]      # v7.6.2: solo Yahoo (Stooq fuera). Si falla, la cache con su edad avisada
     for fn, nm in pairs:
         d = fn(sym, start, end)
         if d is not None and len(d) >= 30 and _ohlcv_valido(sym, d, nm):
@@ -1298,9 +1565,9 @@ def get_ohlcv(sym, start, end):
             _avisar(f"datos.{sym}", f"sin fuente viva y cache de hace {edad} sesiones: simbolo EXCLUIDO del build")
             return None, "—"
         if edad >= 1:
-            _avisar(f"datos.{sym}", f"Yahoo y Stooq sin respuesta: usando CACHE con {edad} sesion(es) de retraso — las señales de este simbolo van viejas")
+            _avisar(f"datos.{sym}", f"Yahoo sin respuesta: usando CACHE con {edad} sesion(es) de retraso — las señales de este simbolo van viejas")
         else:
-            _avisar(f"datos.{sym}", "Yahoo y Stooq sin respuesta: usando CACHE guardada hoy")
+            _avisar(f"datos.{sym}", "Yahoo sin respuesta: usando CACHE guardada hoy")
         return c, (f"cache-{edad}d" if edad else "cache")
     return None, "—"
 
@@ -1336,16 +1603,18 @@ def download_all():
                      if _nuevo else "  (revisa el ticker)"))
             sources[sym] = "—"
             continue
-        if src == "stooq":   # intentar refrescar el ultimo dia con Yahoo
-            d, added = topup_recent(sym, d, end)
-            if added:
-                src = "stooq+yf"
-                save_cache(sym, d)
         daily[sym] = d
         weekly[sym] = to_weekly_close(d["Close"])
         sources[sym] = src
         print(f"  {sym:5s}  {src:9s}  {len(weekly[sym])} semanas  ult {weekly[sym].index[-1].date()}")
         time.sleep(0.25)   # cortesia con la fuente
+    # v7.6.2 — control de frescura: ¿esta el cierre de la ultima sesion cerrada?
+    try:
+        _est = _asegurar_cierre(daily, sources, sesion_esperada())
+        for _s in _est.get("reintento", []) + _est.get("horario", []):
+            weekly[_s] = to_weekly_close(daily[_s]["Close"])
+    except Exception as _dege:
+        _deg("frescura", _dege)
     # alinear: union de fechas + arrastre LIMITADO A 1 SEMANA. El ffill sin limite fabricaba cierres
     # (un simbolo caido semanas mostraba 0% de movimiento ficticio en el RRG). Ahora: 1 semana de
     # arrastre como maximo (avisado), y si ni con esas tiene dato reciente, el simbolo se EXCLUYE.
@@ -1448,29 +1717,8 @@ def download_all():
     #     Dos fuentes independientes y no se cotejaban nunca: este es el unico chequeo automatico real
     #     de "¿coincide con lo publicado?" posible sin fuente de pago. Tolerancia 1.5% (ajuste por
     #     dividendos de Yahoo puede desviar fechas antiguas; el ultimo cierre comun debe cuadrar). ---
-    try:
-        if BENCH in daily and daily[BENCH] is not None:
-            _src_b = str(sources.get(BENCH, ""))
-            _sec = (fetch_stooq(BENCH, end - dt.timedelta(days=45), end) if _src_b.startswith("yahoo")
-                    else fetch_yahoo(BENCH, end - dt.timedelta(days=60), end))
-            if _sec is not None and "Close" in _sec.columns:
-                _a = daily[BENCH]["Close"].dropna(); _b = _sec["Close"].dropna()
-                _com = _a.index.intersection(_b.index)
-                if len(_com):
-                    _f = _com[-1]
-                    _dif = abs(float(_a.loc[_f]) / float(_b.loc[_f]) - 1) * 100
-                    if _dif > 1.5:
-                        _avisar("verifica.SPY", f"Yahoo y Stooq DISCREPAN un {_dif:.1f}% en el cierre del {_f.date()}: "
-                                                "no te fies de las señales de hoy sin mirar el precio en el broker")
-                    else:
-                        print(f"  verificacion cruzada SPY ({_f.date()}): fuentes coinciden (dif {_dif:.2f}%)")
-    except Exception:
-        pass
-    used = [v for v in sources.values() if v not in ("—",)]
-    if used and not any("stooq" in v for v in used):
-        print("  AVISO: Stooq no respondio en ninguna descarga (probable LIMITE DIARIO de Stooq por su IP, "
-              "agravado por el universo de ~500 acciones). Se ha usado Yahoo. El cupo se restablece al dia siguiente; "
-              "puedes bajar RS_UNIVERSE a 'sector' o poner DATA_PRIMARY='yahoo'.")
+    # v7.6.2: aqui se cotejaba el SPY con Stooq. Stooq ya no responde: fuera. El control de frescura
+    # (que el ultimo cierre sea el de la ultima sesion cerrada) se hace en _asegurar_cierre.
     return df, daily, sources
 
 # ----------------------------------------------------------------------
@@ -5126,7 +5374,7 @@ def composicion_acciones(idx, pesos, mapa, flow, rrg, propio=None):
         ults = [STK_OHLCV[f[0]].index[-1] for f in filas_in if f[0] in STK_OHLCV and len(STK_OHLCV[f[0]])]
         if not ults:
             return {"cobertura_baja": 0.0}
-        ref = max(ults)
+        ref = sorted(ults)[len(ults) // 2]      # v7.6.1: la fecha de la MAYORIA (antes la mas reciente: decia 'viernes' con casi todo del jueves)
         grupos, fuera, acc = {}, 0.0, []
         for t, w, sec_raw in filas_in:
             w = float(w or 0.0)
@@ -7767,6 +8015,7 @@ def _fetch_long(stooq_sym, etf_fallback, yahoo_sym):
     """Historia LARGA de un indice (Stooq -> ETF -> Yahoo). Devuelve (close, fuente, hl) donde hl=High/Low o None."""
     start = dt.date.today() - dt.timedelta(days=365 * 60)
     try:
+        raise RuntimeError("v7.6.2: Stooq fuera")
         r = requests.get(f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d", timeout=20,
                          headers={"User-Agent": "Mozilla/5.0"})
         df = pd.read_csv(StringIO(r.text))
@@ -8182,6 +8431,7 @@ def fetch_fx():
     """EUR/USD avanzado para la cobertura divisa (Stooq -> Yahoo)."""
     c = None
     try:
+        raise RuntimeError("v7.6.2: Stooq fuera")
         r = requests.get("https://stooq.com/q/d/l/?s=eurusd&i=d", timeout=20,
                          headers={"User-Agent": "Mozilla/5.0"})
         df = pd.read_csv(StringIO(r.text))
@@ -8382,7 +8632,68 @@ def fetch_sp500_universe():
             if (i + 1) % 50 == 0:
                 print(f"    ...{i + 1}/{len(missing)}")
     print(f"  acciones del S&P con datos: {len(closes)}")
+    _reintentar_rezagadas(closes)
     return closes
+
+def _reintentar_rezagadas(closes, tope=0.05):
+    """v7.6.1 — si una parte de las acciones llega sin el ultimo cierre que si tienen las demas
+    (Yahoo cortando por exceso de peticiones, o Stooq que va un dia atras), se reintentan UNA vez
+    por fechas en vez de por periodo. Si siguen atras, se avisa en la salud del build: el desglose
+    por acciones y el Zweig irian un dia por detras del resto del terminal."""
+    try:
+        if not closes or yf is None:
+            return
+        ults = {t: s.index[-1] for t, s in closes.items() if len(s)}
+        ref = max(ults.values())
+        # v7.6.2: si el SPY ya tiene un cierre mas nuevo (o rehecho), ese es el objetivo: antes, si TODAS
+        # las acciones venian sin el viernes, ninguna parecia rezagada y no se reintentaba nada
+        try:
+            _obj = ESTADO_CIERRE.get("objetivo")
+            if _obj and pd.Timestamp(_obj) > pd.Timestamp(ref):
+                ref = pd.Timestamp(_obj)
+        except Exception:
+            pass
+        rez = sorted(t for t, u in ults.items() if u < ref)
+        if len(rez) <= tope * len(ults):
+            return
+        print(f"  {len(rez)} de {len(ults)} acciones sin el cierre del {pd.Timestamp(ref).date()}: reintento en 10 s...")
+        time.sleep(10)
+        ini, fin = dt.date.today() - dt.timedelta(days=730), dt.date.today() + dt.timedelta(days=1)
+        for i in range(0, len(rez), 60):
+            chunk = rez[i:i + 60]
+            try:
+                data = yf.download(chunk, start=ini, end=fin, interval="1d", progress=False,
+                                   auto_adjust=True, threads=True)
+                if data is None or len(data) == 0 or not isinstance(data.columns, pd.MultiIndex):
+                    continue
+                for t in chunk:
+                    try:
+                        c = data["Close"][t].dropna()
+                    except Exception:
+                        continue
+                    if len(c) > 200 and c.index[-1] > ults[t]:
+                        closes[t] = c
+                        _guarda_ohlcv(t, pd.DataFrame({k: data[k][t] for k in ("High", "Low", "Close", "Volume")}))
+            except Exception as _dege:
+                _deg("reintento_rezagadas", _dege)
+            time.sleep(1.0)
+        rez2 = [t for t in rez if closes[t].index[-1] < ref]
+        if rez2:
+            hb = _barras_horarias(rez2, pd.Timestamp(ref).date())
+            for t in rez2:
+                if t in hb:
+                    s = closes[t]
+                    closes[t] = pd.concat([s[s.index.normalize() < pd.Timestamp(ref)],
+                                           pd.Series([hb[t]["Close"]], index=[pd.Timestamp(ref)])]).sort_index()
+                    if t in STK_OHLCV:
+                        STK_OHLCV[t] = _pega_dia(STK_OHLCV[t], ref, hb[t]).iloc[-STK_OHLCV_SES:]
+            rez2 = [t for t in rez2 if closes[t].index[-1] < ref]
+        print(f"  tras el reintento: {len(rez2)} siguen sin el cierre del {pd.Timestamp(ref).date()}")
+        if len(rez2) > tope * len(ults):
+            _avisar("acciones", f"{len(rez2)} de {len(ults)} acciones sin el cierre del {pd.Timestamp(ref).date()}: "
+                                "el desglose por acciones de los índices y el Zweig van un día por detrás del resto")
+    except Exception as _dege:
+        _deg("reintento_rezagadas", _dege)
 
 def _phase(s, drs):
     """Clasifica la FASE de una accion (modelo de 4 fases) con su propia serie de precios.
@@ -11587,11 +11898,14 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     last_date = df.index[-1].date()
     _dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
     _mes = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-    last_lbl = f"{_dias[last_date.weekday()]} {last_date.day} {_mes[last_date.month-1]}"
+    # v7.6.2: 'Ult. cierre' = el ultimo cierre REAL del SPY. Antes salia la etiqueta de la semana:
+    # el sabado ponia 'viernes 9' aunque los datos fueran del jueves.
+    _lr = _cierre_real(daily, df)
+    last_lbl = f"{_dias[_lr.weekday()]} {_lr.day} {_mes[_lr.month-1]}"
     stale_days = (dt.date.today() - last_date).days
     # ¿el ultimo dato es de MEDIA SEMANA? (el sistema decide con el cierre del VIERNES; lo demas es observacion)
     _hoy_wd = dt.date.today().weekday()   # 0=lun ... 4=vie
-    media_semana = _hoy_wd < 4            # lun-jue = todavia no ha cerrado la semana
+    media_semana = not _semana_cerrada(_cierre_real(daily, df))   # v7.6.1: manda el ultimo cierre real, no el dia de hoy
     src_summary = ", ".join(sorted(set(v for v in sources.values() if v not in ("—",))))
 
     # ranking enriquecido (sparkline RS + rendimiento relativo 4 semanas)
@@ -12867,7 +13181,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     if _reg_act is not None and set(_reg_act.get("basket", [])) != set(CARTERA_FINAL):
         _cesta_cong_dif = ("el track record de " + _wk_act + " quedó registrado con "
                            + (", ".join(_reg_act.get("basket", [])) or "—")
-                           + " (primer build tras el cierre). Este build da " + (", ".join(CARTERA_FINAL) or "—")
+                           + (" (cierre del " + str(_reg_act.get("cierre")) + ")" if _reg_act.get("cierre") else " (primer registro de la semana)")
+                           + ". Este build da " + (", ".join(CARTERA_FINAL) or "—")
                            + ". Lo que se mide es la registrada.")
     _cn_frenadas = []
 
@@ -13104,7 +13419,9 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             if nq_close is not None and len(nq_close):
                 px_now["QQQ"] = float(nq_close.iloc[-1])
             _marked_now = [r["sym"] for r in (scores or []) if r["score"] >= 4]
-            recs = update_track_record(basket, px_now, str(df.index[-1].date()), marked=_marked_now)
+            _reparar_w41(df, nq_close)
+            recs = update_track_record(basket, px_now, str(df.index[-1].date()), marked=_marked_now,
+                                       cierre=_cierre_real(daily, df))
             tperf = compute_track_perf(recs)
         except Exception:
             tperf = None
@@ -13147,6 +13464,19 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         head = (f"Desde que registras ({tperf['n']} registros · {tperf.get('n_cal', tperf['n'])} semanas de calendario): <b style='color:{_cc(cum['sys'])}'>sistema {_pct(cum['sys'])}</b> · "
                 f"SPY {_pct(cum.get('SPY',0))} · QQQ {_pct(cum['QQQ']) if 'QQQ' in cum else '—'} · IWM {_pct(cum['IWM']) if 'IWM' in cum else '—'} → "
                 f"<b style='color:{_cc(beat_cum)}'>{verdict}</b>{ewphrase}")
+        try:
+            with open(TRACK_FILE, "r", encoding="utf-8") as _fh_j:
+                _dd = {0: "lun", 1: "mar", 2: "mié", 3: "jue", 4: "vie"}
+                _jue = [r["week"].split("-W")[-1] + " (" + _dd.get(pd.Timestamp(r["cierre"]).weekday(), "?") + ")"
+                        for r in (json.load(_fh_j) or [])
+                        if r.get("cierre") and pd.Timestamp(r["cierre"]).weekday() != 4]
+            if _jue:
+                head += ("<br><span style='font-size:11.5px;color:#F4B740'>Ojo: las semanas " + ", ".join(_jue)
+                         + " se grabaron <b>antes del cierre del viernes</b> (con el del jueves o el miércoles): la ejecución "
+                           "de la noche del jueves acababa pasada la medianoche y el servidor ya creía que era viernes. "
+                           "Corregido en v7.6.1/v7.6.2; esas semanas se dejan como están.</span>")
+        except Exception as _dege:
+            _deg("track:nota_jueves", _dege)
         pend = tperf["pending"]
         # ---- GRAFICO DOSIER: curva acumulada sistema vs SPY (incluye entradas Y salidas: la cadena real) ----
         graf = ""
@@ -13275,6 +13605,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
            "⚠ <b>Cierre de media semana</b> — el sistema decide con el <b>cierre del VIERNES</b>. Hoy es solo <b>observación</b>: mira los giros y prepárate, "
            "pero <b>no ejecutes rotaciones</b> hasta el viernes. El track record de la semana quedó congelado en su primer registro; esta ejecución no lo altera.</div>"
            if media_semana else "")
+        + ((lambda _e: (
+            "<div style='margin:0 0 10px 0;padding:9px 12px;background:rgba(244,96,122,.12);border:1px solid #F4607A66;border-radius:8px;font-size:12.5px;color:#F4607A'>"
+            f"⚠ <b>Datos del {esc(str(_cierre_real(daily, df)))}</b>: Yahoo no ha dado el cierre del <b>{esc(_e['esperado'])}</b> "
+            f"para {len(_e['faltan'])} series. Lo de hoy va con el día anterior: vuelve a lanzarlo más tarde.</div>")
+            if (_e.get("faltan") and not _e.get("festivo") and BENCH in _e.get("faltan", [])) else "")(ESTADO_CIERRE))
         + f"<div class='vrow'><span class='vk' style='background:{light}'>¿Invierto?</span>"
         f"<span><b style='color:{light}'>{esc(sem_short)}</b> · {esc(reg_short)}, {esc(risk['label'])}, mercado {mkt}</span></div>"
         f"<div class='vrow'><span class='vk' style='background:#5B8CFF'>Compra</span><span>{esc(cartera_txt)}</span></div>"
@@ -15534,7 +15869,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         html.append(_mod("FX & CROSS-ASSET — EL TABLERO ALREDEDOR", xa))
         html.append("</div>")  # cierre bbgrid
         html.append("<div class='bbgp' style='grid-column:1/-1'><div class='bbgb' style='font-size:10px;color:#666'>"
-                    "PeVR TERMINAL PRO · datos de cierre semanal (Stooq/Yahoo, posible retardo) · todos los módulos beben de los mismos cálculos "
+                    "PeVR TERMINAL PRO · datos de cierre semanal (Yahoo, posible retardo) · todos los módulos beben de los mismos cálculos "
                     "que Contexto y Operativa, aquí en formato denso de mesa · el detalle y el porqué, en sus pestañas · no es asesoramiento</div></div>")
     except Exception as _pro_e:
         # CRITICO: si algo falla a mitad, descartamos TODO el HTML parcial de esta vista.
@@ -16306,7 +16641,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         rs_parts.append(_rline("Ojo esta semana", ojo))
         rs_parts.append("<div style='margin-top:14px;padding-top:8px;border-top:1px solid #2A3A55;font-size:9.5px;color:#7A8CA8;line-height:1.5'>"
                         "Contenido informativo y educativo. No es asesoramiento financiero personalizado ni recomendación de inversión (MiFID II / criterios CNMV). "
-                        "Datos de cierre semanal (Stooq/Yahoo) con posible retardo. Rendimientos pasados no garantizan rendimientos futuros. "
+                        "Datos de cierre semanal (Yahoo) con posible retardo. Rendimientos pasados no garantizan rendimientos futuros. "
                         "Los productos apalancados y CFD conllevan alto riesgo de pérdida rápida. Cada uno es responsable de sus decisiones."
                         "</div>")
         html.append("<div id='resumen-semanal' style='display:none;max-width:720px;margin:20px auto;background:#0A0E17;border:1px solid #24344F;"
@@ -16415,7 +16750,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("</main>")
     gen = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     html.append("<footer>Actualizado: " + gen + " &middot; Herramienta de apoyo a la decision basada en fuerza relativa (estilo RRG) con datos de cierre reales "
-                "de Stooq/Yahoo. No es asesoramiento financiero; los datos de fin de dia van con retardo y no sustituyen tu "
+                "de Yahoo. No es asesoramiento financiero; los datos de fin de dia van con retardo y no sustituyen tu "
                 "gestion de riesgo (tamano de posicion y stops).</footer>")
     html.append("<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>")
     html.append("</body></html>")
@@ -17213,7 +17548,7 @@ def _tabla_df(x):
     return x if (x is not None and hasattr(x, "columns") and len(x)) else None
 
 
-def descargar_pequenas(corte=None):
+def descargar_pequenas(corte=None, ref=None):
     """Historico largo (desde 2008) de los ETFs de pequenas por sector + KRE, XBI, XLRE e IWM.
        El largo hace falta para la historia de caidas; lo reciente sale de la misma descarga."""
     largo, fallos = {}, []
@@ -17233,6 +17568,30 @@ def descargar_pequenas(corte=None):
                 largo[s] = d
                 continue
         fallos.append(s)
+    # v7.6.1 — si llegan con un dia menos que el resto del terminal, reintento directo a Yahoo
+    if ref is not None and corte is None:
+        _rz = [s for s, d in largo.items() if pd.Timestamp(d.index[-1]).date() < ref]
+        if _rz:
+            print(f"  Pequeñas: {len(_rz)} ETF sin el cierre del {ref}: reintento...")
+            time.sleep(5)
+            for s in _rz:
+                try:
+                    d2 = fetch_yahoo(s, ini, fin)
+                    if d2 is not None and len(d2) >= 60 and pd.Timestamp(d2.index[-1]).date() > pd.Timestamp(largo[s].index[-1]).date():
+                        largo[s] = d2.sort_index()
+                        save_cache(s, d2)
+                except Exception as _dege:
+                    _deg(f"pequenas_reintento:{s}", _dege)
+                time.sleep(0.5)
+            _rz2 = [s for s in _rz if pd.Timestamp(largo[s].index[-1]).date() < ref]
+            if _rz2:
+                _hb = _barras_horarias(_rz2, ref)
+                for s in _rz2:
+                    if s in _hb:
+                        largo[s] = _pega_dia(largo[s], ref, _hb[s])
+                _rz2 = [s for s in _rz2 if pd.Timestamp(largo[s].index[-1]).date() < ref]
+            if _rz2:
+                _avisar("pequenas", f"{', '.join(_rz2)} sin el cierre del {ref}: el panel de pequeñas va un día por detrás")
     if fallos:
         _avisar("pequenas", f"sin datos de {', '.join(fallos)}: esos sectores de las pequeñas salen sin dato "
                             "(o con el ETF de grandes como respaldo)")
@@ -18010,6 +18369,10 @@ def main():
     if not season:
         season = None
     fx = fetch_fx()
+    try:
+        ESTADO_CIERRE["objetivo"] = str(_cierre_real(daily, df))
+    except Exception as _dege:
+        _deg("frescura:objetivo", _dege)
     _stk_univ = fetch_stock_universe() if STOCK_LEADERS else {}
     if VIAJE_A and _stk_univ:
         # v7.3 — FALLO CORREGIDO: las acciones se bajan despues del corte del viaje y nadie las
@@ -18084,7 +18447,7 @@ def main():
     try:
         _peq_corte = df.index[-1] if VIAJE_A else None
         print("  Pequeñas por sector: descargando ETFs de pequeñas (histórico largo)...")
-        _peq_largo = descargar_pequenas(_peq_corte)
+        _peq_largo = descargar_pequenas(_peq_corte, ref=_cierre_real(daily, df))
         if _peq_largo:
             _peq_res = {"largo": _peq_largo}
             _peq_res["rrg"] = pequenas_rrg(df, _peq_largo)

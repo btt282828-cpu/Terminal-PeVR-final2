@@ -1,0 +1,51 @@
+[
+{
+"date": "2026-10-13",
+"idx": {
+"SPY": {
+"score": 7,
+"ver": "MANTENER / VIGILAR",
+"p": [
+"v",
+"v",
+"a",
+"v",
+"r"
+]
+},
+"QQQ": {
+"score": 8,
+"ver": "ENTRAR SOLO MANGA PEQUEÑA",
+"p": [
+"v",
+"v",
+"a",
+"v",
+"a"
+]
+},
+"DIA": {
+"score": 4,
+"ver": "ESPERAR",
+"p": [
+"a",
+"a",
+"a",
+"r",
+"a"
+]
+},
+"IWM": {
+"score": 1,
+"ver": "NO TOCAR",
+"p": [
+"a",
+"r",
+"r",
+"r",
+"r"
+]
+}
+}
+}
+]

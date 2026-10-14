@@ -9266,7 +9266,9 @@ padding:14px 22px;border-bottom:1px solid var(--line);background:var(--bg2)}
 .RiskON{background:rgba(47,208,138,.14);color:#2FD08A}.RiskOFF{background:rgba(244,96,122,.14);color:#F4607A}
 .Neutral{background:rgba(147,164,188,.12);color:var(--txt2)}
 main{max-width:1280px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
-@media(max-width:900px){main{grid-template-columns:1fr}}
+@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.viewtabs.mainbar{overflow-x:auto;min-width:0;max-width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.viewtabs.mainbar .viewtab{flex:none;white-space:nowrap}
 .panel{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px 15px;margin-bottom:14px}
 .panel h2{font-size:12.5px;font-weight:600;margin-bottom:10px}
 .note{font-size:11.5px;color:var(--txt2);margin:6px 0 10px}
@@ -11911,7 +11913,7 @@ def _amplitud_html(amp):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None, operativa=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -12033,8 +12035,9 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
 
     html.append("<main>")
     html.append(
-        "<div class='viewtabs' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
-        "<button class='viewtab mainview active' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
+        "<div class='viewtabs mainbar' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
+        "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Operativa índices</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
         "<button class='viewtab mainview' onclick=\"mainView('op',this)\" style='font-size:13px;padding:7px 16px'>🎯 Operativa</button>"
         "<button class='viewtab mainview' onclick=\"mainView('vig',this)\" style='font-size:13px;padding:7px 16px'>📋 Vigilancia</button>"
         "<button class='viewtab mainview' onclick=\"mainView('sue',this)\" style='font-size:13px;padding:7px 16px;border-color:#2FD08A55;color:#2FD08A'>🎯 Detector de suelos</button>"
@@ -12046,8 +12049,15 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         "<span style='flex:1'></span>"
         "<button class='viewtab' onclick='descargarPDF()' title='Resumen semanal en PDF (imprimible / para Substack)' style='font-size:12px;padding:7px 12px;border-color:#5B8CFF55;color:#5B8CFF'>📄 Resumen PDF</button>"
         "<button class='viewtab' onclick='descargarJPG()' title='Resumen semanal en JPG (para X / Telegram; necesita internet)' style='font-size:12px;padding:7px 12px;border-color:#5B8CFF33'>🖼 JPG</button>"
-        "</div>"
-        "<div id='vista-ctx' style='display:contents'>")
+        "</div>")
+    # v7.7 — la primera pestaña, visible al abrir
+    try:
+        html.append("<div id='vista-idx' style='display:contents'>" + _op_html(operativa) + "</div>")
+    except Exception as _dege:
+        _deg("operativa:html", _dege)
+        html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
+                    "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
+    html.append("<div id='vista-ctx' style='display:none'>")
 
     # ---- barra-resumen de rotacion ----
     entering = [s for s, d in rrg.items() if d["quad"] == "improving"]
@@ -16756,7 +16766,9 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     except Exception:
         pass
 
-    html.append("<script>function mainView(v,b){document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
+    html.append("<script>function mainView(v,b){var ix=document.getElementById('vista-idx');if(ix)ix.style.display=(v=='idx')?'contents':'none';"
+                "document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
+                "if(v=='ctx'&&!window._tvok){window._tvok=1;try{var _s=document.getElementById('tvsel');if(_s&&window.tvload)tvload(_s.value);}catch(e){}}"
                 "document.getElementById('vista-op').style.display=(v=='op')?'contents':'none';"
                 "var vg=document.getElementById('vista-vig');if(vg)vg.style.display=(v=='vig')?'contents':'none';"
                 "var su=document.getElementById('vista-sue');if(su)su.style.display=(v=='sue')?'contents':'none';"
@@ -18131,11 +18143,15 @@ def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
     # el propio QQQ: no es una bolita del RRG, se baja solo para contrastar
     qqq_flow = None
     try:
-        d, _src = get_ohlcv("QQQ", dt.date.today() - dt.timedelta(days=260), dt.date.today())
+        # v7.7: 600 dias (la pestaña Operativa necesita la media de 200 y el RRG semanal); el flujo se
+        # sigue calculando con los mismos 260 dias de antes, para que la composicion no cambie
+        d, _src = get_ohlcv("QQQ", dt.date.today() - dt.timedelta(days=600), dt.date.today())
         if d is not None and corte is not None:
             d = d[d.index <= pd.Timestamp(corte)]
         if d is not None and len(d) >= 30:
-            qqq_flow = compute_volume_flow({"QQQ": d}, only="QQQ").get("QQQ")
+            _d260 = d[d.index >= pd.Timestamp(dt.date.today() - dt.timedelta(days=260))]
+            qqq_flow = compute_volume_flow({"QQQ": _d260}, only="QQQ").get("QQQ")
+            OPER_QQQ.clear(); OPER_QQQ.update({"d": d, "flow": qqq_flow})
     except Exception as _dege:
         _deg("componer:qqq", _dege)
     propios = {"QQQ": qqq_flow, "SPY": spy_flow, "DIA": (flow or {}).get("DIA"), "IWM": (flow or {}).get("IWM")}
@@ -18179,6 +18195,613 @@ def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
                 "modo viaje: los pesos son los de hoy, no los de esa fecha (no hay carteras históricas "
                 "gratis); tómalo como aproximación")
     return out
+
+
+
+# ======================================================================
+# v7.7 — OPERATIVA ÍNDICES: la primera pestaña. Responde a una sola pregunta: ¿en qué índice
+# estar (SPY, QQQ, DIA, IWM)? Todo sale de lo que el terminal YA calcula; aquí solo se junta,
+# se ordena y se le pone un checklist igual para los cuatro. No toca scoring, cartera,
+# CENTINELA ni el registro semanal. Guarda su propia memoria (operativa_indices.json).
+# ======================================================================
+OPER_IDX = (("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000"))
+OPER_FILE = os.path.join(SEGUIMIENTO_DIR, "operativa_indices.json")
+OPER_QQQ = {}          # componer_indices deja aquí el QQQ (precios y flujo): no es una bolita del RRG
+# (ETF, nombre, sector GICS si es un sector entero, subsector: 'semis'/'software'/'banca'/'biotec')
+OPER_SECT = (("XLK", "Tecnología", "Information Technology", None), ("SMH", "semiconductores", None, "semis"),
+             ("IGV", "software", None, "software"), ("XLC", "Comunicaciones", "Communication Services", None),
+             ("XLY", "Consumo discrecional", "Consumer Discretionary", None), ("XLF", "Financiero", "Financials", None),
+             ("KRE", "banca regional", None, "banca"), ("XLV", "Salud", "Health Care", None),
+             ("XBI", "biotecnología", None, "biotec"), ("XLI", "Industria", "Industrials", None),
+             ("XLE", "Energía", "Energy", None), ("XLP", "Consumo básico", "Consumer Staples", None),
+             ("XLU", "Utilities", "Utilities", None), ("XLB", "Materiales", "Materials", None),
+             ("XLRE", "Inmobiliario", "Real Estate", None))
+OPER_V, OPER_A, OPER_R, OPER_G, OPER_B = "#2FD08A", "#F4B740", "#F4607A", "#5E708A", "#5B8CFF"
+OPER_COL = {"v": OPER_V, "a": OPER_A, "r": OPER_R, "n": OPER_G}
+OPER_PTS = {"v": 2, "a": 1, "r": 0, "n": 0}
+OPER_VERED = (  # (minimo de puntos, veredicto, color)
+    (8, "ENTRAR POCO A POCO", OPER_V), (6, "MANTENER / VIGILAR", OPER_B),
+    (4, "ESPERAR", OPER_A), (0, "NO TOCAR", OPER_R))
+
+
+def _op_close(x):
+    try:
+        if x is None:
+            return None
+        if hasattr(x, "columns"):
+            return x["Close"].dropna().astype(float) if "Close" in x.columns else None
+        return x.dropna().astype(float)
+    except Exception:
+        return None
+
+
+def _op_tendencia(c):
+    """Punto 1: precio frente a sus medias de 50 y 200 sesiones y caída desde el máximo de un año."""
+    if c is None or len(c) < 60:
+        return {"c": "n", "txt": "sin datos suficientes", "gatillo": None}
+    last = float(c.iloc[-1])
+    m50 = float(c.rolling(50).mean().iloc[-1])
+    m200 = float(c.rolling(200).mean().iloc[-1]) if len(c) >= 200 else None
+    dd = (last / float(c.iloc[-252:].max()) - 1) * 100
+    s50, s200 = last > m50, (m200 is None or last > m200)
+    col = "v" if (s50 and s200) else ("r" if (not s50 and not s200) else "a")
+    txt = (f"precio {'por encima' if s50 else 'por debajo'} de la media de 50"
+           + ("" if m200 is None else f" y {'por encima' if last > m200 else 'por debajo'} de la de 200")
+           + f" · {dd:+.1f}% desde máximos")
+    gat = None
+    if not s50:
+        gat = f"cerrar por encima de la media de 50 ({m50:.2f}, a {(m50 / last - 1) * 100:+.1f}%)"
+    elif m200 is not None and not s200:
+        gat = f"cerrar por encima de la media de 200 ({m200:.2f}, a {(m200 / last - 1) * 100:+.1f}%)"
+    return {"c": col, "txt": txt, "gatillo": gat, "dd": round(dd, 1), "last": last,
+            "m50": round(m50, 2), "m200": (round(m200, 2) if m200 is not None else None)}
+
+
+def _op_flujo(f, ohlcv):
+    """Punto 2: dinero en el propio ETF (CMF de 20 sesiones, la misma regla del anillo del RRG) y tramos."""
+    est, sg = clasificar_flujo(f)
+    cmf = (f or {}).get("cmf")
+    tr = None
+    try:
+        tr = _tramos_de(_cmf_serie(ohlcv)) if ohlcv is not None else None
+    except Exception:
+        tr = None
+    sube3 = bool(tr and tr[1] > tr[0] and tr[2] > tr[1] and tr[3] > tr[2])
+    baja3 = bool(tr and tr[1] < tr[0] and tr[2] < tr[1] and tr[3] < tr[2])
+    if sg is None:
+        return {"c": "n", "txt": "sin dato de flujo", "gatillo": None, "cmf": None, "tramos": tr}
+    col = {1: "v", 0: "a", -1: "r"}[sg]
+    txt = f"CMF {cmf:+.2f} · {est}"
+    if tr:
+        txt += " · tramos " + " → ".join(f"{x:+.2f}" for x in tr) + (" ↗3t" if sube3 else (" ↘3t" if baja3 else ""))
+    gat = None
+    if sg == -1:
+        gat = f"que el dinero deje de salir: CMF por encima de −0.05 (ahora {cmf:+.2f})"
+    elif sg == 0:
+        gat = f"que entre dinero: CMF por encima de +0.05 (ahora {cmf:+.2f})" + (" — va camino: ↗3t" if sube3 else "")
+    return {"c": col, "txt": txt, "gatillo": gat, "cmf": cmf, "tramos": tr, "sube3": sube3, "baja3": baja3}
+
+
+def _op_composicion(dc):
+    """Punto 3: la barra del detector de suelos (cada acción con su peso oficial y su CMF)."""
+    if not dc:
+        return {"c": "n", "txt": "sin desglose hoy", "gatillo": None, "tiran": [], "frenan": []}
+    pe, ps = float(dc.get("p_entra") or 0), float(dc.get("p_sale") or 0)
+    col = "v" if pe >= 50 else ("r" if ps >= 50 else "a")
+    ti, fr = {}, {}
+    for fila in dc.get("filas") or []:
+        for t, w, c in fila.get("tiran") or []:
+            if t not in ti or w > ti[t][0]:
+                ti[t] = (w, c)
+        for t, w, c in fila.get("frenan") or []:
+            if t not in fr or w > fr[t][0]:
+                fr[t] = (w, c)
+        for ch in fila.get("chips") or []:          # pequeñas: los ETFs de cada sector
+            _nm = f"{ch['sym']} ({str(fila.get('etq') or '').lower()})"
+            if ch.get("signo") == 1:
+                ti[_nm] = (fila.get("peso") or 0, ch.get("cmf") or 0)
+            elif ch.get("signo") == -1:
+                fr[_nm] = (fila.get("peso") or 0, ch.get("cmf") or 0)
+    tiran = sorted(((t, w, c) for t, (w, c) in ti.items()), key=lambda x: -x[1])[:3]
+    frenan = sorted(((t, w, c) for t, (w, c) in fr.items()), key=lambda x: -x[1])[:3]
+    gat = None if col == "v" else f"más del 50% del peso con dinero entrando (ahora {pe:.0f}%)"
+    return {"c": col, "txt": f"{pe:.0f}% del peso entra · {ps:.0f}% sale", "gatillo": gat,
+            "tiran": tiran, "frenan": frenan, "pe": round(pe, 1), "ps": round(ps, 1),
+            "modo": dc.get("modo"), "ref": dc.get("ref"), "fuente": dc.get("fuente"),
+            "fecha_pesos": dc.get("fecha_pesos"), "estado_pesos": dc.get("estado_pesos")}
+
+
+def _op_fuerza(sym, rrg_e, c):
+    """Punto 4: fuerza relativa. QQQ, DIA e IWM frente al SPY (cuadrante del RRG semanal).
+       El SPY no puede medirse contra sí mismo: su impulso propio a 4 y 13 semanas."""
+    if sym == "SPY":
+        if c is None or len(c) < 70:
+            return {"c": "n", "txt": "sin datos suficientes", "gatillo": None}
+        r4 = (float(c.iloc[-1]) / float(c.iloc[-21]) - 1) * 100
+        r13 = (float(c.iloc[-1]) / float(c.iloc[-64]) - 1) * 100
+        col = "v" if (r4 > 0 and r13 > 0) else ("r" if (r4 < 0 and r13 < 0) else "a")
+        gat = None if col == "v" else "que suba a 4 y a 13 semanas a la vez"
+        return {"c": col, "txt": f"impulso propio: {r4:+.1f}% en 4 semanas · {r13:+.1f}% en 13", "gatillo": gat,
+                "r4": round(r4, 1), "r13": round(r13, 1)}
+    if not rrg_e:
+        return {"c": "n", "txt": "sin dato de RRG", "gatillo": None}
+    q = rrg_e.get("quad")
+    ra, mo = float(rrg_e.get("ratio") or 0), float(rrg_e.get("mom") or 0)
+    col = {"leading": "v", "improving": "a", "weakening": "a", "lagging": "r"}.get(q, "n")
+    nom = QUAD.get(q, (q,))[0] if q else "?"
+    gat = None
+    if q == "lagging":
+        gat = f"que el impulso pase de 100 (ahora {mo:.1f}): pasaría a Mejorando"
+    elif q == "improving":
+        gat = f"que la fuerza pase de 100 (ahora {ra:.1f}): pasaría a Líder"
+    elif q == "weakening":
+        gat = f"que el impulso vuelva por encima de 100 (ahora {mo:.1f})"
+    return {"c": col, "txt": f"{nom} frente al SPY · fuerza {ra:.1f}, impulso {mo:.1f} · 4 sem {rrg_e.get('rel4', 0):+.1f}%",
+            "gatillo": gat, "quad": q, "ratio": round(ra, 1), "mom": round(mo, 1)}
+
+
+def _op_pct_sobre_50(series_list, pesos_list=None, atras=0):
+    n = ok = 0
+    wn = wok = 0.0
+    for i, s in enumerate(series_list):
+        if s is None or len(s) < 50 + atras + 1:
+            continue
+        ss = s.iloc[:len(s) - atras] if atras else s
+        m = float(ss.iloc[-50:].mean())
+        arriba = float(ss.iloc[-1]) > m
+        n += 1
+        ok += int(arriba)
+        if pesos_list is not None:
+            w = float(pesos_list[i] or 0)
+            wn += w
+            wok += w * int(arriba)
+    if not n:
+        return None, None, 0
+    return ok / n * 100, ((wok / wn * 100) if wn > 0 else None), n
+
+
+def _op_amplitud(sym, pesos, stk_univ, peq_largo):
+    """Punto 5: amplitud del propio índice: % de SUS acciones por encima de su media de 50
+       (y cómo estaba hace 10 sesiones). En el IWM: sus ETFs de pequeñas por sector."""
+    try:
+        if sym == "IWM":
+            ss = [_op_close((peq_largo or {}).get(e)) for e in list(PEQ_ETFS) + ["KRE", "XBI"]]
+            pw = None
+        else:
+            filas = ((pesos or {}).get(sym) or {}).get("filas") or []
+            ss, pw = [], []
+            for f in filas:
+                t = f[0]
+                s = (stk_univ or {}).get(t)
+                if s is None and t in STK_OHLCV:
+                    s = STK_OHLCV[t]["Close"]
+                if s is not None:
+                    ss.append(_op_close(s))
+                    pw.append(f[1])
+        p, pp, n = _op_pct_sobre_50(ss, pw)
+        p10, _, _ = _op_pct_sobre_50(ss, pw, atras=10)
+        if p is None:
+            return {"c": "n", "txt": "sin datos de sus acciones", "gatillo": None}
+        col = "v" if p >= 60 else ("r" if p < 40 else "a")
+        que = "sectores de pequeñas" if sym == "IWM" else "acciones"
+        fl = ""
+        if p10 is not None:
+            fl = f" (hace 10 sesiones {p10:.0f}% {'↗' if p > p10 + 2 else ('↘' if p < p10 - 2 else '→')})"
+        txt = f"{p:.0f}% de sus {que} sobre su media de 50{fl}"
+        if pp is not None and sym != "IWM":
+            txt += f" · {pp:.0f}% contando por peso"
+        gat = None if col == "v" else f"más del 60% de sus {que} sobre la media de 50 (ahora {p:.0f}%)"
+        return {"c": col, "txt": txt, "gatillo": gat, "p": round(p, 1), "p10": (round(p10, 1) if p10 is not None else None),
+                "pp": (round(pp, 1) if pp is not None else None), "n": n}
+    except Exception as _dege:
+        _deg(f"operativa:amplitud:{sym}", _dege)
+        return {"c": "n", "txt": "sin datos de sus acciones", "gatillo": None}
+
+
+def _op_veredicto(puntos, centinela):
+    sc = sum(OPER_PTS[p["c"]] for p in puntos)
+    for mn, txt, col in OPER_VERED:
+        if sc >= mn:
+            ver, vcol = txt, col
+            break
+    nota = ""
+    _nn = sum(1 for p in puntos if p["c"] == "n")
+    if _nn >= 2:     # sin datos no se opina: un hueco no es un 'no tocar'
+        return sc, "SIN DATOS", OPER_G, f"faltan {_nn} de los 5 puntos hoy: mira SALUD DEL BUILD"
+    # sin tendencia ni dinero a favor no se entra, sume lo que sume el resto
+    if ver == "ENTRAR POCO A POCO" and (puntos[0]["c"] == "r" or puntos[1]["c"] == "r"):
+        ver, vcol, nota = "MANTENER / VIGILAR", OPER_B, "tendencia o dinero en rojo: no se entra aunque el resto acompañe"
+    est = (centinela or {}).get("estado")
+    if est == "LIQUIDEZ" and ver in ("ENTRAR POCO A POCO", "MANTENER / VIGILAR"):
+        ver, vcol, nota = "ESPERAR", OPER_A, "CENTINELA en LIQUIDEZ: nada de entradas nuevas"
+    elif est == "DISTRIBUCION" and ver == "ENTRAR POCO A POCO":
+        ver, nota = "ENTRAR SOLO MANGA PEQUEÑA", "CENTINELA en DISTRIBUCIÓN: tamaño pequeño y stop"
+    return sc, ver, vcol, nota
+
+
+def _op_rrg_qqq(df):
+    """El QQQ en el RRG frente al SPY, con las mismas semanas que el RRG principal."""
+    try:
+        d = OPER_QQQ.get("d")
+        if d is None or df is None or BENCH not in df.columns:
+            return None
+        w = to_weekly_close(d["Close"]).reindex(df.index)
+        df2 = pd.DataFrame({BENCH: df[BENCH], "QQQ": w})
+        return compute_rrg(df2).get("QQQ")
+    except Exception as _dege:
+        _deg("operativa:rrg_qqq", _dege)
+        return None
+
+
+def _op_pesos_sector(pesos):
+    """Cuánto pesa cada sector (y semis/software/banca regional/biotec) en cada índice, en %."""
+    out = {}
+    try:
+        mapa = _mapa_sectores(pesos)
+        for idx in ("SPY", "QQQ", "DIA"):
+            filas = ((pesos or {}).get(idx) or {}).get("filas") or []
+            acc = {}
+            for t, w, sec_raw in filas:
+                c = _sector_canon(sec_raw) if sec_raw else "Sin clasificar"
+                sub = (mapa.get(t) or (None, None))[1]
+                if c in (None, "Sin clasificar"):
+                    c = (mapa.get(t) or ("Sin clasificar", None))[0]
+                if c is None:
+                    continue
+                w = float(w or 0)
+                acc[c] = acc.get(c, 0.0) + w
+                k = (sub or "").lower() if isinstance(sub, str) else ""
+                if c == "Information Technology" and _sub_tech(sub) in ("semis", "software"):
+                    acc["@" + _sub_tech(sub)] = acc.get("@" + _sub_tech(sub), 0.0) + w
+                if "regional bank" in k:
+                    acc["@banca"] = acc.get("@banca", 0.0) + w
+                if "biotech" in k:
+                    acc["@biotec"] = acc.get("@biotec", 0.0) + w
+            out[idx] = acc
+        sec = ((pesos or {}).get("IWM") or {}).get("sectores") or {}
+        out["IWM"] = {k: float(v) for k, v in sec.items()}
+    except Exception as _dege:
+        _deg("operativa:pesos_sector", _dege)
+    return out
+
+
+def _op_sectores(flow, rrg, daily, pesos):
+    pw = _op_pesos_sector(pesos)
+    filas = []
+    for sym, nom, gics, sub in OPER_SECT:
+        f = (flow or {}).get(sym)
+        est, sg = clasificar_flujo(f)
+        tr = None
+        try:
+            tr = _tramos_de(_cmf_serie((daily or {}).get(sym)))
+        except Exception:
+            tr = None
+        sube3 = bool(tr and tr[1] > tr[0] and tr[2] > tr[1] and tr[3] > tr[2])
+        baja3 = bool(tr and tr[1] < tr[0] and tr[2] < tr[1] and tr[3] < tr[2])
+        e = (rrg or {}).get(sym) or {}
+        pesos_i = {}
+        for idx in ("SPY", "QQQ", "DIA", "IWM"):
+            k = gics if gics else ("@" + sub if sub else None)
+            v = (pw.get(idx) or {}).get(k) if k else None
+            pesos_i[idx] = (round(v, 1) if v is not None else None)
+        filas.append({"sym": sym, "nom": nom, "sub": bool(sub), "estado": est, "signo": sg,
+                      "cmf": (f or {}).get("cmf"), "tramos": tr, "sube3": sube3, "baja3": baja3,
+                      "quad": e.get("quad"), "rel4": e.get("rel4"), "pesos": pesos_i})
+    return filas
+
+
+def _op_memoria(fecha, res, guardar=True):
+    """Memoria de las noches: lee, añade la de hoy (idempotente por fecha) y guarda de forma atómica."""
+    recs = []
+    try:
+        if os.path.exists(OPER_FILE):
+            with open(OPER_FILE, "r", encoding="utf-8") as fh:
+                recs = json.load(fh) or []
+    except Exception as _dege:
+        _deg("operativa:memoria:leer", _dege)
+        recs = []
+    hoy = {"date": str(fecha), "idx": {}}
+    for i in res:
+        hoy["idx"][i["sym"]] = {"score": i["score"], "ver": i["ver"], "p": [p["c"] for p in i["puntos"]]}
+    prev = None
+    _ant = [r for r in recs if r.get("date", "") < str(fecha)]
+    if _ant:
+        prev = sorted(_ant, key=lambda r: r["date"])[-1]
+    recs = [r for r in recs if r.get("date") != str(fecha)] + [hoy]
+    recs = sorted(recs, key=lambda r: r["date"])[-400:]
+    if guardar:
+        try:
+            guardar_json_seguro(OPER_FILE, recs, indent=0)
+        except Exception as _dege:
+            _deg("operativa:memoria:guardar", _dege)
+    return recs, prev
+
+
+def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pesos, stk_univ,
+                      mcc, zweig, amp, estres, presion, plan, centinela, risk, regime, fg):
+    """Todo lo de la pestaña 'Operativa índices'. Nunca rompe el build: si algo falla, sale sin ello."""
+    try:
+        cierre = _cierre_real(daily, df)
+        comp = {c.get("idx"): c for c in (composicion or [])}
+        peq_largo = (pequenas or {}).get("largo")
+        res = []
+        for sym, nombre in OPER_IDX:
+            if sym == "QQQ":
+                ohlcv = OPER_QQQ.get("d")
+                f = OPER_QQQ.get("flow")
+                rrg_e = _op_rrg_qqq(df)
+            else:
+                ohlcv = (daily or {}).get(sym)
+                f = spy_flow if sym == "SPY" else (flow or {}).get(sym)
+                rrg_e = (rrg or {}).get(sym)
+            c = _op_close(ohlcv)
+            p1 = _op_tendencia(c)
+            p2 = _op_flujo(f, ohlcv)
+            p3 = _op_composicion(comp.get(sym))
+            p4 = _op_fuerza(sym, rrg_e, c)
+            p5 = _op_amplitud(sym, pesos, stk_univ, peq_largo)
+            for p, nom in zip((p1, p2, p3, p4, p5), ("Tendencia", "Dinero en el ETF", "Composición",
+                                                      "Fuerza vs SPY" if sym != "SPY" else "Impulso propio", "Amplitud propia")):
+                p["nom"] = nom
+            puntos = [p1, p2, p3, p4, p5]
+            sc, ver, vcol, nota = _op_veredicto(puntos, centinela)
+            # qué tiene que pasar: primero lo que está más cerca (ámbar), luego lo rojo
+            gats = [p["gatillo"] for p in puntos if p["c"] == "a" and p.get("gatillo")] + \
+                   [p["gatillo"] for p in puntos if p["c"] == "r" and p.get("gatillo")]
+            extra = None
+            if sym == "IWM":
+                g = (pequenas or {}).get("giro") or {}
+                ep = g.get("ep")
+                if g:
+                    if ep:
+                        extra = (f"Episodio de caída abierto ({ep.get('caida')}% hasta el {ep.get('fecha_min')}): "
+                                 + (f"suelo provisional el {ep['conf']}" if ep.get("conf") else f"falta un rebote del {ep.get('falta')}% para el suelo provisional")
+                                 + (f" · primer sector en cruzar: {ep['regla'][1]} ({ep['regla'][0]})" if ep.get("regla") else ""))
+                    else:
+                        extra = (f"Caída desde máximos {g.get('dd')}%: no hay episodio de suelo abierto (se abre al −{PEQ_CAIDA:.0f}%)."
+                                 + (f" Cruzan hoy a 'entra': {', '.join(g['cruces_hoy'])}." if g.get("cruces_hoy") else ""))
+            px = p1.get("last")
+            res.append({"sym": sym, "nombre": nombre, "px": px, "puntos": puntos, "score": sc, "ver": ver, "vcol": vcol,
+                        "nota": nota, "gatillos": gats[:3], "extra": extra,
+                        "neto": (p3.get("pe", 0) or 0) - (p3.get("ps", 0) or 0)})
+        orden = sorted(res, key=lambda r: (r["ver"] == "SIN DATOS", -r["score"], -r["neto"]))
+        recs, prev = _op_memoria(cierre, res, guardar=not bool(VIAJE_A))
+        cambios = []
+        if prev:
+            for r in res:
+                pv = (prev.get("idx") or {}).get(r["sym"])
+                if not pv:
+                    continue
+                if pv.get("ver") != r["ver"]:
+                    cambios.append(f"{r['sym']}: {pv.get('ver')} → <b>{r['ver']}</b> ({pv.get('score')}→{r['score']}/10)")
+                for i, p in enumerate(r["puntos"]):
+                    a = (pv.get("p") or [None] * 5)[i]
+                    if a and a != p["c"] and a != "n" and p["c"] != "n":
+                        mejor = OPER_PTS[p["c"]] > OPER_PTS[a]
+                        cambios.append(f"{r['sym']} · {p['nom']}: {'mejora' if mejor else 'empeora'} "
+                                       f"({ {'v': 'verde', 'a': 'ámbar', 'r': 'rojo'}[a]} → { {'v': 'verde', 'a': 'ámbar', 'r': 'rojo'}[p['c']]})")
+        # contexto común
+        ctx = {"cierre": str(cierre), "spy": (res[0]["px"] if res and res[0]["sym"] == "SPY" else None),
+               "decide": _semana_cerrada(cierre), "frescura": dict(ESTADO_CIERRE),
+               "centinela": centinela, "plan": plan, "estres": estres, "presion": presion,
+               "risk": risk, "regime": regime, "fg": fg}
+        amp_ctx = {}
+        try:
+            if mcc:
+                osc = mcc.get("osc")
+                o5 = float(osc.dropna().iloc[-6]) if osc is not None and len(osc.dropna()) > 6 else None
+                amp_ctx["mcc"] = {"v": mcc.get("ultimo"), "v5": o5, "umbral": mcc.get("umbral_pct"), "n": mcc.get("n_acciones")}
+            if zweig:
+                amp_ctx["zweig"] = {k: zweig.get(k) for k in ("estado", "hoy", "quedan", "limite", "necesita")}
+            acc = (amp or {}).get("acc") or {}
+            if acc:
+                amp_ctx["p50"] = acc.get("p50"); amp_ctx["p50_20"] = acc.get("p50_20")
+                amp_ctx["p200"] = acc.get("p200"); amp_ctx["nh"] = acc.get("nh"); amp_ctx["nl"] = acc.get("nl")
+                amp_ctx["nhnl10"] = acc.get("nhnl10")
+            rat = (amp or {}).get("ratios") or {}
+            amp_ctx["ratios"] = {k: {"estado": v.get("estado"), "racha": v.get("racha"), "nombre": v.get("nombre")} for k, v in rat.items()}
+        except Exception as _dege:
+            _deg("operativa:amplitud_ctx", _dege)
+        return {"res": res, "orden": orden, "cambios": cambios, "prev": (prev or {}).get("date"),
+                "memoria": recs[-10:], "ctx": ctx, "amp": amp_ctx,
+                "sectores": _op_sectores(flow, rrg, daily, pesos)}
+    except Exception as _dege:
+        _deg("operativa_indices", _dege)
+        _avisar("operativa", f"pestaña Operativa índices no calculada: {_dege}")
+        return None
+
+
+# ---------------------------------------------------------------- dibujo
+def _op_dot(c, size=10):
+    return (f"<span style='display:inline-block;width:{size}px;height:{size}px;border-radius:50%;"
+            f"background:{OPER_COL.get(c, OPER_G)};flex:none'></span>")
+
+
+def _op_pct_txt(v):
+    return "" if v is None else f"{v:+.1f}%"
+
+
+def _op_vcol(ver):
+    if not ver:
+        return OPER_G
+    if "MANGA" in ver:
+        return OPER_V
+    return next((c for mn, t, c in OPER_VERED if t == ver), OPER_G)
+
+
+def _op_cmf_txt(v):
+    return "—" if v is None else f"{v:+.2f}"
+
+
+def _op_html(op):
+    if not op:
+        return ("<div class='panel full'><h2>🧭 Operativa índices</h2><div class='note'>Hoy no se ha podido calcular "
+                "(mira SALUD DEL BUILD). El resto del terminal sigue funcionando.</div></div>")
+    ctx, ampc = op["ctx"], op.get("amp") or {}
+    h = []
+    # ---- 1) franja: datos · contexto · amplitud del mercado ----
+    fr = ctx.get("frescura") or {}
+    try:
+        _d = pd.Timestamp(ctx["cierre"])
+        _dl = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][_d.weekday()]
+        cierre_txt = f"{_dl} {_d.day}/{_d.month}"
+    except Exception:
+        cierre_txt = str(ctx.get("cierre"))
+    datos = [f"<b>Cierre real:</b> {esc(cierre_txt)}" + (f" · SPY {ctx['spy']:.2f}" if ctx.get("spy") else "")]
+    if fr.get("faltan") and BENCH in fr.get("faltan", []):
+        datos.append(f"<b style='color:{OPER_R}'>⚠ Yahoo no ha dado el cierre del {esc(fr.get('esperado'))}: esto va con el día anterior</b>")
+    elif fr.get("horario"):
+        datos.append(f"<span style='color:{OPER_A}'>{len(fr['horario'])} series con el último día rehecho con barras de 1 hora</span>")
+    else:
+        datos.append(f"<span style='color:{OPER_V}'>datos al día</span>")
+    for r in op["res"]:
+        p3 = r["puntos"][2]
+        if p3.get("estado_pesos") and p3.get("estado_pesos") != "vivo":
+            datos.append(f"{r['sym']}: pesos {esc(str(p3.get('estado_pesos')))} ({esc(str(p3.get('fecha_pesos')))})")
+    datos.append(("<b style='color:#2FD08A'>Cierre de viernes: este es el que decide</b>" if ctx.get("decide")
+                  else "<span style='color:#F4B740'>Entre semana: observación. Se decide con el cierre del viernes</span>"))
+    cx = []
+    ce = ctx.get("centinela") or {}
+    if ce:
+        cx.append(f"<b>CENTINELA:</b> <b style='color:{ce.get('col', OPER_A)}'>{esc(ce.get('estado'))}</b>"
+                  + ("" if ce.get("confirmado") else " (sin confirmar)"))
+    pl = ctx.get("plan") or {}
+    if pl and pl.get("rungs") is not None:
+        nx = next((x for x in pl["rungs"] if not x.get("hit")), None)
+        cx.append(f"<b>S&amp;P</b> {pl.get('dd', 0):+.1f}% de máximos"
+                  + (f" · próximo escalón −{nx['thr']}% (faltan {nx['thr'] + pl.get('dd', 0):.1f}%)" if nx else ""))
+    es_ = ctx.get("estres") or {}
+    if es_.get("valor") is not None:
+        cx.append(f"<b>Estrés financiero (OFR):</b> {es_['valor']:+.2f} · percentil {es_.get('pct')}"
+                  + (" · <b style='color:#F4607A'>SALTO</b>" if es_.get("salto") else ""))
+    pr = ctx.get("presion") or {}
+    if pr.get("valor") is not None:
+        cx.append(f"<b>Presión Trump:</b> {pr['valor']:+.2f} · percentil 3 años {pr.get('pct3a')}")
+    fg = ctx.get("fg") or {}
+    if fg.get("score") is not None:
+        cx.append(f"<b>Miedo/codicia:</b> {fg['score']} (hace una semana {fg.get('week')})")
+    rk, rg = ctx.get("risk") or {}, ctx.get("regime") or {}
+    if rk or rg:
+        cx.append(f"<b>Riesgo:</b> {esc(rk.get('label', '—'))} · <b>régimen:</b> {esc(rg.get('label', '—'))}")
+    am = []
+    mc = ampc.get("mcc")
+    if mc and mc.get("v") is not None:
+        v, v5 = mc["v"], mc.get("v5")
+        fl = "" if v5 is None else (" ↗" if v > v5 else " ↘")
+        col = OPER_V if v > 0 else OPER_R
+        am.append(f"<b>McClellan</b> ({mc.get('n')} acc.): <b style='color:{col}'>{v:+.1f}</b>{fl}"
+                  + (" · <b style='color:#F4B740'>sobreventa extrema</b>" if mc.get("umbral") is not None and v <= mc["umbral"] else "")
+                  + " <span style='color:#5E708A'>(&gt;0 = más acciones subiendo con fuerza)</span>")
+    zw = ampc.get("zweig")
+    if zw and zw.get("estado"):
+        am.append(f"<b>Zweig:</b> {esc(zw['estado'])} · media 10s {zw.get('hoy') or 0:.3f}"
+                  + (f" · quedan {zw['quedan']} sesiones" if zw.get("quedan") else ""))
+    if ampc.get("p50") is not None:
+        d20 = ampc.get("p50_20")
+        am.append(f"<b>Acciones sobre su media de 50:</b> {ampc['p50']:.0f}%"
+                  + (f" (hace 20 sesiones {d20:.0f}%)" if d20 is not None else "")
+                  + f" · sobre la de 200: {ampc.get('p200', 0):.0f}%")
+    if ampc.get("nh") is not None:
+        am.append(f"<b>Máximos / mínimos de un año:</b> {ampc['nh']:.0f} / {ampc.get('nl', 0):.0f}"
+                  + (f" · saldo 10 sesiones {ampc['nhnl10']:+.0f}" if ampc.get("nhnl10") is not None else ""))
+    for k, v in (ampc.get("ratios") or {}).items():
+        am.append(f"<b>{esc(v.get('nombre') or k)}:</b> {esc(v.get('estado'))} ({v.get('racha', 0):+d} sesiones)")
+    caja = lambda tit, lines: ("<div style='background:#0A0E17;border:1px solid #1C2740;border-radius:10px;padding:10px 12px'>"
+                               f"<div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin-bottom:6px'>{tit}</div>"
+                               + "".join(f"<div style='font-size:12.5px;line-height:1.55'>{l}</div>" for l in lines) + "</div>")
+    h.append("<div class='panel full'><h2>🧭 Operativa índices — ¿en qué índice estar?</h2>"
+             "<div class='note'>Lo imprescindible para decidir entre <b>SPY, QQQ, DIA e IWM</b>, en una pantalla. "
+             "Cada índice pasa el mismo examen de 5 puntos (verde 2, ámbar 1, rojo 0): <b>8–10</b> entrar poco a poco · "
+             "<b>6–7</b> mantener / vigilar · <b>4–5</b> esperar · <b>0–3</b> no tocar. Ordena lo que ya calcula el terminal; "
+             "<b>no está probado que acierte</b>: es un checklist, no una predicción. No es asesoramiento.</div>"
+             "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px'>"
+             + caja("DATOS", datos) + caja("CONTEXTO", cx) + caja("AMPLITUD DEL MERCADO", am) + "</div></div>")
+    # ---- 2) ranking + cambios desde ayer ----
+    rk_html = []
+    for i, r in enumerate(op["orden"], 1):
+        rk_html.append(f"<div style='display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1C2740'>"
+                       f"<span style='font-size:18px;font-weight:800;color:#9FB0C8;width:20px'>{i}</span>"
+                       f"<b style='font-size:15px;width:44px'>{r['sym']}</b>"
+                       f"<span style='display:flex;gap:3px'>{''.join(_op_dot(p['c'], 9) for p in r['puntos'])}</span>"
+                       f"<span style='font-weight:700;color:{r['vcol']}'>{r['score']}/10 · {esc(r['ver'])}</span></div>")
+    camb = op.get("cambios") or []
+    camb_html = ("".join(f"<div style='font-size:12.5px;line-height:1.6'>• {c}</div>" for c in camb[:10])
+                 if camb else "<div style='font-size:12.5px;color:#9FB0C8'>Sin cambios en ningún punto"
+                 + (f" desde el {esc(op['prev'])}" if op.get("prev") else " (primera noche guardada)") + ".</div>")
+    h.append("<div class='panel full'><h2>🏁 Ranking de hoy</h2>"
+             "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px'>"
+             f"<div>{''.join(rk_html)}</div>"
+             f"<div><div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin-bottom:6px'>QUÉ HA CAMBIADO"
+             + (f" DESDE EL {esc(op['prev'])}" if op.get("prev") else "") + f"</div>{camb_html}</div></div></div>")
+    # ---- 3) una tarjeta por índice ----
+    cards = []
+    for r in op["res"]:
+        filas = []
+        for p in r["puntos"]:
+            filas.append(f"<div style='display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid #141C2E'>"
+                         f"<span style='margin-top:4px'>{_op_dot(p['c'])}</span>"
+                         f"<div><div style='font-size:11px;color:#9FB0C8'>{esc(p['nom'])}</div>"
+                         f"<div style='font-size:12.5px'>{esc(p['txt'])}</div></div></div>")
+        p3 = r["puntos"][2]
+        tf = ""
+        if p3.get("tiran") or p3.get("frenan"):
+            fmt = lambda xs: ", ".join(f"{esc(t)} {w:.1f}% ({c:+.2f})" if w < 1 else f"{esc(t)} {w:.0f}% ({c:+.2f})" for t, w, c in xs)
+            tf = ("<div style='font-size:12px;margin-top:6px;line-height:1.5'>"
+                  + (f"<span style='color:{OPER_V}'>tiran:</span> {fmt(p3['tiran'])}<br>" if p3.get("tiran") else "")
+                  + (f"<span style='color:{OPER_R}'>frenan:</span> {fmt(p3['frenan'])}" if p3.get("frenan") else "")
+                  + "</div>")
+        gt = ("<div style='margin-top:8px;padding:7px 9px;background:#0E1626;border-radius:8px;font-size:12px;line-height:1.5'>"
+              "<b>Qué tiene que pasar para mejorar:</b><br>" + "<br>".join("· " + esc(g) for g in r["gatillos"]) + "</div>") if r["gatillos"] else ""
+        ex = (f"<div style='margin-top:6px;font-size:12px;color:#9FB0C8'>{esc(r['extra'])}</div>") if r.get("extra") else ""
+        nt = (f"<div style='margin-top:6px;font-size:12px;color:{OPER_A}'>{esc(r['nota'])}</div>") if r.get("nota") else ""
+        mem = "".join(
+            f"<span title='{esc(m['date'])}: {esc(((m.get('idx') or {}).get(r['sym']) or {}).get('ver', '—'))}' "
+            f"style='display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:3px;background:"
+            f"{_op_vcol(((m.get('idx') or {}).get(r['sym']) or {}).get('ver'))}'></span>"
+            for m in op.get("memoria") or [])
+        cards.append(f"<div style='background:#0A0E17;border:1px solid {r['vcol']}66;border-radius:12px;padding:12px 14px'>"
+                     f"<div style='display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap'>"
+                     f"<div><b style='font-size:17px'>{r['sym']}</b> <span style='color:#9FB0C8;font-size:12px'>{esc(r['nombre'])}</span></div>"
+                     + (f"<span style='font-size:13px'>{r['px']:.2f}</span>" if r.get("px") else "") + "</div>"
+                     f"<div style='margin:6px 0 4px;font-size:15px;font-weight:800;color:{r['vcol']}'>{esc(r['ver'])} · {r['score']}/10</div>"
+                     + "".join(filas) + tf + nt + ex + gt
+                     + (f"<div style='margin-top:8px;font-size:11px;color:#9FB0C8'>Últimas noches: {mem}</div>" if mem else "")
+                     + "</div>")
+    h.append("<div class='panel full'><h2>📋 Los cuatro índices, punto por punto</h2>"
+             "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px'>"
+             + "".join(cards) + "</div>"
+             "<div class='note' style='margin-top:8px'>Tendencia: medias de 50 y 200 sesiones. Dinero: CMF de 20 sesiones con la regla del anillo "
+             "(+0,05 / −0,05) y los tramos (hace 3, 2 y 1 semana, hoy). Composición: la barra del Detector de suelos. Fuerza: cuadrante del RRG "
+             "semanal frente al SPY (el SPY, su impulso propio). Amplitud: % de las acciones del propio índice sobre su media de 50 "
+             "(en el IWM, sus ETFs de pequeñas por sector). Sin tendencia o sin dinero a favor no se entra aunque el resto sume.</div></div>")
+    # ---- 4) sectores conectados con cada índice ----
+    trs = []
+    for s in op.get("sectores") or []:
+        sg = s.get("signo")
+        col = OPER_V if sg == 1 else (OPER_R if sg == -1 else (OPER_A if sg == 0 else OPER_G))
+        tr = s.get("tramos")
+        trt = (f"{tr[0]:+.2f} → {tr[3]:+.2f}" + (" ↗3t" if s.get("sube3") else (" ↘3t" if s.get("baja3") else ""))) if tr else "—"
+        q = s.get("quad")
+        qn, qc = (QUAD.get(q, (q, OPER_G))[0], QUAD.get(q, (q, OPER_G))[1]) if q else ("—", OPER_G)
+        pc = lambda v: ("" if v is None or v < 0.5 else f"{v:.0f}%")
+        nom = (f"<span style='color:#9FB0C8'>&nbsp;&nbsp;↳ {esc(s['nom'])}</span>" if s.get("sub") else f"<b>{esc(s['nom'])}</b>")
+        trs.append(f"<tr><td class='se-l'>{nom} <span style='color:#5E708A'>{s['sym']}</span></td>"
+                   f"<td class='r' style='color:{col};font-weight:700'>{_op_cmf_txt(s.get('cmf'))}</td>"
+                   f"<td class='r' style='font-size:11.5px'>{trt}</td>"
+                   f"<td class='r' style='color:{qc}'>{esc(qn)}</td>"
+                   f"<td class='r'>{_op_pct_txt(s.get('rel4'))}</td>"
+                   + "".join(f"<td class='r' style='color:#C9D4E5'>{pc(s['pesos'].get(i))}</td>" for i in ("SPY", "QQQ", "DIA", "IWM"))
+                   + "</tr>")
+    h.append("<div class='panel full'><h2>🧩 Sectores: dónde entra el dinero y a qué índice ayuda</h2>"
+             "<div class='scrollx'><table class='se' style='white-space:nowrap'><tr><th class='se-l'>sector</th><th class='r'>dinero (CMF)</th>"
+             "<th class='r'>hace 3 sem → hoy</th><th class='r'>cuadrante</th><th class='r'>4 sem vs SPY</th>"
+             "<th class='r'>peso SPY</th><th class='r'>QQQ</th><th class='r'>DIA</th><th class='r'>IWM</th></tr>"
+             + "".join(trs) + "</table></div>"
+             "<div class='note' style='margin-top:6px'>Lee la fila y mira a la derecha: el dinero que entra en un sector empuja más al índice "
+             "donde ese sector pesa más (las financieras pesan ~26% en el DIA y casi nada en el QQQ). Pesos de la cartera oficial de cada "
+             "gestora; en el IWM, por sector de iShares. Verde = CMF por encima de +0,05, rojo = por debajo de −0,05. "
+             "«hace 3 sem → hoy» = el CMF hace 15 sesiones y hoy; ↗3t = tres tramos seguidos mejorando.</div></div>")
+    return "".join(h)
 
 
 def main():
@@ -18481,6 +19104,7 @@ def main():
         _avisar("pequenas", f"pequeñas por sector no calculadas: {_peq_e}")
         _peq_res = None
     _comp_res = None
+    _pesos_ix = None
     try:
         _pesos_ix = cargar_pesos_indices()
         _comp_res = componer_indices(_pesos_ix, flow, rrg, daily, spy_flow, _peq_res,
@@ -18709,8 +19333,18 @@ def main():
         if notify(msg):
             print("\nAviso enviado.")
 
+    # v7.7 — OPERATIVA INDICES (la primera pestaña): solo lee lo ya calculado
+    _oper = None
+    try:
+        _oper = operativa_indices(df, rrg, flow, daily, spy_flow, _comp_res, _peq_res, _pesos_ix, _stk_univ,
+                                  _mcc, _zweig, _amp, _estres, _presion, plan, _centinela, risk, regime, fg_idx)
+        if _oper:
+            print("  🧭 Operativa índices: " + " · ".join(f"{r['sym']} {r['score']}/10 {r['ver']}" for r in _oper["orden"]))
+    except Exception as _e_op:
+        _avisar("operativa", f"pestaña Operativa índices no calculada: {_e_op}")
+        _oper = None
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res, operativa=_oper)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

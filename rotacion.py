@@ -987,7 +987,17 @@ def fetch_yahoo(sym, start, end):
         if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
             df.columns = df.columns.get_level_values(0)
         cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
-        return df[cols].sort_index()
+        out = df[cols].sort_index()
+        # v7.6.3 — de madrugada Yahoo devuelve a veces la fila del dia SIN precio (todo NaN). La etiqueta
+        # la contaba como 'martes 13' y los calculos (que quitan los NaN) se quedaban en el lunes, sin
+        # que nada lo avisara. Ahora la fila vacia se quita aqui y el control de frescura la ve como lo
+        # que es: un dia que falta.
+        if "Close" in out.columns:
+            _n0 = len(out)
+            out = out[out["Close"].notna()]
+            if len(out) < _n0 and len(out):
+                print(f"  {sym}: {_n0 - len(out)} fila(s) de Yahoo sin precio descartada(s) (ultima buena {out.index[-1].date()})")
+        return out
     except Exception as e:
         # mensaje SIN el simbolo a proposito: _avisar agrupa avisos identicos con contador, asi un
         # rate-limit masivo sale como "descarga fallida ×40" y no inunda el panel de salud
@@ -1084,7 +1094,9 @@ def _cierre_real(daily, df):
     try:
         b = (daily or {}).get(BENCH)
         if b is not None and len(b):
-            return pd.Timestamp(b.index[-1]).date()
+            _c = b["Close"].dropna() if "Close" in getattr(b, "columns", []) else b
+            if len(_c):
+                return pd.Timestamp(_c.index[-1]).date()
     except Exception as _dege:
         _deg("cierre_real", _dege)
     return pd.Timestamp(df.index[-1]).date()
@@ -1403,20 +1415,27 @@ def _ohlcv_valido(sym, d, fuente):
 # se reconstruye ese dia con sus barras de 1 hora. Si ni asi: se dice bien grande.
 # ----------------------------------------------------------------------
 ESTADO_CIERRE = {}
+def _es_sesion(d):
+    """v7.6.3 — ¿hubo/habra sesion en Nueva York ese dia? Usa el mismo calendario de festivos NYSE
+    que el calendario tau (_nyse_bdays, por reglas: vale para cualquier anyo sin mantenerlo)."""
+    try:
+        return bool(_nyse_bdays(d, d))
+    except Exception:
+        return d.weekday() < 5
 
 def sesion_esperada(ahora_ny=None):
-    """Ultima sesion de Nueva York ya CERRADA (a partir de las 16:20 hora de NY). No conoce festivos:
-    si ese dia no hubo mercado, el control lo detecta porque no hay ni barras horarias."""
+    """Ultima sesion de Nueva York ya CERRADA (a partir de las 16:20 hora de NY), saltando fines de
+    semana y festivos de la NYSE."""
     try:
         from zoneinfo import ZoneInfo
         ny = ahora_ny or dt.datetime.now(ZoneInfo("America/New_York"))
     except Exception:
         ny = ahora_ny or (dt.datetime.utcnow() - dt.timedelta(hours=4))
     d = ny.date()
-    if d.weekday() < 5 and (ny.hour, ny.minute) >= (16, 20):
+    if _es_sesion(d) and (ny.hour, ny.minute) >= (16, 20):
         return d
     d -= dt.timedelta(days=1)
-    while d.weekday() >= 5:
+    while not _es_sesion(d):
         d -= dt.timedelta(days=1)
     return d
 
@@ -1465,6 +1484,8 @@ def _barras_horarias(tickers, fecha):
 
 def _falta_dia(d, esp):
     try:
+        if d is not None and "Close" in getattr(d, "columns", []):
+            d = d[d["Close"].notna()]
         return d is None or not len(d) or pd.Timestamp(d.index[-1]).normalize() < pd.Timestamp(esp)
     except Exception:
         return True
@@ -1516,11 +1537,11 @@ def _asegurar_cierre(daily, sources, esperado):
         if s == BENCH and BENCH not in est["reintento"]:
             hb = _barras_horarias([BENCH], esp.date())
             if BENCH not in hb:
-                est["festivo"] = True
                 print(f"  Frescura: Yahoo no tiene ni barras horarias del {esp.date()} para {BENCH}: "
-                      "o fue festivo o Yahoo no da nada de ese dia. No se fuerza.")
+                      "este build va con el dia anterior (se avisa arriba en rojo).")
+                est["faltan"] = list(malos)
                 break
-    if not est["festivo"]:
+    if not est["faltan"]:
         quedan = [s for s in malos if s not in est["reintento"]]
         if quedan:
             hb = _barras_horarias(quedan, esp.date())
@@ -1530,8 +1551,6 @@ def _asegurar_cierre(daily, sources, esperado):
                     sources[s] = str(sources.get(s, "yahoo")) + "+horario"
                     est["horario"].append(s)
         est["faltan"] = [s for s in malos if s not in est["reintento"] and s not in est["horario"]]
-    else:
-        est["faltan"] = [s for s in malos if s not in est["reintento"]]
     print(f"  Frescura: reintento ok {len(est['reintento'])} · rehechas con barras horarias {len(est['horario'])} · "
           f"siguen sin el {esp.date()}: {len(est['faltan'])}")
     if est["horario"]:

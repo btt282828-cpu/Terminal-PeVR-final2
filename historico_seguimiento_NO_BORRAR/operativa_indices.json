@@ -52,10 +52,10 @@
 "date": "2026-10-14",
 "idx": {
 "SPY": {
-"score": 7,
+"score": 6,
 "ver": "MANTENER / VIGILAR",
 "p": [
-"v",
+"a",
 "v",
 "a",
 "v",
@@ -63,11 +63,11 @@
 ]
 },
 "QQQ": {
-"score": 8,
-"ver": "ENTRAR POCO A POCO",
+"score": 6,
+"ver": "MANTENER / VIGILAR",
 "p": [
-"v",
-"v",
+"a",
+"a",
 "a",
 "v",
 "a"

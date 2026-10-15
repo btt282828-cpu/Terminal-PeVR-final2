@@ -96,5 +96,55 @@
 ]
 }
 }
+},
+{
+"date": "2026-10-15",
+"idx": {
+"SPY": {
+"score": 7,
+"ver": "MANTENER / VIGILAR",
+"p": [
+"a",
+"v",
+"a",
+"v",
+"a"
+]
+},
+"QQQ": {
+"score": 7,
+"ver": "MANTENER / VIGILAR",
+"p": [
+"a",
+"v",
+"a",
+"v",
+"a"
+]
+},
+"DIA": {
+"score": 5,
+"ver": "ESPERAR",
+"p": [
+"a",
+"v",
+"a",
+"r",
+"a"
+]
+},
+"IWM": {
+"score": 0,
+"ver": "NO TOCAR",
+"p": [
+"r",
+"r",
+"r",
+"r",
+"r"
+]
+}
+},
+"sat": null
 }
 ]

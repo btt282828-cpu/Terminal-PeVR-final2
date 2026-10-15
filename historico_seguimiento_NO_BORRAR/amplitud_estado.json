@@ -193,5 +193,20 @@
 "RSP": 213.3,
 "IWM": 276.7
 }
+},
+{
+"date": "2026-10-14",
+"rsp": "ESTRECHANDO",
+"iwm": "ESTRECHANDO",
+"p50": 31.7,
+"p200": 46.0,
+"nhnl10": -10.3,
+"div": true,
+"lectura": "REFUGIO",
+"px": {
+"SPY": 769.6,
+"RSP": 212.09,
+"IWM": 271.37
+}
 }
 ]

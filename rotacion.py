@@ -8070,7 +8070,15 @@ def _fetch_long(stooq_sym, etf_fallback, yahoo_sym):
     return None, "—", None
 
 def fetch_long_close():
-    """Historia LARGA del S&P 500 para estadistica de caidas."""
+    """Historia LARGA del S&P 500 para estadistica de caidas.
+       v7.8: primero el INDICE (^GSPC, desde 1927, sin dividendos, con maximos intradia), como se
+       diseño con Stooq. Desde que Stooq dejo de responder caia al ETF SPY (solo desde 1993)."""
+    try:
+        c, hl, src = _fetch_indice_yahoo("^GSPC")
+        if c is not None:
+            return c, src, hl
+    except Exception as _dege:
+        _deg("fetch_long_close:gspc", _dege)
     return _fetch_long("^spx", "SPY", "^GSPC")
 
 def drawdown_stats(close, thresholds, hl=None):
@@ -11913,7 +11921,7 @@ def _amplitud_html(amp):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None, operativa=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None, operativa=None, rachas=None):
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -12036,7 +12044,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("<main>")
     html.append(
         "<div class='viewtabs mainbar' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
-        "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Operativa índices</button>"
+        "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Operativa índices y sectores</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('rn',this)\" style='font-size:13px;padding:7px 16px;border-color:#F4B74055;color:#F4B740'>🎲 Rachas y niveles</button>"
         "<button class='viewtab mainview' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
         "<button class='viewtab mainview' onclick=\"mainView('op',this)\" style='font-size:13px;padding:7px 16px'>🎯 Operativa</button>"
         "<button class='viewtab mainview' onclick=\"mainView('vig',this)\" style='font-size:13px;padding:7px 16px'>📋 Vigilancia</button>"
@@ -12052,10 +12061,32 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         "</div>")
     # v7.7 — la primera pestaña, visible al abrir
     try:
-        html.append("<div id='vista-idx' style='display:contents'>" + _op_html(operativa) + "</div>")
+        _idx_extra = ""
+        try:
+            _idx_extra += _ctx_html(estres, presion, zweig, dix, mcc)
+        except Exception as _dege:
+            _deg("operativa:ctx", _dege)
+        try:
+            if operativa:
+                _idx_extra += _sect_html(operativa.get("sect"), operativa.get("sect_bt")) + _sect_bt_html(operativa.get("sect_bt"))
+        except Exception as _dege:
+            _deg("operativa:sectores", _dege)
+        html.append("<div id='vista-idx' style='display:contents'>" + _op_html(operativa) + _idx_extra + "</div>")
     except Exception as _dege:
         _deg("operativa:html", _dege)
         html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
+                    "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
+    # v7.9 — Rachas y niveles (las ideas del chat, medidas)
+    try:
+        _cal = ""
+        try:
+            _cal = _cal_html((rachas or {}).get("calidad"), (rachas or {}).get("caja"))
+        except Exception as _dege:
+            _deg("calidad:html", _dege)
+        html.append("<div id='vista-rn' style='display:none'>" + _rn_html(rachas) + _cal + "</div>")
+    except Exception as _dege:
+        _deg("rachas:html", _dege)
+        html.append("<div id='vista-rn' style='display:none'><div class='panel full'><h2>🎲 Rachas y niveles</h2>"
                     "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     html.append("<div id='vista-ctx' style='display:none'>")
 
@@ -16767,6 +16798,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         pass
 
     html.append("<script>function mainView(v,b){var ix=document.getElementById('vista-idx');if(ix)ix.style.display=(v=='idx')?'contents':'none';"
+                "var rn=document.getElementById('vista-rn');if(rn)rn.style.display=(v=='rn')?'contents':'none';"
                 "document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
                 "if(v=='ctx'&&!window._tvok){window._tvok=1;try{var _s=document.getElementById('tvsel');if(_s&&window.tvload)tvload(_s.value);}catch(e){}}"
                 "document.getElementById('vista-op').style.display=(v=='op')?'contents':'none';"
@@ -18511,7 +18543,20 @@ def _op_sectores(flow, rrg, daily, pesos):
     return filas
 
 
-def _op_memoria(fecha, res, guardar=True):
+def _op_prev(fecha):
+    """El registro de la noche anterior (fecha estrictamente menor)."""
+    try:
+        if os.path.exists(OPER_FILE):
+            with open(OPER_FILE, "r", encoding="utf-8") as fh:
+                recs = json.load(fh) or []
+            ant = sorted((r for r in recs if r.get("date", "") < str(fecha)), key=lambda r: r["date"])
+            return ant[-1] if ant else None
+    except Exception as _dege:
+        _deg("operativa:prev", _dege)
+    return None
+
+
+def _op_memoria(fecha, res, guardar=True, extra=None):
     """Memoria de las noches: lee, añade la de hoy (idempotente por fecha) y guarda de forma atómica."""
     recs = []
     try:
@@ -18524,6 +18569,8 @@ def _op_memoria(fecha, res, guardar=True):
     hoy = {"date": str(fecha), "idx": {}}
     for i in res:
         hoy["idx"][i["sym"]] = {"score": i["score"], "ver": i["ver"], "p": [p["c"] for p in i["puntos"]]}
+    if extra:
+        hoy.update(extra)
     prev = None
     _ant = [r for r in recs if r.get("date", "") < str(fecha)]
     if _ant:
@@ -18631,7 +18678,15 @@ def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pes
                         "nota": nota, "gatillos": gats[:3], "extra": extra,
                         "neto": (p3.get("pe", 0) or 0) - (p3.get("ps", 0) or 0)})
         orden = sorted(res, key=lambda r: (r["ver"] == "SIN DATOS", -r["score"], -r["neto"]))
-        recs, prev = _op_memoria(cierre, res, guardar=not bool(VIAJE_A))
+        # v7.8 — que mueve a cada indice y regla de nucleo y satelite
+        mot, ns = None, None
+        try:
+            mot = motores_indices(res, daily, flow, pequenas, pesos)
+            _p0 = _op_prev(cierre)
+            ns = nucleo_satelite(orden, mot, centinela, _semana_cerrada(cierre), (_p0 or {}).get("sat"))
+        except Exception as _dege:
+            _deg("operativa:motores", _dege)
+        recs, prev = _op_memoria(cierre, res, guardar=not bool(VIAJE_A), extra={"sat": (ns or {}).get("sat")})
         cambios = []
         if prev:
             for r in res:
@@ -18669,7 +18724,7 @@ def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pes
             amp_ctx["ratios"] = {k: {"estado": v.get("estado"), "racha": v.get("racha"), "nombre": v.get("nombre")} for k, v in rat.items()}
         except Exception as _dege:
             _deg("operativa:amplitud_ctx", _dege)
-        return {"res": res, "orden": orden, "cambios": cambios, "prev": (prev or {}).get("date"),
+        return {"res": res, "orden": orden, "cambios": cambios, "prev": (prev or {}).get("date"), "mot": mot, "ns": ns,
                 "memoria": recs[-10:], "ctx": ctx, "amp": amp_ctx,
                 "sectores": _op_sectores(flow, rrg, daily, pesos)}
     except Exception as _dege:
@@ -18849,6 +18904,16 @@ def _op_html(op):
              f"<div>{''.join(rk_html)}</div>"
              f"<div><div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin-bottom:6px'>QUÉ HA CAMBIADO"
              + (f" DESDE EL {esc(op['prev'])}" if op.get("prev") else "") + f"</div>{camb_html}</div></div></div>")
+    # ---- 2a) v7.8: que mueve a cada indice, termometro, viento y nucleo/satelite ----
+    try:
+        h.append(_mot_html(op.get("mot"), op.get("ns")))
+    except Exception as _dege:
+        _deg("motores:html", _dege)
+    # ---- 2b) v7.8: caidas de los cuatro indices, en la primera pantalla ----
+    try:
+        h.append(_dd4_html(op.get("dd4")))
+    except Exception as _dege:
+        _deg("caidas4:html", _dege)
     # ---- 3) una tarjeta por índice ----
     cards = []
     for r in op["res"]:
@@ -19242,6 +19307,1596 @@ def _conv_html(cv):
             "vuelves cuando se igualan (menos de 1 punto de diferencia) o a los 6 meses. Pasado, no promesa. No es asesoramiento.</div></div>")
 
 
+
+# ======================================================================
+# v7.8 — CAÍDAS DE LOS CUATRO ÍNDICES: cuántas veces al año caen un 2,5%, 5%, 10% y 20% desde su
+# máximo de un año el S&P 500, el Nasdaq 100, el Dow Jones y el Russell 2000. Mismo método que la
+# tabla del S&P de siempre (drawdown_stats), con los ÍNDICES de verdad (sin dividendos) de Yahoo:
+# S&P desde 1927, Nasdaq 100 desde 1985, Russell desde 1987, Dow desde 1992. Si Yahoo no responde,
+# se usa el ETF y se dice.
+# ======================================================================
+DD4_REF = ("Referencia publicada (Capital Group, S&amp;P 500 de 1954 a 2024): caídas del 5% o más unas dos veces "
+           "al año (duran de media 46 días); del 10% o más, una vez cada 18 meses (135 días); del 15%, una vez cada "
+           "tres años; del 20%, una vez cada seis años (402 días).")
+DD4_REF_URL = "https://www.capitalgroup.com/retirement/participant/basics/volatile-market/market-declines.html"
+
+
+def _fetch_indice_yahoo(ysym, desde="1927-01-01"):
+    """El ÍNDICE (no el ETF) con su historia completa, sin ajustar por dividendos, con máximos y mínimos.
+       (close, hl, fuente) o (None, None, None)."""
+    if yf is None:
+        return None, None, None
+    try:
+        g = yf.download(ysym, start=desde, progress=False, auto_adjust=False)
+        if g is None or not len(g):
+            return None, None, None
+        def _col(k):
+            x = g[k]
+            return x.iloc[:, 0] if hasattr(x, "columns") else x
+        c = _col("Close").astype(float)
+        idx = pd.to_datetime(c.index)
+        idx = idx.tz_localize(None) if getattr(idx, "tz", None) is not None else idx
+        c.index = idx.normalize()
+        c = c[c.notna() & (c > 0)]
+        hl = None
+        if "High" in g.columns and "Low" in g.columns:
+            hl = pd.DataFrame({"High": _col("High").values, "Low": _col("Low").values}, index=idx.normalize())
+            hl = hl[(hl["High"] > 0) & (hl["Low"] > 0)].dropna()
+        if len(c) < 1000:
+            return None, None, None
+        return c, hl, ysym
+    except Exception as _dege:
+        _deg(f"indice_yahoo:{ysym}", _dege)
+        return None, None, None
+
+
+def _dd4_hoy(close, hl):
+    """Caída de hoy desde el máximo de un año y desde el máximo histórico (intradía si hay máximos)."""
+    try:
+        c = close.dropna()
+        alto = hl["High"].reindex(c.index).fillna(c) if hl is not None and len(hl) else c
+        last = float(c.iloc[-1])
+        m52 = float(alto.iloc[-252:].max())
+        mh = float(alto.max())
+        return round((last / m52 - 1) * 100, 1), round((last / mh - 1) * 100, 1), str(c.index[-1].date())
+    except Exception:
+        return None, None, None
+
+
+def dd_cuatro_indices(long_close, long_hl, long_src, respaldo, corte=None):
+    """respaldo = {'^NDX': nq_close, '^DJI': dji_close, '^RUT': rut_close} (las series que ya tiene el terminal)."""
+    out = []
+    filas = [("SPY", "S&P 500", "^GSPC"), ("QQQ", "Nasdaq 100", "^NDX"), ("DIA", "Dow Jones", "^DJI"), ("IWM", "Russell 2000", "^RUT")]
+    for etf, nombre, ysym in filas:
+        try:
+            if ysym == "^GSPC":
+                c, hl, src = long_close, long_hl, long_src
+            else:
+                c, hl, src = _fetch_indice_yahoo(ysym)
+                if c is None:
+                    c, hl, src = (respaldo or {}).get(ysym), None, f"{etf} (ETF, respaldo)"
+                    if c is not None:
+                        _avisar("caidas4", f"{ysym} no disponible en Yahoo: la tabla de caídas del {nombre} usa el ETF {etf}")
+            if c is None or len(c.dropna()) < 300:
+                out.append({"etf": etf, "nombre": nombre, "src": None})
+                continue
+            DD4_SERIES[etf] = {"c": c, "hl": hl, "src": str(src)}      # v7.9: las reutiliza la pestaña Rachas y niveles
+            if corte is not None:
+                c = c[c.index <= pd.Timestamp(corte)]
+                hl = hl[hl.index <= pd.Timestamp(corte)] if hl is not None else None
+            st, meta = drawdown_stats(c, DD_THRESHOLDS, hl=hl)
+            d52, dath, fecha = _dd4_hoy(c, hl)
+            out.append({"etf": etf, "nombre": nombre, "src": str(src), "st": st, "meta": meta,
+                        "dd52": d52, "ddath": dath, "fecha": fecha})
+            time.sleep(0.3)
+        except Exception as _dege:
+            _deg(f"caidas4:{etf}", _dege)
+            out.append({"etf": etf, "nombre": nombre, "src": None})
+    if any(x.get("st") for x in out):
+        print("  📉 Caídas de los 4 índices: " + " · ".join(
+            f"{x['etf']} {x['dd52']:+.1f}% ({x['src']}, desde {x['meta']['start']})" for x in out if x.get("st")))
+    return out
+
+
+def _dd4_html(dd4):
+    if not dd4 or not any(x.get("st") for x in dd4):
+        return ""
+    th = "<th class='se-l'>índice</th><th class='r'>hoy</th>" + "".join(f"<th class='r'>−{t:g}%</th>" for t in DD_THRESHOLDS)
+    filas = []
+    for x in dd4:
+        if not x.get("st"):
+            filas.append(f"<tr><td class='se-l'><b>{esc(x['nombre'])}</b></td><td class='r' style='color:#5E708A' colspan='{1 + len(DD_THRESHOLDS)}'>sin dato hoy</td></tr>")
+            continue
+        d52 = x.get("dd52") or 0
+        chol = "#F4607A" if d52 <= -10 else ("#F4B740" if d52 <= -5 else "#E6EDF6")
+        celdas = [f"<td class='r' style='font-weight:800;color:{chol}' title='desde su máximo histórico: {x['ddath']:+.1f}%'>{d52:+.1f}%"
+                  f"<div style='font-size:10px;font-weight:400;color:#9FB0C8'>hist. {x['ddath']:+.0f}%</div></td>"]
+        for t in DD_THRESHOLDS:
+            st = x["st"].get(t)
+            if not st:
+                celdas.append("<td class='r' style='color:#5E708A'>—</td>")
+                continue
+            dentro = d52 <= -t
+            bg = "background:rgba(244,96,122,.14);" if dentro else ""
+            tip = (f"{x['nombre']} −{t:g}%: {st['avg20']} al año en los últimos 20 años · {st['avgfull']} en toda su historia · "
+                   f"{st['probfull']}% de los años con al menos una · este año {st['ytd']} · "
+                   f"{st['rest']}% de los años tuvo otra de aquí a final de año")
+            celdas.append(f"<td class='r' style='{bg}line-height:1.3' title='{esc(tip)}'><b>{st['avg20']}</b>"
+                          f"<div style='font-size:10px;color:{'#F4B740' if st['ytd'] else '#5E708A'}'>{st['ytd']} este año</div>"
+                          f"<div style='font-size:10px;color:#9FB0C8'>{st['probfull']}% años</div></td>")
+        filas.append(f"<tr><td class='se-l'><b>{esc(x['nombre'])}</b><div style='font-size:10px;color:#5E708A'>desde {x['meta']['start']}</div></td>"
+                     + "".join(celdas) + "</tr>")
+    desde = " · ".join(f"{esc(x['nombre'])}: {esc(x['src'])} desde {x['meta']['start']} ({x['meta']['basis']})"
+                       for x in dd4 if x.get("st"))
+    return ("<div class='panel full'><h2>📉 Caídas de los cuatro índices: cuántas al año y dónde están hoy</h2>"
+            "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12.5px'><tr>" + th + "</tr>"
+            + "".join(filas) + "</table></div>"
+            "<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> «hoy» = caída desde su máximo de un año (debajo, desde el "
+            "histórico). En cada caída: el número grande es cuántas veces al año ha pasado en los <b>últimos 20 años</b>; debajo, cuántas "
+            "lleva este año y el % de años con al menos una. En rojo, las que el índice ya está sufriendo. Toca una celda para ver la media "
+            f"de toda su historia y la probabilidad de que pase otra antes de fin de año. Mismo método que la tabla del S&amp;P de siempre. "
+            f"Datos: {desde}.</div>"
+            f"<div class='note' style='margin-top:4px'>{DD4_REF} <a href='{DD4_REF_URL}' target='_blank' rel='noopener' "
+            "style='color:#5B8CFF'>Fuente</a>. Pasado, no promesa. No es asesoramiento.</div></div>")
+
+
+
+# ======================================================================
+# v7.8 — QUÉ MUEVE A CADA ÍNDICE (para no perseguir sectores):
+#   1) quién empuja: aporte de cada sector al índice = su peso × lo que se ha movido (hoy y 5 sesiones)
+#   2) termómetro de rotación: defensivos (básico, salud, utilities) frente a crecimiento
+#      (tecnología, discrecional, comunicaciones) a 5 y 20 sesiones, traducido a índices
+#   3) viento sectorial: % del peso de cada índice en sectores con dinero entrando menos saliendo
+#   4) núcleo y satélite: una regla fija para operar solo los cuatro índices, cambiando el satélite
+#      solo con el cierre del viernes y si la diferencia es clara
+# Solo lee lo que ya calcula el terminal. No es asesoramiento.
+# ======================================================================
+MOT_DEF = ("Consumer Staples", "Health Care", "Utilities")
+MOT_CRE = ("Information Technology", "Consumer Discretionary", "Communication Services")
+MOT_ETF_DEF, MOT_ETF_CRE = ("XLP", "XLV", "XLU"), ("XLK", "XLY", "XLC")
+MOT_UMBRAL = 1.0          # puntos de diferencia (5 sesiones) para decir que manda uno u otro
+SAT_DIF = 2               # el satélite solo cambia si el nuevo saca 2 puntos o más al actual
+SAT_PCT = 30              # % de la parte satélite (el núcleo, el resto)
+
+
+def _mot_ret(serie, n):
+    try:
+        c = _op_close(serie)
+        if c is None or len(c) <= n:
+            return None
+        return float(c.iloc[-1] / c.iloc[-1 - n] - 1) * 100
+    except Exception:
+        return None
+
+
+def _mot_sector_series(idx, gics, daily, peq_largo):
+    """Serie(s) de precio con las que se mide un sector dentro de un índice."""
+    if idx == "IWM":
+        for nom, gl, etfs in PEQ_BLOQUES:
+            if gics in gl:
+                ss = []
+                for e in etfs:
+                    x = (peq_largo or {}).get(e)
+                    if x is None and e == "XLRE":
+                        x = (daily or {}).get(e)
+                    ss.append(x)
+                ss = [s for s in ss if s is not None]
+                return ss, list(etfs)
+        return [], []
+    spdr = (SECTOR_GICS.get(gics) or (None, None))[1]
+    s = (daily or {}).get(spdr) if spdr else None
+    return ([s] if s is not None else []), ([spdr] if spdr else [])
+
+
+def _mot_flujo_signo(idx, etfs, flow, peq_flow):
+    sgs = []
+    for e in etfs:
+        f = ((peq_flow or {}).get(e) if idx == "IWM" else None) or (flow or {}).get(e)
+        _, sg = clasificar_flujo(f)
+        if sg is not None:
+            sgs.append(sg)
+    if not sgs:
+        return None
+    m = sum(sgs) / len(sgs)
+    return 1 if m > 0.25 else (-1 if m < -0.25 else 0)
+
+
+def motores_indices(res, daily, flow, pequenas, pesos):
+    """Para cada índice: aportes por sector (hoy y 5 sesiones), retorno real, viento sectorial y
+       reparto defensivo/crecimiento. Más el termómetro de rotación común."""
+    out = {"idx": {}, "termo": None}
+    try:
+        pw = _op_pesos_sector(pesos)
+        peq_largo = (pequenas or {}).get("largo")
+        peq_flow = (pequenas or {}).get("flow")
+        for r in res:
+            sym = r["sym"]
+            w = {g: v for g, v in (pw.get(sym) or {}).items() if g in SECTOR_GICS and v}
+            tot = sum(w.values())
+            if tot <= 0:
+                continue
+            ap1, ap5, vnum, vden = [], [], 0.0, 0.0
+            for g, peso in w.items():
+                ss, etfs = _mot_sector_series(sym, g, daily, peq_largo)
+                r1s = [x for x in (_mot_ret(s, 1) for s in ss) if x is not None]
+                r5s = [x for x in (_mot_ret(s, 5) for s in ss) if x is not None]
+                lbl = SECTOR_GICS[g][0]
+                if r1s:
+                    ap1.append((lbl, peso, sum(r1s) / len(r1s), peso / 100 * sum(r1s) / len(r1s)))
+                if r5s:
+                    ap5.append((lbl, peso, sum(r5s) / len(r5s), peso / 100 * sum(r5s) / len(r5s)))
+                sg = _mot_flujo_signo(sym, etfs, flow, peq_flow)
+                if sg is not None:
+                    vnum += peso * sg
+                    vden += peso
+            if sym == "QQQ":
+                ic = (OPER_QQQ.get("d") if OPER_QQQ else None)
+            else:
+                ic = (daily or {}).get(sym)
+            real1, real5 = _mot_ret(ic, 1), _mot_ret(ic, 5)
+            out["idx"][sym] = {
+                "ap1": sorted(ap1, key=lambda x: -abs(x[3])), "ap5": sorted(ap5, key=lambda x: -abs(x[3])),
+                "suma1": (sum(x[3] for x in ap1) if ap1 else None), "suma5": (sum(x[3] for x in ap5) if ap5 else None),
+                "real1": real1, "real5": real5,
+                "viento": (round(100 * vnum / vden) if vden > 0 else None), "medido": round(vden, 0),
+                "def": round(100 * sum(v for g, v in w.items() if g in MOT_DEF) / tot, 0),
+                "cre": round(100 * sum(v for g, v in w.items() if g in MOT_CRE) / tot, 0)}
+        # termómetro: defensivos frente a crecimiento
+        def media(etfs, n):
+            xs = [x for x in (_mot_ret((daily or {}).get(e), n) for e in etfs) if x is not None]
+            return (sum(xs) / len(xs)) if xs else None
+        d5, c5, d20, c20 = media(MOT_ETF_DEF, 5), media(MOT_ETF_CRE, 5), media(MOT_ETF_DEF, 20), media(MOT_ETF_CRE, 20)
+        if None not in (d5, c5):
+            dif5 = d5 - c5
+            dif20 = (d20 - c20) if None not in (d20, c20) else None
+            if dif5 >= MOT_UMBRAL:
+                est = "mandan los DEFENSIVOS"
+            elif dif5 <= -MOT_UMBRAL:
+                est = "manda el CRECIMIENTO"
+            else:
+                est = "sin dirección clara"
+            # qué índice se beneficia: el que tiene más peso en el lado que manda
+            ix = out["idx"]
+            orden = sorted(ix, key=lambda s: (ix[s]["def"] - ix[s]["cre"]), reverse=(dif5 > 0))
+            out["termo"] = {"d5": round(d5, 1), "c5": round(c5, 1), "dif5": round(dif5, 1),
+                            "dif20": (round(dif20, 1) if dif20 is not None else None), "estado": est,
+                            "favor": (orden[0] if orden and abs(dif5) >= MOT_UMBRAL else None),
+                            "contra": (orden[-1] if orden and abs(dif5) >= MOT_UMBRAL else None)}
+    except Exception as _dege:
+        _deg("motores_indices", _dege)
+    return out
+
+
+def nucleo_satelite(orden, motores, centinela, decide, prev_sat):
+    """Regla fija: núcleo (los cuatro a partes iguales) + satélite (SAT_PCT%) en el mejor índice.
+       El satélite solo cambia con el cierre del viernes y si el nuevo saca SAT_DIF puntos al actual."""
+    try:
+        validos = [r for r in orden if r["ver"] != "SIN DATOS"]
+        if not validos:
+            return None
+        vt = (motores or {}).get("idx") or {}
+        cand = sorted(validos, key=lambda r: (-r["score"], -((vt.get(r["sym"]) or {}).get("viento") or 0)))[0]
+        est = (centinela or {}).get("estado")
+        actual = prev_sat
+        sc = {r["sym"]: r["score"] for r in validos}
+        if est in ("LIQUIDEZ", "ACECHO"):
+            nuevo, motivo = "LIQUIDEZ", f"CENTINELA en {est}: el satélite pasa a liquidez; el núcleo se mantiene"
+        elif cand["score"] < 6:
+            nuevo, motivo = "LIQUIDEZ", f"ningún índice llega a 6/10 (el mejor, {cand['sym']}, tiene {cand['score']}): satélite en liquidez"
+        elif actual and actual != "LIQUIDEZ" and actual in sc and cand["sym"] != actual and cand["score"] - sc[actual] < SAT_DIF:
+            nuevo, motivo = actual, (f"{cand['sym']} va por delante ({cand['score']} frente a {sc[actual]}), pero no por {SAT_DIF} puntos: "
+                                     f"se queda {actual} para no cambiar por ruido")
+        elif est == "TRANSICION" and actual:
+            nuevo, motivo = actual, "CENTINELA en TRANSICIÓN (zona gris): no se cambia el satélite"
+        else:
+            nuevo, motivo = cand["sym"], f"{cand['sym']} es el mejor del checklist ({cand['score']}/10)"
+        if not decide:
+            return {"actual": actual, "propuesto": nuevo, "motivo": motivo, "decide": False,
+                    "sat": actual}       # entre semana no se mueve: solo se apunta el candidato
+        return {"actual": actual, "propuesto": nuevo, "motivo": motivo, "decide": True, "sat": nuevo}
+    except Exception as _dege:
+        _deg("nucleo_satelite", _dege)
+        return None
+
+
+def _mot_html(mot, ns):
+    if not mot or not mot.get("idx"):
+        return ""
+    pc = lambda v: "—" if v is None else f"{v:+.1f}%"
+    t = mot.get("termo") or {}
+    h = ["<div class='panel full'><h2>🧲 Qué mueve a cada índice y hacia dónde va la rotación</h2>"]
+    if t:
+        col = "#F4B740" if "DEFENSIVOS" in t["estado"] else ("#2FD08A" if "CRECIMIENTO" in t["estado"] else "#9FB0C8")
+        trad = ""
+        if t.get("favor"):
+            if "DEFENSIVOS" in t["estado"]:
+                trad = (f" → aguanta mejor <b>{t['favor']}</b> (más peso defensivo) y sufre más <b>{t['contra']}</b>. "
+                        "Es una señal de prudencia: el dinero se protege. No es para comprar defensivos, es para no añadir riesgo.")
+            else:
+                trad = (f" → tira más <b>{t['favor']}</b> (más peso en crecimiento) y se queda más atrás <b>{t['contra']}</b>.")
+        _d20 = "" if t.get("dif20") is None else f"; a 20 sesiones {t['dif20']:+.1f}"
+        h.append(f"<div style='font-size:13px;line-height:1.6;margin-bottom:8px'><b>Termómetro:</b> "
+                 f"<b style='color:{col}'>{esc(t['estado'])}</b> · 5 sesiones: defensivos {pc(t['d5'])}, crecimiento {pc(t['c5'])} "
+                 f"(diferencia {t['dif5']:+.1f} puntos{_d20})"
+                 f"{trad}</div>")
+    cards = []
+    for sym, m in mot["idx"].items():
+        def top(ap, n=4):
+            return " · ".join(f"<span style='color:{'#2FD08A' if c > 0 else '#F4607A'}'>{esc(l.lower())} {c:+.2f}</span>"
+                              for l, w, r, c in ap[:n])
+        v = m.get("viento")
+        vcol = "#2FD08A" if (v or 0) >= 20 else ("#F4607A" if (v or 0) <= -20 else "#F4B740")
+        cards.append(
+            "<div style='background:#0A0E17;border:1px solid #1C2740;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.55'>"
+            f"<div style='display:flex;justify-content:space-between'><b style='font-size:15px'>{sym}</b>"
+            f"<span>viento sectorial <b style='color:{vcol}'>{'—' if v is None else f'{v:+d}'}</b></span></div>"
+            f"<div><b>Último día {pc(m.get('real1'))}</b> — lo explican: {top(m['ap1'])}</div>"
+            f"<div><b>5 sesiones {pc(m.get('real5'))}</b> — lo explican: {top(m['ap5'])}</div>"
+            f"<div style='color:#9FB0C8;font-size:11.5px'>Peso defensivo {m['def']:.0f}% · crecimiento {m['cre']:.0f}%</div></div>")
+    h.append("<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px'>" + "".join(cards) + "</div>")
+    if ns:
+        prop, act = ns.get("propuesto"), ns.get("actual")
+        if ns.get("decide"):
+            linea = (f"<b>Cierre de viernes:</b> satélite → <b style='color:#2FD08A'>{esc(prop)}</b>"
+                     + ("" if not act or act == prop else f" (antes {esc(act)})"))
+        else:
+            linea = (f"<b>Entre semana no se cambia.</b> Satélite actual: <b>{esc(act or 'sin asignar todavía')}</b> · "
+                     f"si el viernes cerrara así: <b>{esc(prop)}</b>")
+        h.append("<div style='margin-top:10px;padding:10px 12px;background:#0E1626;border-radius:10px;font-size:12.5px;line-height:1.6'>"
+                 f"<b>Regla núcleo y satélite</b> (para operar solo los cuatro índices, sin perseguir sectores): "
+                 f"<b>{100 - SAT_PCT}%</b> núcleo = los cuatro a partes iguales, no se toca; <b>{SAT_PCT}%</b> satélite = el índice con mejor "
+                 f"puntuación. Cambia solo con el cierre del viernes y si el nuevo saca {SAT_DIF} puntos al actual; con el CENTINELA en "
+                 f"liquidez o acecho, el satélite va a liquidez.<br>{linea} — <span style='color:#9FB0C8'>{esc(ns.get('motivo', ''))}</span></div>")
+    h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> «lo explican» = cuánto ha aportado cada sector al índice "
+             "(su peso en el índice × lo que se ha movido), en puntos. Un sector puede subir un 2% y aportar casi nada si pesa poco. "
+             "<b>Viento sectorial</b> = % del peso del índice en sectores con dinero entrando menos el de los que tienen dinero saliendo "
+             "(de −100 a +100). En el Russell se mide con sus ETFs de pequeñas por sector. La regla de núcleo y satélite es una regla fija "
+             "para no perseguir sectores; el backtest de convergencia mostró que los cuatro a partes iguales rinden como rotar. "
+             "No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+
+# ======================================================================
+# v7.9 — SECTORES: LA ESTRATEGIA DEL −9% (la idea de Pe: operar sectores, no acciones)
+#   Señal CANDIDATO cuando las tres cosas se cumplen a la vez:
+#     1) el sector cae al menos un SECT_CAIDA% desde su máximo de un año (de cierre)
+#     2) han pasado al menos SECT_MIN_SES sesiones (un mes) desde ese máximo
+#     3) ESPEJO del Koncorde: en las últimas ESPEJO_VENT sesiones, al menos ESPEJO_MIN con las manos
+#        débiles soltando (verde bajo el marrón) y las fuertes comprando (azul por encima de cero)
+#   Además, para cada sector: CMF y tramos, OBV frente a su media, acumulación oculta, si va por
+#   libre (correlación con el Nasdaq) y su familia. Y el BACKTEST de la regla exacta, saliendo al
+#   volver al máximo anterior. Solo informa. No es asesoramiento.
+# ======================================================================
+SECT_UNIV = (list(SECTORS) + ["ITA", "COPX", "URA", "LIT"] +
+             ["SMH", "SOXX", "DRAM", "IGV", "CIBR", "SKYY", "QTUM", "BOTZ", "ARKK", "ARKF", "ARKX", "UFO",
+              "XBI", "KRE", "ITB", "XRT", "JETS", "XOP", "OIH", "XME", "GDX", "SIL", "REMX", "TAN", "ICLN",
+              "FAN", "HYDR", "GRID", "PAVE", "FIW", "CGW", "DRIV", "MOO", "NCLD"])
+SECT_CAIDA = 9.0
+SECT_MIN_SES = 21
+ESPEJO_VENT = 10
+ESPEJO_MIN = 3
+SECT_BT_INI = dt.date(2006, 1, 1)
+
+
+def _konc_deb_fue(dd):
+    """Las dos líneas del espejo, en toda la serie: débiles (verde − marrón = oscp) y fuertes (azul).
+       Mismas fórmulas que compute_koncorde (PVI/NVI de Blai5)."""
+    d = dd.dropna(subset=[c for c in ("High", "Low", "Close", "Volume") if c in dd.columns])
+    close = d["Close"].astype(float)
+    vol = d["Volume"].astype(float)
+    ret = close.pct_change().fillna(0.0)
+    dv = vol.diff().fillna(0.0)
+    pvi = (1.0 + ret.where(dv > 0, 0.0)).cumprod() * 1000.0
+    nvi = (1.0 + ret.where(dv < 0, 0.0)).cumprod() * 1000.0
+    pvim = pvi.ewm(span=KONC_M, adjust=False).mean()
+    nvim = nvi.ewm(span=KONC_M, adjust=False).mean()
+    prng = (pvim.rolling(KONC_RANGO).max() - pvim.rolling(KONC_RANGO).min()).replace(0, np.nan)
+    nrng = (nvim.rolling(KONC_RANGO).max() - nvim.rolling(KONC_RANGO).min()).replace(0, np.nan)
+    deb = (pvi - pvim) * 100.0 / prng
+    fue = (nvi - nvim) * 100.0 / nrng
+    return pd.DataFrame({"deb": deb, "fue": fue})
+
+
+def _sect_series(d):
+    """Todo lo que la regla necesita, sesión a sesión: caída, sesiones desde el máximo, espejo."""
+    c = d["Close"].astype(float)
+    mx = c.rolling(252, min_periods=60).max()
+    pos = c.rolling(252, min_periods=60).apply(lambda a: len(a) - 1 - int(np.argmax(a)), raw=True)
+    kd = _konc_deb_fue(d).reindex(c.index)
+    esp = ((kd["deb"] < 0) & (kd["fue"] > 0)).astype(float)
+    esp[kd["deb"].isna() | kd["fue"].isna()] = np.nan
+    esp_rec = esp.rolling(ESPEJO_VENT, min_periods=ESPEJO_VENT).sum()
+    return pd.DataFrame({"c": c, "max": mx, "ses": pos, "dd": (c / mx - 1) * 100, "esp": esp, "esp_rec": esp_rec,
+                         "deb": kd["deb"], "fue": kd["fue"]})
+
+
+def _sect_condiciones(row):
+    c1 = row["dd"] <= -SECT_CAIDA
+    c2 = row["ses"] >= SECT_MIN_SES
+    c3 = (row["esp_rec"] == row["esp_rec"]) and row["esp_rec"] >= ESPEJO_MIN
+    return bool(c1), bool(c2), bool(c3)
+
+
+def backtest_sectores(spy=None, corte=None):
+    """La regla exacta en todos los sectores con historia: entra al cierre de la sesión siguiente a la
+       señal y sale cuando el cierre vuelve al máximo que tenía el día de la señal. Una operación a la vez
+       por sector. Se compara con la misma regla SIN el espejo del Koncorde y con el SPY en el mismo tramo."""
+    try:
+        if spy is None:
+            spy, _ = get_ohlcv("SPY", SECT_BT_INI, dt.date.today())
+        sp = _op_close(spy)
+        if sp is None:
+            return None
+        if corte is not None:
+            sp = sp[sp.index <= pd.Timestamp(corte)]
+        res = {"con": [], "sin": []}
+        n_sect = 0
+        desde = None
+        for sym in SECT_UNIV:
+            try:
+                d, _src = get_ohlcv(sym, SECT_BT_INI, dt.date.today())
+            except Exception as _dege:
+                _deg(f"bt_sectores:{sym}", _dege)
+                d = None
+            time.sleep(0.2)
+            if d is None or not {"Close", "Volume"}.issubset(d.columns):
+                continue
+            d = d.dropna(subset=["Close"])
+            if corte is not None:
+                d = d[d.index <= pd.Timestamp(corte)]
+            if len(d) < 400:
+                continue
+            n_sect += 1
+            s = _sect_series(d)
+            desde = min(desde, s.index[252]) if desde is not None else s.index[252]
+            cv, mxv, sesv, ddv, erv = s["c"].values, s["max"].values, s["ses"].values, s["dd"].values, s["esp_rec"].values
+            fam = familia_de(sym)
+            for modo in ("con", "sin"):
+                t = 252
+                n = len(s)
+                while t < n - 1:
+                    ok1 = ddv[t] == ddv[t] and ddv[t] <= -SECT_CAIDA
+                    ok2 = sesv[t] == sesv[t] and sesv[t] >= SECT_MIN_SES
+                    ok3 = (erv[t] == erv[t] and erv[t] >= ESPEJO_MIN) if modo == "con" else True
+                    if not (ok1 and ok2 and ok3):
+                        t += 1
+                        continue
+                    e = t + 1
+                    pin, obj = cv[e], mxv[t]
+                    j, mae, salida = e, 0.0, None
+                    while j < n - 1:
+                        j += 1
+                        mae = min(mae, cv[j] / pin - 1)
+                        if cv[j] >= obj:
+                            salida = j
+                            break
+                    fin = salida if salida is not None else n - 1
+                    f_e, f_s = s.index[e], s.index[fin]
+                    try:
+                        spr = float(sp.asof(f_s) / sp.asof(f_e) - 1)
+                    except Exception:
+                        spr = None
+                    res[modo].append({"sym": sym, "fam": fam, "fecha": str(f_e.date()), "dd": round(float(ddv[t]), 1),
+                                      "cerrada": salida is not None, "dias": int(fin - e),
+                                      "ret": float(cv[fin] / pin - 1), "mae": float(mae), "spy": spr})
+                    t = fin + 1
+        if not n_sect:
+            return None
+
+        def resumen(ops):
+            if not ops:
+                return None
+            cer = [o for o in ops if o["cerrada"]]
+            ab = [o for o in ops if not o["cerrada"]]
+            k = len(cer)
+            lo, hi = _bt_wilson(k / len(ops), len(ops))
+            dias = sorted(o["dias"] for o in cer)
+            maes = sorted(o["mae"] for o in ops)
+            def pct(v, q):
+                return v[min(len(v) - 1, int(q * len(v)))] if v else None
+            rel = [o["ret"] - o["spy"] for o in cer if o["spy"] is not None]
+            en = lambda lim: round(100 * sum(1 for o in cer if o["dias"] <= lim) / len(ops))
+            return {"n": len(ops), "k": k, "pct": round(100 * k / len(ops)), "lo": lo, "hi": hi,
+                    "med_dias": (dias[len(dias) // 2] if dias else None),
+                    "en3m": en(63), "en6m": en(126), "en12m": en(252),
+                    "mae_med": round(100 * maes[len(maes) // 2], 1), "mae_p10": round(100 * pct(maes, 0.10), 1),
+                    "mae_peor": round(100 * maes[0], 1),
+                    "bate_spy": (round(100 * sum(1 for x in rel if x > 0) / len(rel)) if rel else None),
+                    "rel_med": (round(100 * sorted(rel)[len(rel) // 2], 1) if rel else None),
+                    "abiertas": len(ab),
+                    "abiertas_det": sorted(({"sym": o["sym"], "fecha": o["fecha"], "ret": round(100 * o["ret"], 1),
+                                             "dias": o["dias"]} for o in ab), key=lambda x: x["fecha"])}
+        out = {"desde": str(desde.date()) if desde is not None else None, "n_sect": n_sect,
+               "con": resumen(res["con"]), "sin": resumen(res["sin"]), "por_sym": {}, "por_fam": {}}
+        for sym in SECT_UNIV:
+            r = resumen([o for o in res["con"] if o["sym"] == sym])
+            if r:
+                out["por_sym"][sym] = r
+        fams = sorted({o["fam"] for o in res["con"]})
+        for f in fams:
+            r = resumen([o for o in res["con"] if o["fam"] == f])
+            if r and r["n"] >= 3:
+                out["por_fam"][f] = r
+        c = out["con"] or {}
+        print(f"  🧮 Backtest sectores (−{SECT_CAIDA:g}%, {SECT_MIN_SES} ses, espejo): {c.get('n')} operaciones en {n_sect} sectores · "
+              f"{c.get('pct')}% volvieron al máximo · peor caída tras entrar (mediana) {c.get('mae_med')}%")
+        return out
+    except Exception as _dege:
+        _deg("backtest_sectores", _dege)
+        _avisar("sectores", f"backtest de sectores no calculado: {_dege}")
+        return None
+
+
+def tabla_sectores(daily, flow, bt=None):
+    """Estado de hoy de cada sector con la regla, ordenado: candidatos primero, luego por caída."""
+    filas = []
+    try:
+        q = _op_close(OPER_QQQ.get("d")) if OPER_QQQ else None
+        rq = q.pct_change().dropna() if q is not None else None
+        for sym in SECT_UNIV:
+            d = (daily or {}).get(sym)
+            if d is None or not {"Close", "Volume"}.issubset(getattr(d, "columns", [])):
+                continue
+            d = d.dropna(subset=["Close"])
+            if len(d) < 130:
+                continue
+            s = _sect_series(d)
+            u = s.iloc[-1]
+            if u["max"] != u["max"]:
+                continue
+            ses = int(u["ses"])
+            fmax = s.index[-1 - ses]
+            desde_max = s["c"].iloc[-1 - ses:]
+            mn = float(desde_max.min())
+            fmin = desde_max.idxmin()
+            c1, c2, c3 = _sect_condiciones(u)
+            n_ok = int(c1) + int(c2) + int(c3)
+            esp_caida = int(np.nansum(s["esp"].iloc[-1 - ses:].values)) if ses > 0 else 0
+            f = (flow or {}).get(sym) or {}
+            est, sg = clasificar_flujo(f)
+            try:
+                tr = _tramos_de(_cmf_serie(d))
+            except Exception:
+                tr = None
+            sube3 = bool(tr and tr[1] > tr[0] and tr[2] > tr[1] and tr[3] > tr[2])
+            corr = None
+            if rq is not None:
+                rs = s["c"].pct_change().dropna()
+                j = rs.index.intersection(rq.index)[-120:]
+                if len(j) >= 60:
+                    corr = float(np.corrcoef(rs.loc[j].values, rq.loc[j].values)[0, 1])
+            libre = None if corr is None else ("va por libre" if corr < 0.6 else ("a medias" if corr < 0.8 else "sigue al Nasdaq"))
+            falta = [t for t, ok in (("caída ≥9%", c1), ("1 mes desde el máximo", c2), ("espejo Koncorde", c3)) if not ok]
+            filas.append({"sym": sym, "nom": NAMES.get(sym, (sym, sym, ""))[1], "fam": familia_de(sym),
+                          "fmax": str(fmax.date()), "ses": ses, "sem": round(ses / 5.0, 1), "dd": round(float(u["dd"]), 1),
+                          "fmin": str(fmin.date()), "rebote": round((float(u["c"]) / mn - 1) * 100, 1),
+                          "deb": (round(float(u["deb"]), 1) if u["deb"] == u["deb"] else None),
+                          "fue": (round(float(u["fue"]), 1) if u["fue"] == u["fue"] else None),
+                          "esp_rec": (int(u["esp_rec"]) if u["esp_rec"] == u["esp_rec"] else None), "esp_caida": esp_caida,
+                          "cmf": f.get("cmf"), "estado": est, "signo": sg, "tramos": tr, "sube3": sube3,
+                          "obv": f.get("obv_above"), "obv_cruce": f.get("obv_cross"),
+                          "oculta": f.get("diverg") == "acumulacion oculta", "dist_oculta": f.get("diverg") == "distribucion oculta",
+                          "corr": (round(corr, 2) if corr is not None else None), "libre": libre,
+                          "senal": ("CANDIDATO" if n_ok == 3 else ("CASI" if n_ok == 2 else "")), "falta": falta,
+                          "bt": ((bt or {}).get("por_sym") or {}).get(sym)})
+        filas.sort(key=lambda x: ({"CANDIDATO": 0, "CASI": 1}.get(x["senal"], 2), x["dd"]))
+    except Exception as _dege:
+        _deg("tabla_sectores", _dege)
+    return filas
+
+
+def _sect_html(filas, bt):
+    if not filas:
+        return ""
+    cand = [f for f in filas if f["senal"] == "CANDIDATO"]
+    vistos, top = set(), []
+    for f in cand:
+        if f["fam"] in vistos:
+            continue
+        vistos.add(f["fam"])
+        top.append(f)
+    h = ["<div class='panel full'><h2>🎯 Sectores: la estrategia del −9% (caída + un mes + espejo del Koncorde)</h2>"
+         f"<div class='note'>Un sector es <b>CANDIDATO</b> cuando cumple las tres: cae al menos un {SECT_CAIDA:g}% desde su máximo "
+         f"de un año, han pasado al menos {SECT_MIN_SES} sesiones (un mes) desde ese máximo, y el Koncorde marca <b>espejo</b>: "
+         f"en al menos {ESPEJO_MIN} de las últimas {ESPEJO_VENT} sesiones las manos débiles venden (verde bajo el marrón) mientras "
+         "las fuertes compran (azul por encima de cero), es decir, se venden paquetes pequeños y se compran grandes. "
+         "<b>CASI</b> = le falta una. Como mucho uno por familia: dos sectores de la misma familia son la misma apuesta.</div>"]
+    if top:
+        h.append("<div style='margin:8px 0;padding:9px 12px;background:rgba(47,208,138,.08);border:1px solid #2FD08A55;border-radius:8px;font-size:13px'>"
+                 "<b style='color:#2FD08A'>Candidatos hoy:</b> "
+                 + " · ".join(f"<b>{esc(f['sym'])}</b> ({esc(f['nom'])}, {f['dd']:+.1f}%, {f['sem']:g} sem, espejo {f['esp_rec']}/{ESPEJO_VENT})"
+                              for f in top) + "</div>")
+    else:
+        casi = [f for f in filas if f["senal"] == "CASI"][:6]
+        h.append("<div style='margin:8px 0;padding:9px 12px;background:#0E1626;border-radius:8px;font-size:13px'>"
+                 "<b>Hoy no hay ningún candidato.</b>"
+                 + (" Los más cerca: " + " · ".join(f"<b>{esc(f['sym'])}</b> (le falta {esc(', '.join(f['falta']))})" for f in casi)
+                    if casi else "") + "</div>")
+    trs = []
+    for f in filas:
+        col = "#2FD08A" if f["senal"] == "CANDIDATO" else ("#F4B740" if f["senal"] == "CASI" else "#5E708A")
+        ddc = "#F4607A" if f["dd"] <= -SECT_CAIDA else ("#F4B740" if f["dd"] <= -5 else "#E6EDF6")
+        cmf = f.get("cmf")
+        cmfc = "#2FD08A" if f["signo"] == 1 else ("#F4607A" if f["signo"] == -1 else "#F4B740")
+        trs_t = "" if not f["tramos"] else (f"{f['tramos'][0]:+.2f}→{f['tramos'][3]:+.2f}" + (" ↗3t" if f["sube3"] else ""))
+        kon = "—" if f["deb"] is None else (
+            f"<span style='color:{'#F4607A' if f['deb'] < 0 else '#2FD08A'}'>v {f['deb']:+.0f}</span> · "
+            f"<span style='color:{'#5B8CFF' if (f['fue'] or 0) > 0 else '#5E708A'}'>a {f['fue']:+.0f}</span>")
+        esp = "—" if f["esp_rec"] is None else f"{f['esp_rec']}/{ESPEJO_VENT} <span style='color:#5E708A'>({f['esp_caida']} en la caída)</span>"
+        obv = ("cruza ↑" if f.get("obv_cruce") else ("sobre su media" if f.get("obv") else "bajo su media")) if f.get("obv") is not None else "—"
+        extra = (" <b style='color:#2FD08A'>acum. oculta</b>" if f["oculta"] else "") + (" <b style='color:#F4607A'>dist. oculta</b>" if f["dist_oculta"] else "")
+        b = f.get("bt")
+        bt_t = "—" if not b else f"{b['k']}/{b['n']} ({b['pct']}%)" + ("" if b.get("med_dias") is None else f" · {b['med_dias']}d")
+        corr_t = "" if f["corr"] is None else "ρ %.2f" % f["corr"]
+        lib_c = "#2FD08A" if f["libre"] == "va por libre" else ("#F4B740" if f["libre"] == "a medias" else "#9FB0C8")
+        trs.append(f"<tr><td class='se-l'><b>{esc(f['sym'])}</b> <span style='color:#9FB0C8'>{esc(f['nom'])}</span>"
+                   f"<div style='font-size:10.5px;color:#5E708A'>{esc(f['fam'])}</div></td>"
+                   f"<td class='r' style='color:{col};font-weight:800'>{f['senal'] or '·'}</td>"
+                   f"<td class='r' style='color:{ddc};font-weight:700'>{f['dd']:+.1f}%</td>"
+                   f"<td class='r'>{esc(f['fmax'])}<div style='font-size:10.5px;color:#9FB0C8'>hace {f['sem']:g} sem</div></td>"
+                   f"<td class='r'>{f['rebote']:+.1f}%<div style='font-size:10.5px;color:#9FB0C8'>mín. {esc(f['fmin'])}</div></td>"
+                   f"<td class='r'>{kon}</td><td class='r'>{esp}</td>"
+                   f"<td class='r' style='color:{cmfc}'>{'—' if cmf is None else f'{cmf:+.2f}'}<div style='font-size:10.5px;color:#9FB0C8'>{trs_t}</div></td>"
+                   f"<td class='r'>{obv}{extra}</td>"
+                   f"<td class='r' style='color:{lib_c}'>{esc(f['libre'] or '—')}<div style='font-size:10.5px;color:#5E708A'>"
+                   f"{corr_t}</div></td>"
+                   f"<td class='r'>{bt_t}</td></tr>")
+    h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>sector</th>"
+             "<th class='r'>señal</th><th class='r'>caída</th><th class='r'>máximo</th><th class='r'>rebote</th>"
+             "<th class='r'>Koncorde hoy</th><th class='r'>espejo</th><th class='r'>CMF · tramos</th><th class='r'>OBV</th>"
+             "<th class='r'>con el Nasdaq</th><th class='r'>histórico de la regla</th></tr>" + "".join(trs) + "</table></div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> caída y máximo = desde el máximo de cierre de un año y "
+             "cuándo fue. Rebote = desde el mínimo de esta caída. Koncorde hoy: <b>v</b> = verde menos marrón (manos débiles; negativo = "
+             "venden), <b>a</b> = azul (manos fuertes; positivo = compran). Espejo = sesiones con las dos cosas a la vez en las últimas "
+             f"{ESPEJO_VENT} (y en toda la caída). CMF = dinero de 20 sesiones (Chaikin) con sus tramos; OBV = volumen acumulado frente "
+             "a su media; «acum. oculta» = el precio baja pero el OBV/ADL y el CMF suben. «Con el Nasdaq» = correlación de 120 sesiones "
+             "con el QQQ: los que <b>van por libre</b> no son más de lo mismo. «Histórico de la regla» = en este sector, cuántas veces "
+             "volvió al máximo anterior de las que dio señal, y en cuántos días (mediana). No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+def _sect_bt_html(bt):
+    if not bt or not bt.get("con"):
+        return ""
+    def fila(nom, r):
+        if not r:
+            return ""
+        rel_t = "" if r["rel_med"] is None else "mediana %+.1f pts" % r["rel_med"]
+        return (f"<tr><td class='se-l'>{nom}</td><td class='r'>{r['n']}</td>"
+                f"<td class='r' style='font-weight:800'>{r['pct']}%<div style='font-size:10.5px;color:#9FB0C8'>{r['lo']:.0f}–{r['hi']:.0f}%</div></td>"
+                f"<td class='r'>{'—' if r['med_dias'] is None else r['med_dias']}</td>"
+                f"<td class='r'>{r['en3m']}% · {r['en6m']}% · {r['en12m']}%</td>"
+                f"<td class='r' style='color:#F4B740'>{r['mae_med']:+.1f}%<div style='font-size:10.5px;color:#F4607A'>10% peores {r['mae_p10']:+.1f}% · peor {r['mae_peor']:+.1f}%</div></td>"
+                f"<td class='r'>{'—' if r['bate_spy'] is None else str(r['bate_spy']) + '%'}"
+                f"<div style='font-size:10.5px;color:#9FB0C8'>{rel_t}</div></td>"
+                f"<td class='r'>{r['abiertas']}</td></tr>")
+    rows = fila("<b>Con espejo del Koncorde</b> (tu regla)", bt["con"]) + fila("Sin espejo (solo caída y un mes)", bt.get("sin"))
+    fams = sorted((bt.get("por_fam") or {}).items(), key=lambda kv: -kv[1]["n"])
+    rows_f = "".join(fila(f"&nbsp;&nbsp;familia {esc(f)}", r) for f, r in fams[:12])
+    ab = (bt["con"].get("abiertas_det") or [])[-8:]
+    ab_t = " · ".join(f"{esc(o['sym'])} desde {esc(o['fecha'])} ({o['ret']:+.1f}%, {o['dias']} ses)" for o in ab)
+    return ("<div class='panel full'><h2>🧮 Backtest de la regla de sectores: ¿vuelve al máximo?</h2>"
+            f"<div class='note'>La regla exacta de arriba en {bt['n_sect']} sectores desde {esc(bt['desde'] or '?')}: entra al cierre "
+            "de la sesión siguiente a la señal y sale cuando el cierre vuelve al máximo que tenía el día de la señal. Una operación a la "
+            "vez por sector. Sin stop: por eso importa cuánto llegó a caer después de entrar.</div>"
+            "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>regla</th>"
+            "<th class='r'>veces</th><th class='r'>volvió al máximo</th><th class='r'>días (mediana)</th>"
+            "<th class='r'>en 3 · 6 · 12 meses</th><th class='r'>caída tras entrar (mediana)</th><th class='r'>bate al SPY</th>"
+            "<th class='r'>aún abiertas</th></tr>" + rows + rows_f + "</table></div>"
+            + (f"<div style='font-size:12px;margin-top:6px;color:#9FB0C8'><b>Abiertas ahora (aún no han vuelto al máximo):</b> {ab_t}</div>" if ab_t else "")
+            + "<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> «volvió al máximo» = de todas las señales, cuántas acabaron "
+            "recuperando el máximo anterior (con su margen de error). «Caída tras entrar» = lo peor que llegó a ir en contra antes de "
+            "salir: es lo que tendrías que aguantar. Si «con espejo» no mejora a «sin espejo», el Koncorde no está aportando. Muchas "
+            "señales caen en las mismas crisis (2008, 2020, 2022), así que no son del todo independientes. Pasado, no promesa. "
+            "No es asesoramiento.</div></div>")
+
+
+def _ctx_explicacion(estres, dix):
+    """Una frase de 'en qué punto estamos' para el estrés financiero y los mercados oscuros."""
+    lin = []
+    try:
+        if estres and estres.get("valor") is not None:
+            v, p = estres["valor"], estres.get("pct")
+            if p is None:
+                nivel = "sin percentil"
+            elif p < 25:
+                nivel = "<b style='color:#2FD08A'>calma</b>: por debajo de lo normal, el sistema financiero no está tenso"
+            elif p < 60:
+                nivel = "<b style='color:#9FB0C8'>normal</b>: tensión dentro de lo habitual"
+            elif p < 85:
+                nivel = "<b style='color:#F4B740'>tensión</b>: por encima de lo normal, vigilar el crédito"
+            else:
+                nivel = "<b style='color:#F4607A'>estrés alto</b>: el sistema está tenso, típico de caídas fuertes"
+            lin.append(f"<b>Estrés financiero (OFR):</b> {v:+.2f}, percentil {p} → {nivel}"
+                       + (" · <b style='color:#F4607A'>ha dado un SALTO brusco</b>" if estres.get("salto") else "")
+                       + ". (Por debajo de 0 = menos estrés que la media histórica.)")
+        if dix:
+            lin.append(f"<b>Mercados oscuros (DIX):</b> media 5 días {dix['m5']}% (percentil {dix['pct']} del año) → "
+                       f"<b style='color:{dix['scol']}'>{esc(dix['senal'])}</b>. Por encima de 45% los institucionales compran a "
+                       "escondidas: históricamente ha precedido a subidas.")
+        else:
+            lin.append("<b>Mercados oscuros (DIX):</b> sin dato hoy (SqueezeMetrics no respondió o está apagado en la configuración).")
+    except Exception as _dege:
+        _deg("ctx_explicacion", _dege)
+    return lin
+
+
+def _mcc_graf_html(mcc):
+    """El oscilador de amplitud estilo McClellan en gráfico (últimas 120 sesiones) con su lectura."""
+    if not mcc or mcc.get("osc") is None:
+        return ("<div class='panel full'><h2>📉 Oscilador de amplitud (McClellan)</h2><div class='note'>Sin datos "
+                "suficientes hoy: hace falta el universo de acciones. No se inventa una serie.</div></div>")
+    o = mcc["osc"].dropna()
+    v = float(mcc["ultimo"])
+    up = mcc.get("umbral_pct")
+    arm, seg = False, 0
+    for x in o.iloc[-40:]:
+        if x < MCC_UMBRAL:
+            arm, seg = True, 0
+        elif arm:
+            seg += 1
+    if v < MCC_UMBRAL:
+        est, col = "bajo −100: amplitud castigada, casi todo cae. Es zona de suelo, no de vender", "#F4607A"
+    elif arm and 0 < seg < MCC_CONFIRMACIONES:
+        est, col = f"SEÑAL ARMÁNDOSE: {seg} de {MCC_CONFIRMACIONES} cierres por encima de −100 tras caer por debajo", "#F4B740"
+    elif arm and seg >= MCC_CONFIRMACIONES:
+        est, col = f"SEÑAL COMPLETADA: {seg} cierres por encima de −100 tras caer por debajo (rebote de amplitud)", "#2FD08A"
+    elif v < 0:
+        est, col = "negativo: suben menos acciones de las que bajan, pero sin castigo extremo", "#F4B740"
+    elif v > 100:
+        est, col = "por encima de +100: casi todo sube a la vez, el mercado va estirado", "#F4B740"
+    else:
+        est, col = "positivo: la mayoría de acciones acompaña la subida", "#2FD08A"
+    refs = [(0, "#3A4658", "0"), (MCC_UMBRAL, "#F4607A", "−100")]
+    if up is not None and abs(up - MCC_UMBRAL) > 5:
+        refs.append((up, "#F4B740", f"{up:.0f} (p10)"))
+    if float(o.iloc[-120:].max()) > 80:
+        refs.append((100, "#2FD08A", "+100"))
+    hist = ""
+    bt = mcc.get("bt_nyse") or {}
+    f21 = [f for f in (bt.get("filas") or []) if f.get("n") and f.get("h") in (20, 21)]
+    if f21:
+        f = f21[0]
+        hist = (f"<br><b>Histórico de esta serie:</b> tras cruzar −100 hacia arriba ({bt.get('n_disparos')} veces), a "
+                f"{f['h']} sesiones el S&amp;P estaba en positivo el <b>{f['pos']}%</b> ({f['lo']}–{f['hi']}%), media {f['media']:+.2f}%.")
+    return ("<div class='panel full'><h2>📉 Oscilador de amplitud (McClellan) — ¿cuántas acciones acompañan?</h2>"
+            f"<div style='font-size:13px;margin-bottom:6px'><b style='font-size:22px;color:{col}'>{v:+.1f}</b> · "
+            f"<span style='color:{col}'>{esc(est)}</span> · hoy {mcc['adv']} suben / {mcc['dec']} bajan de {mcc['n_acciones']}</div>"
+            + _svg_linea_umbral(list(o.iloc[-120:]), refs=refs, color="#4CC2E0", h=140)
+            + "<div style='font-size:10px;color:#5E708A'>últimas 120 sesiones</div>"
+            "<div class='note' style='margin-top:6px'><b>Qué es:</b> la diferencia entre acciones que suben y que bajan, "
+            "suavizada (media de 19 menos media de 39). Mide si la subida o la bajada es de todos o de unos pocos. "
+            "Por debajo de −100 el mercado ha vendido casi todo de golpe: es donde suelen formarse los suelos; la señal "
+            "se da al volver por encima. Se calcula con las acciones del S&amp;P 500 que baja el terminal, no con el NYSE "
+            "entero, así que el nivel no es idéntico al original (la línea amarilla es el equivalente en esta serie)."
+            + hist + " Contexto, no disparador. No es asesoramiento.</div></div>")
+
+
+def _ctx_html(estres, presion, zweig, dix, mcc=None):
+    h = ["<div class='panel full'><h2>🌡️ Contexto de mercado: amplitud, estrés y mercados oscuros</h2>"]
+    lin = _ctx_explicacion(estres, dix)
+    if lin:
+        h.append("<div style='font-size:13px;line-height:1.7;margin-bottom:8px'>" + "<br>".join(lin) + "</div>")
+    if dix:
+        try:
+            h.append(f"<div style='margin:4px 0 10px'>{dix_gauge(dix)}</div>")
+        except Exception:
+            pass
+    h.append("</div>")
+    try:
+        h.append(_mcc_graf_html(mcc))
+    except Exception as _dege:
+        _deg("ctx:mcc", _dege)
+    try:
+        h.append("<div class='panel full'><h2>🚀 Empuje de amplitud (Zweig) — " + esc((zweig or {}).get("estado", "SIN DATO")) + "</h2>"
+                 + _zweig_html(zweig) + "</div>")
+    except Exception as _dege:
+        _deg("ctx:zweig", _dege)
+    try:
+        h.append(_estres_presion_html(estres, presion))
+    except Exception as _dege:
+        _deg("ctx:estres", _dege)
+    return "".join(h)
+
+
+
+# ======================================================================
+# v7.9 — RACHAS, NÚMEROS REDONDOS Y VENCIMIENTOS (las ideas del chat, puestas a prueba con datos)
+#   1) "Días seguidos cayendo más de un 2% no pasan mucho; algún día rebotará": qué pasó DESPUÉS,
+#      cada vez, en los cuatro índices, frente a un día cualquiera.
+#   2) "El S&P rebota en números redondos (7650, 7600)": ¿aguanta más en un múltiplo de 100 o de 50
+#      que en un nivel cualquiera (7617, 7633...)? Si no hay diferencia, es un mito.
+#   3) "Mañana es el tercer viernes": cómo se comporta el S&P la semana del vencimiento mensual y
+#      la siguiente, y dónde están hoy los muros de calls y puts del SPY y del QQQ.
+#   Solo informa. No es asesoramiento.
+# ======================================================================
+RN_UMBRAL = 2.0          # % de caída en el día que cuenta como "día de −2%"
+RN_HORIZ = [(1, "día siguiente"), (5, "1 semana"), (21, "1 mes"), (63, "3 meses")]
+RN_GAP = 10              # sesiones: dentro de la misma tormenta solo cuenta la primera vez
+RN_RED_DESDE = "2017-01-01"   # números redondos: desde aquí el S&P está por encima de 2.200 (100 puntos < 5%)
+RN_RED_BANDA = 0.0025    # "toca" el nivel si el mínimo del día llega a menos de un 0,25% por encima
+RN_OPEX_DESDE = "1990-01-01"
+DD4_SERIES = {}          # dd_cuatro_indices deja aquí las series largas (cierre y máx/mín) de cada índice
+
+
+def _rn_stats(rs):
+    if not rs:
+        return None
+    n = len(rs)
+    k = sum(1 for x in rs if x > 0)
+    lo, hi = _bt_wilson(k / n, n)
+    s = sorted(rs)
+    return {"n": n, "pos": round(100 * k / n), "lo": lo, "hi": hi, "med": round(100 * s[n // 2], 2),
+            "media": round(100 * sum(rs) / n, 2), "peor": round(100 * s[0], 1), "mejor": round(100 * s[-1], 1)}
+
+
+def _rn_declus(idxs, gap=RN_GAP):
+    """Primera vez de cada tormenta: si el evento anterior fue hace menos de `gap` sesiones, no cuenta
+       (2008 tuvo decenas de días de −2% casi seguidos y son una sola apuesta, no decenas)."""
+    out, last = [], -10 ** 9
+    for i in idxs:
+        if i - last >= gap:
+            out.append(i)
+        last = i
+    return out
+
+
+def _rn_fwd(v, idxs, h):
+    n = len(v)
+    return [v[i + h] / v[i] - 1 for i in idxs if i + h < n]
+
+
+def _rn_racha(mask):
+    """Sesiones seguidas con la condición, día a día."""
+    m = mask.astype(int)
+    return m.groupby((m == 0).cumsum()).cumsum()
+
+
+def rachas_indice(c):
+    """Estado de hoy y qué pasó después de cada racha de caídas, en un índice."""
+    c = c.dropna().astype(float)
+    if len(c) < 600:
+        return None
+    r = c.pct_change() * 100
+    v = c.values
+    baja = (r <= -RN_UMBRAL)
+    rojo = (r < 0)
+    st2, str_ = _rn_racha(baja), _rn_racha(rojo)
+    n = len(c)
+    filas = []
+    def fila(nombre, raw):
+        ep = _rn_declus(raw)
+        h = {hz: _rn_stats(_rn_fwd(v, ep, hz)) for hz, _ in RN_HORIZ}
+        return {"nombre": nombre, "veces": len(raw), "ep": len(ep), "h": h,
+                "ultimas": [{"fecha": str(c.index[i].date()),
+                             "r5": (round(100 * (v[i + 5] / v[i] - 1), 1) if i + 5 < n else None),
+                             "r21": (round(100 * (v[i + 21] / v[i] - 1), 1) if i + 21 < n else None)} for i in ep[-5:]]}
+    sv, rv = st2.values, str_.values
+    for k, nom in ((1, f"un día de −{RN_UMBRAL:g}% o más"), (2, f"2 días seguidos de −{RN_UMBRAL:g}%"),
+                   (3, f"3 o más días seguidos de −{RN_UMBRAL:g}%")):
+        raw = [i for i in range(1, n) if sv[i] == k]
+        filas.append(fila(nom, raw))
+    rojo_hoy = int(rv[-1])
+    k_rojo = min(max(rojo_hoy, 4), 8)
+    filas.append(fila(f"{k_rojo} días seguidos en rojo (cualquier caída)", [i for i in range(1, n) if rv[i] == k_rojo]))
+    base = {hz: _rn_stats(_rn_fwd(v, list(range(1, n)), hz)) for hz, _ in RN_HORIZ}
+    # ¿se alarga? de las veces con k seguidas, cuántas tuvieron otro −2% al día siguiente
+    alarga = {}
+    for k in (1, 2):
+        idx = [i for i in range(1, n - 1) if sv[i] == k]
+        if idx:
+            alarga[k] = round(100 * sum(1 for i in idx if sv[i + 1] == k + 1) / len(idx))
+    anos = max(1.0, (c.index[-1] - c.index[0]).days / 365.25)
+    hoy = {"fecha": str(c.index[-1].date()), "r": round(float(r.iloc[-1]), 2), "racha2": int(sv[-1]),
+           "rojo": rojo_hoy, "d10": int(baja.iloc[-10:].sum()), "r5": round(100 * (v[-1] / v[-6] - 1), 1),
+           "dd52": round(100 * (v[-1] / max(v[-252:]) - 1), 1)}
+    return {"desde": str(c.index[0].date()), "filas": filas, "base": base, "alarga": alarga, "hoy": hoy,
+            "por_ano2": round(filas[1]["veces"] / anos, 1), "por_ano1": round(filas[0]["veces"] / anos, 1)}
+
+
+def _rn_nivel_bajo(p, paso, off):
+    """El primer nivel (k + off)·paso que queda por debajo de p."""
+    k = math.floor(p / paso - off)
+    return (k + off) * paso
+
+
+def numeros_redondos(c, hl, desde=RN_RED_DESDE, paso=100.0):
+    """¿Aguanta el S&P más en los números redondos? Cada vez que el mínimo del día baja hasta un nivel que
+       quedaba por debajo del cierre anterior, se mira si cerró por encima y cómo iba 5 sesiones después.
+       Redondos: múltiplos de 100 y de 50. Placebo: niveles que no son redondos (17, 33, 67 y 83)."""
+    try:
+        if hl is None or not len(hl):
+            return None
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp(desde)]
+        lo = hl["Low"].reindex(c.index)
+        hi = hl["High"].reindex(c.index)
+        ok = lo.notna() & hi.notna() & (hi > lo)
+        c, lo = c[ok], lo[ok]
+        if len(c) < 500:
+            return None
+        v, lv = c.values, lo.values
+        n = len(v)
+        grupos = {"100": [0.0], "50": [0.5], "placebo": [0.17, 0.33, 0.67, 0.83]}
+        res = {}
+        for g, offs in grupos.items():
+            ev = []
+            for off in offs:
+                ultimo = {}
+                for t in range(1, n - 5):
+                    L = _rn_nivel_bajo(v[t - 1] * (1 - 0.003), paso, off)
+                    if lv[t] > L * (1 + RN_RED_BANDA):
+                        continue
+                    if t - ultimo.get(L, -999) < 5:
+                        ultimo[L] = t
+                        continue
+                    ultimo[L] = t
+                    ev.append((t, L))
+            if not ev:
+                res[g] = None
+                continue
+            aguanta = [1.0 if v[t] >= L else -1.0 for t, L in ev]
+            no_rompe = [1.0 if min(v[t:t + 6]) >= L * 0.995 else -1.0 for t, L in ev]
+            res[g] = {"n": len(ev), "aguanta": _rn_stats(aguanta), "no_rompe": _rn_stats(no_rompe),
+                      "r5": _rn_stats([v[t + 5] / v[t] - 1 for t, L in ev])}
+        last = float(v[-1])
+        niveles = []
+        base50 = math.floor(last / 50.0) * 50.0
+        for L in (base50 + 100, base50 + 50, base50, base50 - 50, base50 - 100, base50 - 150):
+            if L > 0:
+                niveles.append({"nivel": int(L), "dist": round(100 * (L / last - 1), 1), "cien": int(L) % 100 == 0})
+        return {"desde": str(c.index[0].date()), "res": res, "niveles": niveles, "ultimo": round(last, 2)}
+    except Exception as _dege:
+        _deg("numeros_redondos", _dege)
+        return None
+
+
+def opex_estudio(c, desde=RN_OPEX_DESDE):
+    """S&P en la semana del vencimiento mensual (3er viernes), en la siguiente y el propio día."""
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp(desde)]
+        if len(c) < 1000:
+            return None
+        idx = c.index
+        wk = c.groupby(idx.to_period("W-FRI")).tail(1)
+        wkp = wk.copy()
+        wkp.index = wk.index.to_period("W-FRI")
+        wr = wkp.pct_change().dropna()
+        dr = c.pct_change().dropna()
+        sem, sig, dia, sem_q, sig_q = [], [], [], [], []
+        semanas_opex = set()
+        for m in pd.period_range(idx[0], idx[-1], freq="M"):
+            tv = pd.Timestamp(_op_tercer_viernes(m.year, m.month))
+            pos = idx.searchsorted(tv, side="right") - 1
+            if pos < 1 or idx[pos] < tv - pd.Timedelta(days=3):
+                continue
+            per = idx[pos].to_period("W-FRI")
+            semanas_opex.add(per)
+            q = m.month in (3, 6, 9, 12)
+            if per in wr.index:
+                sem.append(float(wr[per]))
+                (sem_q.append(float(wr[per])) if q else None)
+            if (per + 1) in wr.index:
+                sig.append(float(wr[per + 1]))
+                (sig_q.append(float(wr[per + 1])) if q else None)
+            dia.append(float(c.iloc[pos] / c.iloc[pos - 1] - 1))
+        otras = [float(x) for p, x in wr.items() if p not in semanas_opex and (p - 1) not in semanas_opex]
+        return {"desde": str(idx[0].date()), "sem": _rn_stats(sem), "sig": _rn_stats(sig), "dia": _rn_stats(dia),
+                "sem_q": _rn_stats(sem_q), "sig_q": _rn_stats(sig_q), "otras": _rn_stats(otras),
+                "cualquier_dia": _rn_stats([float(x) for x in dr.values])}
+    except Exception as _dege:
+        _deg("opex_estudio", _dege)
+        return None
+
+
+def muros_opciones(sym, venc, spot=None):
+    """Muros del vencimiento mensual: el strike con más calls abiertas por encima del precio (techo
+       que se suele citar), el de más puts por debajo (suelo), y el max pain. Interés abierto = el de
+       ayer (Yahoo lo actualiza una vez al día)."""
+    if yf is None or not OPCIONES_ON:
+        return None
+    try:
+        tk = yf.Ticker(sym)
+        exps = list(tk.options or [])
+        if not exps:
+            return None
+        objetivo = str(venc)
+        futuras = [e for e in exps if e >= objetivo]
+        e = objetivo if objetivo in exps else (futuras[0] if futuras else None)
+        if e is None:
+            return None
+        ch = tk.option_chain(e)
+        calls = ch.calls[["strike", "openInterest"]].fillna(0)
+        puts = ch.puts[["strike", "openInterest"]].fillna(0)
+        if spot is None:
+            try:
+                spot = float(tk.history(period="5d")["Close"].dropna().iloc[-1])
+            except Exception:
+                spot = None
+        if not spot:
+            return None
+        cz = calls[(calls["strike"] > spot) & (calls["strike"] <= spot * 1.10)]
+        pz = puts[(puts["strike"] < spot) & (puts["strike"] >= spot * 0.90)]
+        if not len(cz) or not len(pz) or cz["openInterest"].sum() <= 0 or pz["openInterest"].sum() <= 0:
+            return None
+        top_c = cz.nlargest(3, "openInterest")
+        top_p = pz.nlargest(3, "openInterest")
+        ks = np.array(sorted(set(calls["strike"]).union(set(puts["strike"]))), dtype=float)
+        ks = ks[(ks >= spot * 0.85) & (ks <= spot * 1.15)]
+        coi = calls.groupby("strike")["openInterest"].sum()
+        poi = puts.groupby("strike")["openInterest"].sum()
+        ck, cv = coi.index.values.astype(float), coi.values.astype(float)
+        pk, pv = poi.index.values.astype(float), poi.values.astype(float)
+        dolor = [float((cv * np.maximum(K - ck, 0)).sum() + (pv * np.maximum(pk - K, 0)).sum()) for K in ks]
+        mp = float(ks[int(np.argmin(dolor))]) if len(ks) else None
+        tot_c, tot_p = float(calls["openInterest"].sum()), float(puts["openInterest"].sum())
+        return {"sym": sym, "exp": e, "spot": round(spot, 2),
+                "call_wall": float(top_c["strike"].iloc[0]), "put_wall": float(top_p["strike"].iloc[0]),
+                "top_c": [(float(a), int(b)) for a, b in zip(top_c["strike"], top_c["openInterest"])],
+                "top_p": [(float(a), int(b)) for a, b in zip(top_p["strike"], top_p["openInterest"])],
+                "maxpain": mp, "pcr_oi": (round(tot_p / tot_c, 2) if tot_c else None)}
+    except Exception as _dege:
+        _deg(f"muros:{sym}", _dege)
+        return None
+
+
+def rachas_niveles(daily=None, corte=None):
+    """Todo el estudio de la pestaña. Usa las series largas que ya bajó la tabla de caídas."""
+    out = {"idx": [], "red": None, "opex": None, "venc": [], "muros": []}
+    try:
+        for etf, nombre in (("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000")):
+            s = DD4_SERIES.get(etf)
+            if not s or s.get("c") is None:
+                out["idx"].append({"etf": etf, "nombre": nombre, "r": None})
+                continue
+            c = s["c"]
+            if corte is not None:
+                c = c[c.index <= pd.Timestamp(corte)]
+            out["idx"].append({"etf": etf, "nombre": nombre, "src": s.get("src"), "r": rachas_indice(c)})
+        sp = DD4_SERIES.get("SPY") or {}
+        if sp.get("c") is not None:
+            c, hl = sp["c"], sp.get("hl")
+            if corte is not None:
+                c = c[c.index <= pd.Timestamp(corte)]
+                hl = hl[hl.index <= pd.Timestamp(corte)] if hl is not None else None
+            out["red"] = numeros_redondos(c, hl)
+            out["opex"] = opex_estudio(c)
+            out["sp_ultimo"] = float(c.dropna().iloc[-1])
+        hoy = (pd.Timestamp(corte).date() if corte is not None else dt.date.today())
+        out["venc"] = _op_vencimientos(hoy)
+        venc_m = next((v["fecha"] for v in out["venc"] if "opciones" in v["que"] and "próximo" not in v["que"]), None)
+        if venc_m and corte is None:
+            for sym in ("SPY", "QQQ"):
+                d = (daily or {}).get(sym) if sym == "SPY" else (OPER_QQQ.get("d") if OPER_QQQ else None)
+                spot = None
+                try:
+                    spot = float(d["Close"].dropna().iloc[-1]) if d is not None else None
+                except Exception:
+                    spot = None
+                m = muros_opciones(sym, venc_m, spot)
+                if m:
+                    out["muros"].append(m)
+                time.sleep(0.3)
+        r0 = (out["idx"][0].get("r") or {}).get("hoy") if out["idx"] else None
+        print("  🎲 Rachas: " + " · ".join(f"{x['etf']} {x['r']['hoy']['r']:+.1f}% (racha −{RN_UMBRAL:g}%: {x['r']['hoy']['racha2']})"
+                                            for x in out["idx"] if x.get("r"))
+              + (f" · muros: " + ", ".join(f"{m['sym']} calls {m['call_wall']:g} / puts {m['put_wall']:g}" for m in out["muros"]) if out["muros"] else ""))
+    except Exception as _dege:
+        _deg("rachas_niveles", _dege)
+        _avisar("rachas", f"pestaña Rachas y niveles incompleta: {_dege}")
+    return out
+
+
+# ---------------------------------------------------------------- dibujo
+def _rn_celda(st, base=None, solo_pct=False):
+    if not st:
+        return "<td class='r' style='color:#5E708A'>—</td>"
+    col = "#E6EDF6"
+    if base:
+        d = st["pos"] - base["pos"]
+        col = "#2FD08A" if (d >= 5 and st["lo"] > base["pos"] - 0.5) else ("#F4607A" if (d <= -5 and st["hi"] < base["pos"] + 0.5) else "#E6EDF6")
+    return (f"<td class='r' style='line-height:1.3'><b style='color:{col}'>{st['pos']}%</b> "
+            f"<span style='font-size:10px;color:#9FB0C8'>{st['lo']:.0f}–{st['hi']:.0f}</span>"
+            + ("" if solo_pct else f"<div style='font-size:10.5px;color:#9FB0C8'>mediana {st['med']:+.2f}% · peor {st['peor']:+.1f}%</div>")
+            + "</td>")
+
+
+def _rn_lectura_hoy(x):
+    r = x["r"]
+    h = r["hoy"]
+    nom = x["nombre"]
+    if h["racha2"] >= 1:
+        k = min(h["racha2"], 3)
+        f = r["filas"][k - 1]
+        s5, b5 = f["h"][5], r["base"][5]
+        s21 = f["h"][21]
+        al = r["alarga"].get(min(h["racha2"], 2))
+        t = (f"<b>{esc(nom)}</b> lleva <b>{h['racha2']}</b> sesión(es) seguidas cayendo un {RN_UMBRAL:g}% o más. "
+             f"Desde {esc(r['desde'])} ha pasado {f['veces']} veces ({f['ep']} tormentas distintas).")
+        if s5 and b5:
+            t += (f" Una semana después estaba más arriba el <b>{s5['pos']}%</b> de las veces (un día cualquiera: {b5['pos']}%)"
+                  + (f", y a un mes el {s21['pos']}%" if s21 else "") + f"; la peor semana fue {s5['peor']:+.1f}%.")
+        if al is not None:
+            t += f" Al día siguiente vino <b>otro</b> −{RN_UMBRAL:g}% el {al}% de las veces."
+        return t
+    if h["rojo"] >= 3:
+        f = r["filas"][3]
+        s5 = f["h"][5]
+        return (f"<b>{esc(nom)}</b> lleva {h['rojo']} sesiones seguidas en rojo (ninguna de −{RN_UMBRAL:g}%). "
+                + (f"Tras {f['nombre'].split(' ')[0]} seguidas, a una semana estaba más arriba el {s5['pos']}% de las veces." if s5 else ""))
+    return (f"<b>{esc(nom)}</b>: hoy {h['r']:+.2f}%, sin racha de caídas fuertes "
+            f"({h['d10']} día(s) de −{RN_UMBRAL:g}% en las últimas 10 sesiones).")
+
+
+def _rn_html(rn):
+    if not rn:
+        return "<div class='panel full'><h2>🎲 Rachas y niveles</h2><div class='note'>Sin datos hoy.</div></div>"
+    h = []
+    # --- 1. rachas
+    ok = [x for x in rn.get("idx") or [] if x.get("r")]
+    h.append("<div class='panel full'><h2>🎲 Días seguidos cayendo más de un 2%: ¿qué pasó después?</h2>")
+    if ok:
+        h.append("<div style='font-size:13px;line-height:1.7;margin-bottom:8px'>" + "<br>".join(_rn_lectura_hoy(x) for x in ok) + "</div>")
+        trs = []
+        for x in ok:
+            d = x["r"]["hoy"]
+            colr = "#F4607A" if d["r"] <= -RN_UMBRAL else ("#F4B740" if d["r"] < 0 else "#2FD08A")
+            trs.append(f"<tr><td class='se-l'><b>{esc(x['nombre'])}</b><div style='font-size:10px;color:#5E708A'>{esc(d['fecha'])}</div></td>"
+                       f"<td class='r' style='color:{colr};font-weight:700'>{d['r']:+.2f}%</td>"
+                       f"<td class='r' style='font-weight:700;color:{'#F4607A' if d['racha2'] else '#9FB0C8'}'>{d['racha2']}</td>"
+                       f"<td class='r'>{d['rojo']}</td><td class='r'>{d['d10']}</td>"
+                       f"<td class='r'>{d['r5']:+.1f}%</td><td class='r'>{d['dd52']:+.1f}%</td>"
+                       f"<td class='r' style='color:#9FB0C8'>{x['r']['por_ano1']} · {x['r']['por_ano2']}</td></tr>")
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>hoy</th>"
+                 "<th class='r'>día</th><th class='r'>seguidas de −2%</th><th class='r'>seguidas en rojo</th>"
+                 "<th class='r'>días de −2% en 10 ses.</th><th class='r'>5 sesiones</th><th class='r'>desde máx. 1 año</th>"
+                 "<th class='r'>al año: días de −2% · rachas de 2</th></tr>" + "".join(trs) + "</table></div>")
+        for x in ok:
+            r = x["r"]
+            filas = []
+            for f in r["filas"]:
+                ult = " · ".join(f"{u['fecha']}" + ("" if u["r21"] is None else f" ({u['r21']:+.0f}% a 1 mes)") for u in f["ultimas"][-3:])
+                filas.append(f"<tr><td class='se-l' style='white-space:normal;min-width:190px;max-width:300px'>{esc(f['nombre'])}<div style='font-size:10px;color:#5E708A'>{f['ep']} tormentas "
+                             f"({f['veces']} veces) · últimas: {esc(ult) or '—'}</div></td>"
+                             + "".join(_rn_celda(f["h"][hz], r["base"][hz]) for hz, _ in RN_HORIZ) + "</tr>")
+            filas.append("<tr><td class='se-l' style='color:#9FB0C8'>un día cualquiera (la referencia)</td>"
+                         + "".join(_rn_celda(r["base"][hz]) for hz, _ in RN_HORIZ) + "</tr>")
+            h.append(f"<div style='margin-top:12px;font-weight:700'>{esc(x['nombre'])} <span style='font-weight:400;color:#5E708A;font-size:11px'>"
+                     f"desde {esc(r['desde'])} · {esc(str(x.get('src') or ''))}</span></div>"
+                     "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>después de…</th>"
+                     + "".join(f"<th class='r'>{esc(nm)}</th>" for _, nm in RN_HORIZ) + "</tr>" + "".join(filas) + "</table></div>")
+    else:
+        h.append("<div class='note'>Sin series largas de los índices hoy.</div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> cada celda = de todas las veces, en cuántas el índice "
+             "estaba <b>más arriba</b> pasado ese plazo (con su margen de error) y la mediana y la peor. En verde si es claramente "
+             "mejor que un día cualquiera, en rojo si es claramente peor. «Tormentas» = si vuelve a pasar en menos de 10 sesiones "
+             "cuenta como la misma (2008 tuvo decenas de días de −2% y fue una sola crisis). <b>Ojo:</b> que rebote «algún día» "
+             "es casi seguro, pero la peor columna dice cuánto puede caer antes. Pasado, no promesa. No es asesoramiento.</div></div>")
+    # --- 2. números redondos
+    red = rn.get("red")
+    h.append("<div class='panel full'><h2>🎯 ¿Rebota el S&amp;P en los números redondos?</h2>")
+    if red:
+        sp = red["ultimo"]
+        niv = " · ".join(f"<b style='color:{'#E6EDF6' if n['cien'] else '#9FB0C8'}'>{n['nivel']}</b> ({n['dist']:+.1f}%)" for n in red["niveles"])
+        h.append(f"<div style='font-size:13px;margin-bottom:8px'>S&amp;P al cierre: <b>{sp:,.2f}</b> · niveles redondos cerca: {niv}</div>")
+        R = red["res"]
+        def fr(nom, g):
+            x = R.get(g)
+            if not x:
+                return f"<tr><td class='se-l'>{nom}</td><td class='r' colspan='4' style='color:#5E708A'>sin casos</td></tr>"
+            return (f"<tr><td class='se-l'>{nom}</td><td class='r'>{x['n']}</td>"
+                    + _rn_celda(x["aguanta"], (R.get("placebo") or {}).get("aguanta") if g != "placebo" else None, solo_pct=True)
+                    + _rn_celda(x["no_rompe"], (R.get("placebo") or {}).get("no_rompe") if g != "placebo" else None, solo_pct=True)
+                    + _rn_celda(x["r5"], (R.get("placebo") or {}).get("r5") if g != "placebo" else None) + "</tr>")
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>el mínimo del día toca…</th>"
+                 "<th class='r'>veces</th><th class='r'>cierra por encima ese día</th><th class='r'>no lo rompe en 5 sesiones</th>"
+                 "<th class='r'>sube en 5 sesiones</th></tr>"
+                 + fr("<b>un múltiplo de 100</b> (7600, 7700…)", "100") + fr("<b>un múltiplo de 50</b> (7650, 7750…)", "50")
+                 + fr("un nivel cualquiera (7617, 7633, 7667, 7683…) — la referencia", "placebo") + "</table></div>")
+        a, p = (R.get("100") or {}).get("aguanta"), (R.get("placebo") or {}).get("aguanta")
+        if a and p:
+            dif = a["pos"] - p["pos"]
+            if a["lo"] > p["hi"]:
+                ver = f"<b style='color:#2FD08A'>Sí hay efecto:</b> en los múltiplos de 100 aguanta {dif:+d} puntos más que en un nivel cualquiera, y los márgenes de error no se tocan."
+            elif abs(dif) <= 3 or (a["lo"] <= p["hi"] and p["lo"] <= a["hi"]):
+                ver = (f"<b style='color:#F4B740'>No se distingue de un nivel cualquiera</b> ({a['pos']}% frente a {p['pos']}%): con estos datos, "
+                       "«rebota en los redondos» es más una creencia que un patrón. Si rebota en 7600 es porque iba a rebotar por ahí.")
+            else:
+                ver = f"Diferencia de {dif:+d} puntos con los márgenes de error solapados: pista débil, no prueba."
+            h.append(f"<div style='font-size:13px;margin-top:8px'>{ver}</div>")
+        h.append(f"<div class='note' style='margin-top:6px'><b>Cómo se mide:</b> desde {esc(red['desde'])} (S&amp;P por encima de 2.200), "
+                 "cada vez que el mínimo del día baja hasta un nivel que estaba por debajo del cierre anterior (o a menos de un 0,25% de él). "
+                 "«Cierra por encima» = ese día el cierre queda sobre el nivel. «No lo rompe» = ningún cierre de las 5 sesiones siguientes "
+                 "más de un 0,5% por debajo. La referencia son niveles que no son redondos: si los redondos no ganan claramente a la "
+                 "referencia, no hay efecto. No es asesoramiento.</div>")
+    else:
+        h.append("<div class='note'>Sin máximos y mínimos diarios del S&amp;P hoy: no se puede medir.</div>")
+    h.append("</div>")
+    # --- 3. vencimientos
+    h.append("<div class='panel full'><h2>📅 Vencimientos de opciones: la semana del tercer viernes</h2>")
+    ven = rn.get("venc") or []
+    if ven:
+        h.append("<div style='font-size:13px;margin-bottom:8px'>" + " · ".join(
+            f"<b>{esc(v['que'])}</b>: {esc(str(v['fecha']))} " + ("(<b style='color:#F4B740'>hoy</b>)" if v["dias"] == 0 else
+                                                                 (f"(<b style='color:#F4B740'>mañana</b>)" if v["dias"] == 1 else f"(en {v['dias']} días)"))
+            for v in ven) + "</div>")
+    for m in rn.get("muros") or []:
+        f = (rn.get("sp_ultimo") / m["spot"]) if (m["sym"] == "SPY" and rn.get("sp_ultimo")) else None
+        eq = (lambda k: f" <span style='color:#5E708A'>≈ S&amp;P {k * f:,.0f}</span>") if f else (lambda k: "")
+        tc = " · ".join(f"{k:g} ({oi:,})" for k, oi in m["top_c"])
+        tp = " · ".join(f"{k:g} ({oi:,})" for k, oi in m["top_p"])
+        h.append(f"<div style='margin:6px 0;padding:9px 12px;background:#0E1626;border-radius:8px;font-size:12.5px;line-height:1.6'>"
+                 f"<b>{esc(m['sym'])}</b> vencimiento {esc(m['exp'])} · precio {m['spot']:g}<br>"
+                 f"<b style='color:#2FD08A'>Muro de calls</b> (techo): <b>{m['call_wall']:g}</b>{eq(m['call_wall'])} "
+                 f"<span style='color:#9FB0C8'>({(m['call_wall'] / m['spot'] - 1) * 100:+.1f}%) · más calls: {tc}</span><br>"
+                 f"<b style='color:#F4607A'>Muro de puts</b> (suelo): <b>{m['put_wall']:g}</b>{eq(m['put_wall'])} "
+                 f"<span style='color:#9FB0C8'>({(m['put_wall'] / m['spot'] - 1) * 100:+.1f}%) · más puts: {tp}</span><br>"
+                 + (f"<b>Max pain</b> (donde más opciones vencen sin valor): {m['maxpain']:g}{eq(m['maxpain'])} "
+                    f"<span style='color:#9FB0C8'>({(m['maxpain'] / m['spot'] - 1) * 100:+.1f}%)</span>" if m.get("maxpain") else "")
+                 + (f" · put/call por contratos abiertos {m['pcr_oi']}" if m.get("pcr_oi") is not None else "") + "</div>")
+    if not rn.get("muros"):
+        h.append("<div class='note'>Sin cadena de opciones hoy (Yahoo no respondió o modo viaje).</div>")
+    o = rn.get("opex")
+    if o:
+        def fo(nom, st, base):
+            if not st:
+                return ""
+            return (f"<tr><td class='se-l'>{nom}</td><td class='r'>{st['n']}</td>" + _rn_celda(st, base)
+                    + f"<td class='r'>{st['media']:+.2f}%</td></tr>")
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P 500</th>"
+                 "<th class='r'>veces</th><th class='r'>sube</th><th class='r'>media</th></tr>"
+                 + fo("<b>semana del vencimiento</b> (mensual)", o["sem"], o["otras"])
+                 + fo("<b>semana siguiente</b> al vencimiento", o["sig"], o["otras"])
+                 + fo("&nbsp;&nbsp;solo trimestrales: semana del vencimiento", o["sem_q"], o["otras"])
+                 + fo("&nbsp;&nbsp;solo trimestrales: semana siguiente", o["sig_q"], o["otras"])
+                 + fo("el propio día del vencimiento", o["dia"], o["cualquier_dia"])
+                 + fo("<span style='color:#9FB0C8'>el resto de semanas (referencia)</span>", o["otras"], None)
+                 + fo("<span style='color:#9FB0C8'>un día cualquiera (referencia)</span>", o["cualquier_dia"], None)
+                 + "</table></div>")
+    h.append(f"<div class='note' style='margin-top:6px'><b>Qué son los muros:</b> el strike con más calls abiertas por encima del precio "
+             "y el de más puts por debajo. La idea que circula es que los creadores de mercado que vendieron esas opciones se cubren "
+             "comprando y vendiendo el índice, y eso frena el precio cerca de esos niveles hasta el vencimiento; después el muro "
+             "desaparece y el mercado queda «suelto» (de ahí lo de la semana siguiente). <b>Lo que NO es:</b> el interés abierto es "
+             "de ayer, no dice si esas opciones son compradas o vendidas, y no hay histórico gratis para comprobar si los muros "
+             "aciertan: es contexto. Lo que sí se puede medir es la tabla de semanas (S&amp;P desde "
+             f"{esc((o or {}).get('desde') or '1990')}). No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+
+# ======================================================================
+# v7.9 — CALIDAD FRENTE A ALTA BETA EN LAS CAÍDAS ("compra caja barata, no promesas")
+#   A) Backtest honesto con FONDOS que aplican el filtro con los datos de su momento (sin trampa de
+#      supervivientes): en cada caída del S&P de al menos un 10%, cuánto cayó cada estilo, cuánto
+#      subió desde el suelo y cuánto tardó en recuperar el nivel de antes.
+#   B) Lista semanal: acciones del S&P que han caído fuerte, con su caja libre, PER y beta.
+#   Solo informa. No es asesoramiento.
+# ======================================================================
+CAL_ETFS = [("SPY", "S&P 500 (referencia)", "ref"),
+            ("COWZ", "Mucha caja libre y barata (COWZ)", "cal"),
+            ("SPHQ", "Calidad (SPHQ)", "cal"),
+            ("QUAL", "Calidad (QUAL)", "cal"),
+            ("USMV", "Baja volatilidad (USMV)", "cal"),
+            ("SPHB", "Alta beta (SPHB)", "beta"),
+            ("ARKK", "Crecimiento sin beneficios (ARKK)", "beta")]
+CAL_INI = dt.date(2005, 1, 1)
+CAL_CAIDA = 10.0               # caída mínima del S&P para contar como crisis
+CAL_DD_MIN = 20.0              # lista semanal: caída mínima de la acción desde su máximo de un año
+CAL_FCF_ALTO = 5.0             # % de caja libre sobre lo que vale en bolsa para "mucha caja"
+CAL_PER_BAJO = 20.0            # PER (previsto o actual) para "barata"
+CAL_MAX_CONSULTAS = 120        # consultas a Yahoo por noche como mucho (el resto, de la caché)
+CAL_REFRESCO_DIAS = 7
+FUND_FILE = os.path.join(SEGUIMIENTO_DIR, "fundamentales.json")
+
+
+def _cal_episodios(c, umbral=CAL_CAIDA):
+    """Caídas del S&P de al menos `umbral`% desde su máximo: (pico, suelo, recuperación o None)."""
+    v = c.values
+    eps, i, n = [], 0, len(v)
+    pico_i, pico_v = 0, v[0]
+    while i < n:
+        if v[i] >= pico_v:
+            pico_i, pico_v = i, v[i]
+            i += 1
+            continue
+        if v[i] / pico_v - 1 <= -umbral / 100:
+            j = i
+            suelo_i = i
+            while j < n and v[j] < pico_v:
+                if v[j] < v[suelo_i]:
+                    suelo_i = j
+                j += 1
+            eps.append((pico_i, suelo_i, j if j < n else None))
+            if j >= n:
+                break
+            pico_i, pico_v, i = j, v[j], j + 1
+            continue
+        i += 1
+    return eps
+
+
+def factores_crisis(corte=None):
+    try:
+        px = {}
+        for sym, _, _ in CAL_ETFS:
+            try:
+                d, _s = get_ohlcv(sym, CAL_INI, dt.date.today())
+            except Exception as _dege:
+                _deg(f"calidad:{sym}", _dege)
+                d = None
+            time.sleep(0.2)
+            if d is None or "Close" not in d.columns:
+                continue
+            s = d["Close"].dropna().astype(float)
+            if corte is not None:
+                s = s[s.index <= pd.Timestamp(corte)]
+            if len(s) > 250:
+                px[sym] = s
+        if "SPY" not in px:
+            return None
+        spy = px["SPY"]
+        eps = _cal_episodios(spy)
+        filas = []
+        for pi, si, ri in eps:
+            fp, fs = spy.index[pi], spy.index[si]
+            ep = {"pico": str(fp.date()), "suelo": str(fs.date()), "recup": (str(spy.index[ri].date()) if ri is not None else None),
+                  "caida_spy": round(100 * (spy.iloc[si] / spy.iloc[pi] - 1), 1), "etf": {}}
+            for sym, _, _ in CAL_ETFS:
+                s = px.get(sym)
+                if s is None or s.index[0] > fp:
+                    continue
+                antes = float(s.asof(fp))
+                tramo = s[(s.index >= fp) & (s.index <= fs + pd.Timedelta(days=15))]
+                caida = round(100 * (float(tramo.min()) / antes - 1), 1)
+                en_suelo = float(s.asof(fs))
+                pos_s = s.index.searchsorted(fs)
+                reb = {}
+                for h in (63, 126, 252):
+                    reb[h] = (round(100 * (float(s.iloc[pos_s + h]) / en_suelo - 1), 1) if pos_s + h < len(s) else None)
+                desp = s.iloc[pos_s:]
+                vuelta = desp[desp >= antes]
+                dias = int(s.index.get_loc(vuelta.index[0]) - pos_s) if len(vuelta) else None
+                ep["etf"][sym] = {"caida": caida, "reb": reb, "dias": dias,
+                                  "hoy": round(100 * (float(s.iloc[-1]) / antes - 1), 1)}
+            filas.append(ep)
+        resumen = {}
+        for sym, nom, tipo in CAL_ETFS:
+            xs = [e["etf"][sym] for e in filas if sym in e["etf"]]
+            if not xs:
+                continue
+            ds = sorted(x["dias"] for x in xs if x["dias"] is not None)
+            r12 = [x["reb"][252] for x in xs if x["reb"][252] is not None]
+            r3 = [x["reb"][63] for x in xs if x["reb"][63] is not None]
+            resumen[sym] = {"n": len(xs), "caida": round(sum(x["caida"] for x in xs) / len(xs), 1),
+                            "peor": min(x["caida"] for x in xs),
+                            "recup": len(ds), "dias_med": (ds[len(ds) // 2] if ds else None),
+                            "r3": (round(sum(r3) / len(r3), 1) if r3 else None),
+                            "r12": (round(sum(r12) / len(r12), 1) if r12 else None)}
+        print("  🛡️ Calidad vs alta beta: " + " · ".join(f"{s} caída media {r['caida']}% ({r['n']} crisis)" for s, r in resumen.items()))
+        return {"episodios": filas, "resumen": resumen, "desde": str(spy.index[0].date())}
+    except Exception as _dege:
+        _deg("factores_crisis", _dege)
+        _avisar("calidad", f"estudio de calidad frente a alta beta no calculado: {_dege}")
+        return None
+
+
+def _fund_leer():
+    try:
+        with open(FUND_FILE, encoding="utf-8") as f:
+            x = json.load(f)
+        return x if isinstance(x, dict) else {}
+    except Exception:
+        return {}
+
+
+def _fund_yahoo(sym):
+    """Foto de hoy de la empresa en Yahoo. None si no responde."""
+    if yf is None:
+        return None
+    try:
+        inf = yf.Ticker(sym.replace(".", "-")).info or {}
+        mc = inf.get("marketCap")
+        if not mc:
+            return None
+        g = lambda k: (float(inf[k]) if isinstance(inf.get(k), (int, float)) else None)
+        return {"fecha": str(dt.date.today()), "nom": str(inf.get("shortName") or sym)[:40], "sector": inf.get("sector"),
+                "mc": float(mc), "fcf": g("freeCashflow"), "per": g("trailingPE"), "per_f": g("forwardPE"),
+                "margen": g("profitMargins"), "deuda": g("totalDebt"), "caja": g("totalCash"), "ebitda": g("ebitda")}
+    except Exception:
+        return None          # los fallos se cuentan en cribado_caja (uno por símbolo inundaría el panel de salud)
+
+
+def cribado_caja(stk_univ, spy_close=None, viaje=False):
+    """Acciones del S&P que han caído al menos CAL_DD_MIN% desde su máximo de un año, con su caja libre,
+       PER, margen y beta. Los fundamentales se guardan y se refrescan cada semana."""
+    try:
+        if not stk_univ:
+            return None
+        rs = spy_close.pct_change().dropna() if spy_close is not None else None
+        caidas = []
+        for sym, c in stk_univ.items():
+            c = c.dropna()
+            if len(c) < 200:
+                continue
+            dd = float(c.iloc[-1] / c.iloc[-252:].max() - 1) * 100
+            if dd > -CAL_DD_MIN:
+                continue
+            beta = None
+            if rs is not None:
+                r = c.pct_change().dropna()
+                j = r.index.intersection(rs.index)[-252:]
+                if len(j) > 120:
+                    vv = float(np.var(rs.loc[j].values))
+                    if vv > 0:
+                        beta = float(np.cov(r.loc[j].values, rs.loc[j].values)[0, 1] / vv)
+            fmax = c.iloc[-252:].idxmax()
+            caidas.append({"sym": sym, "dd": round(dd, 1), "beta": (round(beta, 2) if beta is not None else None),
+                           "fmax": str(fmax.date()), "r1m": round(100 * float(c.iloc[-1] / c.iloc[-22] - 1), 1)})
+        cache = _fund_leer()
+        nuevas = fallos = fallos_seg = 0
+        if not viaje:
+            hoy = dt.date.today()
+            for x in sorted(caidas, key=lambda x: x["dd"]):
+                f = cache.get(x["sym"])
+                viejo = True
+                try:
+                    viejo = f is None or (hoy - dt.date.fromisoformat(f["fecha"])).days >= CAL_REFRESCO_DIAS
+                except Exception:
+                    viejo = True
+                if not viejo or nuevas >= CAL_MAX_CONSULTAS:
+                    continue
+                nf = _fund_yahoo(x["sym"])
+                nuevas += 1
+                if nf:
+                    cache[x["sym"]] = nf
+                    fallos_seg = 0
+                else:
+                    fallos += 1
+                    fallos_seg += 1
+                    if fallos_seg >= 5:
+                        _avisar("calidad", f"Yahoo no da la contabilidad ({fallos} fallos seguidos): la lista de caídas con caja usa la caché guardada")
+                        break
+                time.sleep(0.35)
+            if nuevas > fallos:
+                try:
+                    os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
+                    guardar_json_seguro(FUND_FILE, cache, indent=0)
+                except Exception as _dege:
+                    _deg("fund:guardar", _dege)
+        filas = []
+        for x in caidas:
+            f = cache.get(x["sym"])
+            if not f:
+                x.update({"tipo": "sin dato", "nom": x["sym"]})
+                filas.append(x)
+                continue
+            fcfy = (100 * f["fcf"] / f["mc"]) if (f.get("fcf") is not None and f.get("mc")) else None
+            per = f.get("per_f") if f.get("per_f") and f["per_f"] > 0 else f.get("per")
+            deuda_n = None
+            if f.get("ebitda") and f["ebitda"] > 0 and f.get("deuda") is not None:
+                deuda_n = round((f["deuda"] - (f.get("caja") or 0)) / f["ebitda"], 1)
+            m = f.get("margen")
+            if (fcfy is not None and fcfy <= 0) or (m is not None and m <= 0):
+                tipo = "sin beneficios"
+            elif fcfy is not None and fcfy >= CAL_FCF_ALTO and per is not None and 0 < per <= CAL_PER_BAJO:
+                tipo = "caja y barata"
+            elif fcfy is not None and fcfy >= CAL_FCF_ALTO:
+                tipo = "mucha caja"
+            else:
+                tipo = "intermedia"
+            x.update({"nom": f.get("nom") or x["sym"], "sector": f.get("sector"), "fcfy": (round(fcfy, 1) if fcfy is not None else None),
+                      "per": (round(per, 1) if per else None), "margen": (round(100 * m, 1) if m is not None else None),
+                      "deuda_n": deuda_n, "tipo": tipo, "f_fecha": f.get("fecha")})
+            filas.append(x)
+        orden = {"caja y barata": 0, "mucha caja": 1, "intermedia": 2, "sin beneficios": 3, "sin dato": 4}
+        filas.sort(key=lambda x: (orden.get(x["tipo"], 9), x["dd"]))
+        nb = sum(1 for x in filas if x["tipo"] == "caja y barata")
+        print(f"  💰 Caídas con caja: {len(filas)} acciones caen ≥{CAL_DD_MIN:g}% · {nb} con mucha caja y baratas · {nuevas} consultas a Yahoo")
+        return {"filas": filas, "nuevas": nuevas, "viaje": viaje}
+    except Exception as _dege:
+        _deg("cribado_caja", _dege)
+        _avisar("calidad", f"lista de caídas con caja no calculada: {_dege}")
+        return None
+
+
+def _cal_html(fc, cr):
+    h = ["<div class='panel full'><h2>🛡️ En las caídas: ¿se recupera antes la calidad que la alta beta?</h2>"]
+    if fc and fc.get("resumen"):
+        R = fc["resumen"]
+        trs = []
+        for sym, nom, tipo in CAL_ETFS:
+            r = R.get(sym)
+            if not r:
+                continue
+            col = {"ref": "#9FB0C8", "cal": "#2FD08A", "beta": "#F4607A"}[tipo]
+            trs.append(f"<tr><td class='se-l'><b style='color:{col}'>{esc(nom)}</b></td><td class='r'>{r['n']}</td>"
+                       f"<td class='r' style='color:#F4B740'>{r['caida']:+.1f}%<div style='font-size:10px;color:#F4607A'>peor {r['peor']:+.1f}%</div></td>"
+                       f"<td class='r'>{'—' if r['r3'] is None else '%+.1f%%' % r['r3']}</td>"
+                       f"<td class='r'>{'—' if r['r12'] is None else '%+.1f%%' % r['r12']}</td>"
+                       f"<td class='r'>{r['recup']} de {r['n']}<div style='font-size:10px;color:#9FB0C8'>"
+                       f"{'' if r['dias_med'] is None else 'mediana %d sesiones' % r['dias_med']}</div></td></tr>")
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>estilo</th>"
+                 "<th class='r'>crisis</th><th class='r'>caída media</th><th class='r'>rebote 3 meses desde el suelo</th>"
+                 "<th class='r'>rebote 12 meses</th><th class='r'>volvió al nivel de antes</th></tr>" + "".join(trs) + "</table></div>")
+        # detalle por crisis
+        cab = "".join(f"<th class='r'>{esc(s)}</th>" for s, _, _ in CAL_ETFS if s in R)
+        filas = []
+        for e in fc["episodios"]:
+            cel = []
+            for s, _, _ in CAL_ETFS:
+                if s not in R:
+                    continue
+                x = e["etf"].get(s)
+                if not x:
+                    cel.append("<td class='r' style='color:#5E708A'>no existía</td>")
+                    continue
+                rec = (f"{x['dias']} ses" if x["dias"] is not None else f"<b style='color:#F4607A'>no ha vuelto</b> ({x['hoy']:+.0f}%)")
+                r12 = x["reb"][252]
+                cel.append(f"<td class='r' style='line-height:1.3'>{x['caida']:+.0f}%"
+                           f"<div style='font-size:10px;color:#9FB0C8'>{'' if r12 is None else 'rebote 12m %+.0f%%' % r12}</div>"
+                           f"<div style='font-size:10px'>{rec}</div></td>")
+            filas.append(f"<tr><td class='se-l'>{esc(e['pico'])} → {esc(e['suelo'])}<div style='font-size:10px;color:#5E708A'>"
+                         f"S&amp;P {e['caida_spy']:+.1f}%</div></td>" + "".join(cel) + "</tr>")
+        h.append("<div style='margin-top:10px;font-weight:700'>Crisis por crisis <span style='font-weight:400;font-size:11px;color:#5E708A'>"
+                 "(caída · rebote a 12 meses desde el suelo del S&amp;P · sesiones hasta volver al nivel de antes)</span></div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:11.5px'><tr><th class='se-l'>caída del S&amp;P</th>"
+                 + cab + "</tr>" + "".join(filas) + "</table></div>")
+    else:
+        h.append("<div class='note'>Sin históricos de los fondos hoy.</div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Por qué con fondos y no con acciones:</b> Yahoo solo da la contabilidad de "
+             "hoy. Filtrar 2022 con los datos de hoy es trampa (Meta genera hoy mucha caja precisamente porque se recuperó), y la "
+             "lista del S&amp;P de hoy solo tiene supervivientes. Estos fondos eligen sus empresas cada trimestre con los datos "
+             "de ese momento, así que miden la idea de verdad. <b>Cómo se lee:</b> crisis = caídas del S&amp;P de al menos un "
+             f"{CAL_CAIDA:g}% (con dividendos). Caída = lo peor de cada fondo entre el máximo y el suelo del S&amp;P. «Volvió» = "
+             "sesiones desde el suelo hasta recuperar su precio del día del máximo. Pocas crisis: es una pista, no una ley. "
+             "No es asesoramiento.</div></div>")
+    # B) lista semanal
+    h.append(f"<div class='panel full'><h2>💰 Caídas con caja: acciones del S&amp;P que caen un {CAL_DD_MIN:g}% o más</h2>")
+    con_dato = [x for x in ((cr or {}).get("filas") or []) if x["tipo"] != "sin dato"]
+    sin_dato = len((cr or {}).get("filas") or []) - len(con_dato)
+    if cr and cr.get("filas") and not con_dato and not cr.get("viaje"):
+        h.append(f"<div class='note'>{len(cr['filas'])} acciones del S&amp;P caen un {CAL_DD_MIN:g}% o más, pero hoy Yahoo no ha dado su "
+                 "contabilidad y no hay nada guardado todavía. Se irá rellenando las próximas noches.</div>")
+    elif con_dato:
+        trs = []
+        for x in con_dato[:60]:
+            col = {"caja y barata": "#2FD08A", "mucha caja": "#7FD8A0", "intermedia": "#9FB0C8", "sin beneficios": "#F4607A"}.get(x["tipo"], "#5E708A")
+            bc = "#F4607A" if (x.get("beta") or 0) >= 1.5 else ("#F4B740" if (x.get("beta") or 0) >= 1.1 else "#9FB0C8")
+            trs.append(f"<tr><td class='se-l'><b>{esc(x['sym'])}</b> <span style='color:#9FB0C8'>{esc(x.get('nom') or '')}</span>"
+                       f"<div style='font-size:10px;color:#5E708A'>{esc(x.get('sector') or '')}</div></td>"
+                       f"<td class='r' style='color:{col};font-weight:700'>{esc(x['tipo'])}</td>"
+                       f"<td class='r' style='color:#F4607A'>{x['dd']:+.1f}%<div style='font-size:10px;color:#9FB0C8'>máx. {esc(x['fmax'])}</div></td>"
+                       f"<td class='r'>{x['r1m']:+.1f}%</td>"
+                       f"<td class='r'>{'—' if x.get('fcfy') is None else '%.1f%%' % x['fcfy']}</td>"
+                       f"<td class='r'>{'—' if x.get('per') is None else '%.1f' % x['per']}</td>"
+                       f"<td class='r'>{'—' if x.get('margen') is None else '%.1f%%' % x['margen']}</td>"
+                       f"<td class='r'>{'—' if x.get('deuda_n') is None else '%.1f×' % x['deuda_n']}</td>"
+                       f"<td class='r' style='color:{bc}'>{'—' if x.get('beta') is None else '%.2f' % x['beta']}</td></tr>")
+        nb = sum(1 for x in cr["filas"] if x["tipo"] == "caja y barata")
+        h.append(f"<div style='font-size:13px;margin-bottom:8px'><b>{len(cr['filas'])}</b> acciones del S&amp;P caen un {CAL_DD_MIN:g}% o más "
+                 f"desde su máximo de un año; <b style='color:#2FD08A'>{nb}</b> generan mucha caja (≥{CAL_FCF_ALTO:g}% de lo que valen) y "
+                 f"están baratas (PER ≤ {CAL_PER_BAJO:g})."
+                 + (f" <span style='color:#5E708A'>({sin_dato} aún sin contabilidad: se completan las próximas noches, "
+                    f"{CAL_MAX_CONSULTAS} por noche.)</span>" if sin_dato else "") + "</div>")
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>acción</th>"
+                 "<th class='r'>tipo</th><th class='r'>caída</th><th class='r'>último mes</th><th class='r'>caja libre / valor</th>"
+                 "<th class='r'>PER</th><th class='r'>margen</th><th class='r'>deuda neta / EBITDA</th><th class='r'>beta</th></tr>"
+                 + "".join(trs) + "</table></div>")
+    elif cr and cr.get("viaje"):
+        h.append("<div class='note'>En modo viaje no se muestra: la contabilidad es la de hoy, no la de la fecha del viaje.</div>")
+    else:
+        h.append("<div class='note'>Hoy ninguna acción del S&amp;P cae tanto, o no hay datos.</div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> caja libre / valor = el dinero que genera al año (después de "
+             "inversiones) por cada 100 € que vale en bolsa; un 5% o más es mucho. PER = el previsto si existe, si no el actual. "
+             "Margen = beneficio neto sobre ventas (negativo = pierde dinero). Deuda neta / EBITDA: más de 3 empieza a pesar. "
+             "Beta = cuánto se mueve frente al S&amp;P en el último año (1,5 = un 50% más). La contabilidad viene de Yahoo y se "
+             "refresca cada semana; puede tener errores o ir con retraso. Es una lista para mirar, no para comprar sin más: una "
+             "empresa barata que cae puede estar barata por algo. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -19432,6 +21087,15 @@ def main():
     dji_se = compute_seasonality(dji_close) if dji_close is not None else None
     if dji_se:
         season["Dow Jones"] = dji_se
+    # v7.8 — caidas de los cuatro indices (2,5 / 5 / 10 / 20%) para la pestaña Operativa
+    _dd4 = None
+    try:
+        _dd4 = dd_cuatro_indices(long_close, long_hl, long_src,
+                                 {"^NDX": nq_close, "^DJI": dji_close, "^RUT": rut_close},
+                                 corte=(df.index[-1] if VIAJE_A else None))
+    except Exception as _e_dd4:
+        _avisar("caidas4", f"tabla de caídas de los 4 índices no calculada: {_e_dd4}")
+        _dd4 = None
     # VIX: la estacionalidad del MIEDO. OJO con la fuente: sin fallback a ETF, porque VIXY y compania
     # son futuros de VIX (sufren contango y decaen brutalmente) — su estacionalidad NO es la del VIX
     # al contado y meteria un dato falso. Solo Stooq -> Yahoo, o no se pinta.
@@ -19785,12 +21449,38 @@ def main():
                                   _mcc, _zweig, _amp, _estres, _presion, plan, _centinela, risk, regime, fg_idx)
         if _oper:
             _oper["conv"] = _conv
+            _oper["dd4"] = _dd4
+            # v7.9 — sectores: la estrategia del −9% y su backtest (solo informa)
+            try:
+                _oper["sect_bt"] = backtest_sectores(spy=None,
+                                                     corte=(df.index[-1] if VIAJE_A else None))
+            except Exception as _e_sb:
+                _avisar("sectores", f"backtest de sectores no calculado: {_e_sb}")
+                _oper["sect_bt"] = None
+            _oper["sect"] = tabla_sectores(daily, flow, _oper.get("sect_bt"))
+            _cands = [f["sym"] for f in _oper["sect"] if f["senal"] == "CANDIDATO"]
+            print(f"  🎯 Sectores −{SECT_CAIDA:g}%: {len(_oper['sect'])} vigilados · candidatos: {', '.join(_cands) or 'ninguno'}")
             print("  🧭 Operativa índices: " + " · ".join(f"{r['sym']} {r['score']}/10 {r['ver']}" for r in _oper["orden"]))
     except Exception as _e_op:
         _avisar("operativa", f"pestaña Operativa índices no calculada: {_e_op}")
         _oper = None
+    # v7.9 — Rachas y niveles: rachas de −2%, números redondos y vencimientos (solo informa)
+    _rn = None
+    try:
+        _rn = rachas_niveles(daily, corte=(df.index[-1] if VIAJE_A else None))
+        try:
+            _rn["calidad"] = factores_crisis(corte=(df.index[-1] if VIAJE_A else None))
+        except Exception as _e_fc:
+            _avisar("calidad", f"estudio de calidad no calculado: {_e_fc}")
+        try:
+            _spy_c = (daily or {}).get(BENCH)
+            _rn["caja"] = cribado_caja(_stk_univ, _spy_c["Close"].dropna() if _spy_c is not None else None, viaje=bool(VIAJE_A))
+        except Exception as _e_cc:
+            _avisar("calidad", f"lista de caídas con caja no calculada: {_e_cc}")
+    except Exception as _e_rn:
+        _avisar("rachas", f"pestaña Rachas y niveles no calculada: {_e_rn}")
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res, operativa=_oper)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res, operativa=_oper, rachas=_rn)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

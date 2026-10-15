@@ -3818,6 +3818,12 @@
 {
 "date": "2026-10-15",
 "tag": "GIRO",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-10-15",
+"tag": "GIRO",
 "sym": "DRAM",
 "dir": 1
 },
@@ -3832,12 +3838,6 @@
 "tag": "GIRO",
 "sym": "EWY",
 "dir": 1
-},
-{
-"date": "2026-10-15",
-"tag": "FLOW",
-"sym": "MAGS",
-"dir": -1
 },
 {
 "date": "2026-10-15",
@@ -3860,13 +3860,13 @@
 {
 "date": "2026-10-15",
 "tag": "SUELO",
-"sym": "XLI",
+"sym": "DRIV",
 "dir": 1
 },
 {
 "date": "2026-10-15",
 "tag": "SUELO",
-"sym": "DRIV",
+"sym": "XLI",
 "dir": 1
 },
 {

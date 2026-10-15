@@ -18244,17 +18244,25 @@ def _op_tendencia(c):
     m200 = float(c.rolling(200).mean().iloc[-1]) if len(c) >= 200 else None
     dd = (last / float(c.iloc[-252:].max()) - 1) * 100
     s50, s200 = last > m50, (m200 is None or last > m200)
+    m20 = float(c.rolling(20).mean().iloc[-1])
+    r5 = (last / float(c.iloc[-6]) - 1) * 100 if len(c) > 6 else 0.0
     col = "v" if (s50 and s200) else ("r" if (not s50 and not s200) else "a")
+    retro = bool(col == "v" and last < m20)       # v7.8: retroceso dentro de la tendencia
+    if retro:
+        col = "a"
     txt = (f"precio {'por encima' if s50 else 'por debajo'} de la media de 50"
            + ("" if m200 is None else f" y {'por encima' if last > m200 else 'por debajo'} de la de 200")
-           + f" · {dd:+.1f}% desde máximos")
+           + (" pero por debajo de la de 20 (retroceso)" if retro else "")
+           + f" · {dd:+.1f}% desde máximos · {r5:+.1f}% en 5 sesiones")
     gat = None
-    if not s50:
+    if retro:
+        gat = f"recuperar la media de 20 ({m20:.2f}, a {(m20 / last - 1) * 100:+.1f}%)"
+    elif not s50:
         gat = f"cerrar por encima de la media de 50 ({m50:.2f}, a {(m50 / last - 1) * 100:+.1f}%)"
     elif m200 is not None and not s200:
         gat = f"cerrar por encima de la media de 200 ({m200:.2f}, a {(m200 / last - 1) * 100:+.1f}%)"
-    return {"c": col, "txt": txt, "gatillo": gat, "dd": round(dd, 1), "last": last,
-            "m50": round(m50, 2), "m200": (round(m200, 2) if m200 is not None else None)}
+    return {"c": col, "txt": txt, "gatillo": gat, "dd": round(dd, 1), "last": last, "r5": round(r5, 1),
+            "m20": round(m20, 2), "m50": round(m50, 2), "m200": (round(m200, 2) if m200 is not None else None)}
 
 
 def _op_flujo(f, ohlcv):
@@ -18271,11 +18279,15 @@ def _op_flujo(f, ohlcv):
     if sg is None:
         return {"c": "n", "txt": "sin dato de flujo", "gatillo": None, "cmf": None, "tramos": tr}
     col = {1: "v", 0: "a", -1: "r"}[sg]
-    txt = f"CMF {cmf:+.2f} · {est}"
+    if col == "v" and baja3:                       # v7.8: entra, pero cada vez menos
+        col = "a"
+    txt = f"CMF {cmf:+.2f} · {est}" + (" pero bajando tres tramos seguidos" if (sg == 1 and baja3) else "")
     if tr:
         txt += " · tramos " + " → ".join(f"{x:+.2f}" for x in tr) + (" ↗3t" if sube3 else (" ↘3t" if baja3 else ""))
     gat = None
-    if sg == -1:
+    if sg == 1 and baja3:
+        gat = "que el CMF deje de bajar tramo a tramo (ahora ↘3t)"
+    elif sg == -1:
         gat = f"que el dinero deje de salir: CMF por encima de −0.05 (ahora {cmf:+.2f})"
     elif sg == 0:
         gat = f"que entre dinero: CMF por encima de +0.05 (ahora {cmf:+.2f})" + (" — va camino: ↗3t" if sube3 else "")
@@ -18287,7 +18299,12 @@ def _op_composicion(dc):
     if not dc:
         return {"c": "n", "txt": "sin desglose hoy", "gatillo": None, "tiran": [], "frenan": []}
     pe, ps = float(dc.get("p_entra") or 0), float(dc.get("p_sale") or 0)
-    col = "v" if pe >= 50 else ("r" if ps >= 50 else "a")
+    pp = float(dc.get("p_plano") or 0)
+    # v7.8: el color y la frase son los del Detector de suelos (miden sobre el peso CON dato). Antes la
+    # pestaña usaba su propia regla sobre el peso total y podia no coincidir con el detector.
+    col = {"verde": "v", "ambar": "a", "rojo": "r"}.get(dc.get("color"), "a")
+    _med = pe + pp + ps
+    fe = (100 * pe / _med) if _med > 0 else 0.0
     ti, fr = {}, {}
     for fila in dc.get("filas") or []:
         for t, w, c in fila.get("tiran") or []:
@@ -18304,8 +18321,8 @@ def _op_composicion(dc):
                 fr[_nm] = (fila.get("peso") or 0, ch.get("cmf") or 0)
     tiran = sorted(((t, w, c) for t, (w, c) in ti.items()), key=lambda x: -x[1])[:3]
     frenan = sorted(((t, w, c) for t, (w, c) in fr.items()), key=lambda x: -x[1])[:3]
-    gat = None if col == "v" else f"más del 50% del peso con dinero entrando (ahora {pe:.0f}%)"
-    return {"c": col, "txt": f"{pe:.0f}% del peso entra · {ps:.0f}% sale", "gatillo": gat,
+    gat = None if col == "v" else f"más de la mitad del peso medido con dinero entrando (ahora {fe:.0f}%)"
+    return {"c": col, "txt": f"{pe:.0f}% entra · {pp:.0f}% plano · {ps:.0f}% sale — {dc.get('lectura') or ''}", "gatillo": gat,
             "tiran": tiran, "frenan": frenan, "pe": round(pe, 1), "ps": round(ps, 1),
             "modo": dc.get("modo"), "ref": dc.get("ref"), "fuente": dc.get("fuente"),
             "fecha_pesos": dc.get("fecha_pesos"), "estado_pesos": dc.get("estado_pesos")}
@@ -18411,9 +18428,13 @@ def _op_veredicto(puntos, centinela):
     # sin tendencia ni dinero a favor no se entra, sume lo que sume el resto
     if ver == "ENTRAR POCO A POCO" and (puntos[0]["c"] == "r" or puntos[1]["c"] == "r"):
         ver, vcol, nota = "MANTENER / VIGILAR", OPER_B, "tendencia o dinero en rojo: no se entra aunque el resto acompañe"
+    # el CENTINELA manda sobre el checklist (v7.8: antes solo se miraban LIQUIDEZ y DISTRIBUCION,
+    # y en TRANSICION -zona gris, 'no perseguir nada nuevo'- la pestaña decía ENTRAR)
     est = (centinela or {}).get("estado")
-    if est == "LIQUIDEZ" and ver in ("ENTRAR POCO A POCO", "MANTENER / VIGILAR"):
-        ver, vcol, nota = "ESPERAR", OPER_A, "CENTINELA en LIQUIDEZ: nada de entradas nuevas"
+    if est in ("LIQUIDEZ", "ACECHO") and ver in ("ENTRAR POCO A POCO", "MANTENER / VIGILAR"):
+        ver, vcol, nota = "ESPERAR", OPER_A, f"CENTINELA en {est}: régimen defensivo, nada de entradas nuevas"
+    elif est == "TRANSICION" and ver == "ENTRAR POCO A POCO":
+        ver, vcol, nota = "MANTENER / VIGILAR", OPER_B, "CENTINELA en TRANSICIÓN (zona gris): mantener lo que funciona, no abrir nada nuevo"
     elif est == "DISTRIBUCION" and ver == "ENTRAR POCO A POCO":
         ver, nota = "ENTRAR SOLO MANGA PEQUEÑA", "CENTINELA en DISTRIBUCIÓN: tamaño pequeño y stop"
     return sc, ver, vcol, nota
@@ -18517,6 +18538,51 @@ def _op_memoria(fecha, res, guardar=True):
     return recs, prev
 
 
+OPER_VENC_AVISO = 11      # dias naturales de antelacion del aviso (semana y media)
+
+
+def _op_sesion_o_antes(d):
+    while not _es_sesion(d):
+        d -= dt.timedelta(days=1)
+    return d
+
+
+def _op_tercer_viernes(y, m):
+    d = dt.date(y, m, 1)
+    d += dt.timedelta(days=(4 - d.weekday()) % 7)
+    return d + dt.timedelta(days=14)
+
+
+def _op_vencimientos(hoy):
+    """Próximos vencimientos: opciones mensuales (3er viernes; si es festivo, el día hábil anterior),
+       trimestrales (marzo, junio, septiembre, diciembre) y VIX (el miércoles 30 días antes del 3er
+       viernes del mes siguiente; si es festivo, el día hábil anterior)."""
+    out = []
+    try:
+        y, m = hoy.year, hoy.month
+        opx, vix = [], []
+        for k in range(0, 5):
+            yy, mm = y + (m - 1 + k) // 12, (m - 1 + k) % 12 + 1
+            o = _op_sesion_o_antes(_op_tercer_viernes(yy, mm))
+            opx.append((o, mm in (3, 6, 9, 12)))
+            y2, m2 = yy + mm // 12, mm % 12 + 1
+            v = _op_sesion_o_antes(_op_tercer_viernes(y2, m2) - dt.timedelta(days=30))
+            vix.append(v)
+        o_next = next((x for x in opx if x[0] >= hoy), None)
+        v_next = next((x for x in sorted(vix) if x >= hoy), None)
+        q_next = next((x[0] for x in opx if x[1] and x[0] >= hoy), None)
+        if o_next:
+            out.append({"que": "opciones trimestrales (cuádruple vencimiento)" if o_next[1] else "opciones mensuales",
+                        "fecha": o_next[0], "dias": (o_next[0] - hoy).days})
+        if v_next:
+            out.append({"que": "VIX (futuros y opciones)", "fecha": v_next, "dias": (v_next - hoy).days})
+        if q_next and (not o_next or q_next != o_next[0]):
+            out.append({"que": "próximo trimestral (cuádruple vencimiento)", "fecha": q_next, "dias": (q_next - hoy).days})
+    except Exception as _dege:
+        _deg("operativa:vencimientos", _dege)
+    return out
+
+
 def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pesos, stk_univ,
                       mcc, zweig, amp, estres, presion, plan, centinela, risk, regime, fg):
     """Todo lo de la pestaña 'Operativa índices'. Nunca rompe el build: si algo falla, sale sin ello."""
@@ -18584,7 +18650,8 @@ def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pes
         ctx = {"cierre": str(cierre), "spy": (res[0]["px"] if res and res[0]["sym"] == "SPY" else None),
                "decide": _semana_cerrada(cierre), "frescura": dict(ESTADO_CIERRE),
                "centinela": centinela, "plan": plan, "estres": estres, "presion": presion,
-               "risk": risk, "regime": regime, "fg": fg}
+               "risk": risk, "regime": regime, "fg": fg,
+               "venc": _op_vencimientos(pd.Timestamp(cierre).date())}
         amp_ctx = {}
         try:
             if mcc:
@@ -18612,6 +18679,41 @@ def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pes
 
 
 # ---------------------------------------------------------------- dibujo
+def _op_racha(scores):
+    """(direccion, noches): cuántas noches seguidas lleva subiendo (+1) o bajando (-1) la puntuación,
+       contando hasta hoy. Una noche igual corta la racha."""
+    sc = [x for x in scores if x is not None]
+    if len(sc) < 2:
+        return 0, 0
+    d = sc[-1] - sc[-2]
+    if d == 0:
+        return 0, 0
+    sg = 1 if d > 0 else -1
+    n = 0
+    for a, b in zip(reversed(sc[:-1]), reversed(sc[1:])):
+        if (b - a) * sg > 0:
+            n += 1
+        else:
+            break
+    return sg, n
+
+
+def _op_serie(op, sym):
+    return [((m.get("idx") or {}).get(sym) or {}).get("score") for m in (op.get("memoria") or [])]
+
+
+def _op_racha_html(op, sym, grande=False):
+    sg, n = _op_racha(_op_serie(op, sym))
+    if not sg:
+        return ""
+    col = OPER_V if sg > 0 else OPER_R
+    txt = f"{'↗' if sg > 0 else '↘'} {n} noche{'s' if n != 1 else ''} {'subiendo' if sg > 0 else 'bajando'}"
+    peso = "800" if n >= 3 else "600"
+    borde = f"border:1px solid {col};" if n >= 3 else ""
+    return (f"<span style='font-size:{12 if grande else 11.5}px;font-weight:{peso};color:{col};{borde}"
+            f"border-radius:6px;padding:1px 6px;white-space:nowrap'>{txt}</span>")
+
+
 def _op_dot(c, size=10):
     return (f"<span style='display:inline-block;width:{size}px;height:{size}px;border-radius:50%;"
             f"background:{OPER_COL.get(c, OPER_G)};flex:none'></span>")
@@ -18658,13 +18760,26 @@ def _op_html(op):
         p3 = r["puntos"][2]
         if p3.get("estado_pesos") and p3.get("estado_pesos") != "vivo":
             datos.append(f"{r['sym']}: pesos {esc(str(p3.get('estado_pesos')))} ({esc(str(p3.get('fecha_pesos')))})")
+    _dd_es = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+    for v in ctx.get("venc") or []:
+        f_ = v["fecha"]
+        lbl = f"{_dd_es[f_.weekday()]} {f_.day}/{f_.month}"
+        cuando = "hoy" if v["dias"] == 0 else (f"mañana" if v["dias"] == 1 else f"en {v['dias']} días")
+        if v["dias"] <= OPER_VENC_AVISO:
+            datos.append(f"<b style='color:{OPER_A}'>⚠ Vencimiento de {esc(v['que'])}: {lbl} ({cuando})</b> — "
+                         "suele traer más volatilidad la semana y media previa")
+        else:
+            datos.append(f"<span style='color:#9FB0C8'>Vencimiento de {esc(v['que'])}: {lbl} ({cuando})</span>")
     datos.append(("<b style='color:#2FD08A'>Cierre de viernes: este es el que decide</b>" if ctx.get("decide")
                   else "<span style='color:#F4B740'>Entre semana: observación. Se decide con el cierre del viernes</span>"))
     cx = []
     ce = ctx.get("centinela") or {}
     if ce:
+        _que = str(ce.get("que") or "")
+        _que1 = (_que.split(". ")[0][:170] + ("…" if len(_que.split(". ")[0]) > 170 else "")) if _que else ""
         cx.append(f"<b>CENTINELA:</b> <b style='color:{ce.get('col', OPER_A)}'>{esc(ce.get('estado'))}</b>"
-                  + ("" if ce.get("confirmado") else " (sin confirmar)"))
+                  + ("" if ce.get("confirmado") else " (sin confirmar)")
+                  + (f" <span style='color:#9FB0C8'>— {esc(_que1)}</span>" if _que1 else ""))
     pl = ctx.get("plan") or {}
     if pl and pl.get("rungs") is not None:
         nx = next((x for x in pl["rungs"] if not x.get("hit")), None)
@@ -18719,11 +18834,12 @@ def _op_html(op):
     # ---- 2) ranking + cambios desde ayer ----
     rk_html = []
     for i, r in enumerate(op["orden"], 1):
-        rk_html.append(f"<div style='display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1C2740'>"
+        rk_html.append(f"<div style='display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1C2740;flex-wrap:wrap'>"
                        f"<span style='font-size:18px;font-weight:800;color:#9FB0C8;width:20px'>{i}</span>"
                        f"<b style='font-size:15px;width:44px'>{r['sym']}</b>"
                        f"<span style='display:flex;gap:3px'>{''.join(_op_dot(p['c'], 9) for p in r['puntos'])}</span>"
-                       f"<span style='font-weight:700;color:{r['vcol']}'>{r['score']}/10 · {esc(r['ver'])}</span></div>")
+                       f"<span style='font-weight:700;color:{r['vcol']}'>{r['score']}/10 · {esc(r['ver'])}</span>"
+                       f"{_op_racha_html(op, r['sym'])}</div>")
     camb = op.get("cambios") or []
     camb_html = ("".join(f"<div style='font-size:12.5px;line-height:1.6'>• {c}</div>" for c in camb[:10])
                  if camb else "<div style='font-size:12.5px;color:#9FB0C8'>Sin cambios en ningún punto"
@@ -18754,18 +18870,22 @@ def _op_html(op):
               "<b>Qué tiene que pasar para mejorar:</b><br>" + "<br>".join("· " + esc(g) for g in r["gatillos"]) + "</div>") if r["gatillos"] else ""
         ex = (f"<div style='margin-top:6px;font-size:12px;color:#9FB0C8'>{esc(r['extra'])}</div>") if r.get("extra") else ""
         nt = (f"<div style='margin-top:6px;font-size:12px;color:{OPER_A}'>{esc(r['nota'])}</div>") if r.get("nota") else ""
-        mem = "".join(
-            f"<span title='{esc(m['date'])}: {esc(((m.get('idx') or {}).get(r['sym']) or {}).get('ver', '—'))}' "
-            f"style='display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:3px;background:"
-            f"{_op_vcol(((m.get('idx') or {}).get(r['sym']) or {}).get('ver'))}'></span>"
-            for m in op.get("memoria") or [])
+        _mm = [(m, ((m.get("idx") or {}).get(r["sym"]) or {})) for m in (op.get("memoria") or [])]
+        _mm = [(m, x) for m, x in _mm if x.get("score") is not None]
+        mem = "<span style='color:#5E708A'> → </span>".join(
+            f"<span title='{esc(m['date'])}: {esc(x.get('ver', '—'))}' "
+            f"style='display:inline-block;min-width:18px;text-align:center;border-radius:4px;padding:1px 3px;"
+            f"font-size:11px;font-weight:700;color:#0A0E17;background:{_op_vcol(x.get('ver'))}'>{x['score']}</span>"
+            for m, x in _mm)
+        if mem:
+            mem += " " + _op_racha_html(op, r["sym"], grande=True)
         cards.append(f"<div style='background:#0A0E17;border:1px solid {r['vcol']}66;border-radius:12px;padding:12px 14px'>"
                      f"<div style='display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap'>"
                      f"<div><b style='font-size:17px'>{r['sym']}</b> <span style='color:#9FB0C8;font-size:12px'>{esc(r['nombre'])}</span></div>"
                      + (f"<span style='font-size:13px'>{r['px']:.2f}</span>" if r.get("px") else "") + "</div>"
                      f"<div style='margin:6px 0 4px;font-size:15px;font-weight:800;color:{r['vcol']}'>{esc(r['ver'])} · {r['score']}/10</div>"
                      + "".join(filas) + tf + nt + ex + gt
-                     + (f"<div style='margin-top:8px;font-size:11px;color:#9FB0C8'>Últimas noches: {mem}</div>" if mem else "")
+                     + (f"<div style='margin-top:8px;font-size:11px;color:#9FB0C8;line-height:2'>Puntuación de las últimas noches: {mem}</div>" if mem else "")
                      + "</div>")
     h.append("<div class='panel full'><h2>📋 Los cuatro índices, punto por punto</h2>"
              "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px'>"
@@ -18774,6 +18894,11 @@ def _op_html(op):
              "(+0,05 / −0,05) y los tramos (hace 3, 2 y 1 semana, hoy). Composición: la barra del Detector de suelos. Fuerza: cuadrante del RRG "
              "semanal frente al SPY (el SPY, su impulso propio). Amplitud: % de las acciones del propio índice sobre su media de 50 "
              "(en el IWM, sus ETFs de pequeñas por sector). Sin tendencia o sin dinero a favor no se entra aunque el resto sume.</div></div>")
+    # ---- 3b) v7.8: ¿se igualan los indices? (backtest) ----
+    try:
+        h.append(_conv_html(op.get("conv")))
+    except Exception as _dege:
+        _deg("convergencia:html", _dege)
     # ---- 4) sectores conectados con cada índice ----
     trs = []
     for s in op.get("sectores") or []:
@@ -18802,6 +18927,319 @@ def _op_html(op):
              "gestora; en el IWM, por sector de iShares. Verde = CMF por encima de +0,05, rojo = por debajo de −0,05. "
              "«hace 3 sem → hoy» = el CMF hace 15 sesiones y hoy; ↗3t = tres tramos seguidos mejorando.</div></div>")
     return "".join(h)
+
+
+
+# ======================================================================
+# v7.8 — ¿SE IGUALAN LOS ÍNDICES? Backtest de la idea de Pe: cuando un índice cae un 5% o un 10%
+# desde su máximo mientras otro está en máximos, rotar del que está arriba al que ha caído, porque
+# "al final se acaban igualando". Se mide con los ETFs (SPY, QQQ, DIA, IWM, con dividendos) desde
+# junio de 2000, que es cuando existen los cuatro. Dos pruebas:
+#   1) EPISODIOS: cada vez que uno cruza el −X% con otro a menos del 2% de máximos, ¿el que cayó
+#      lo hace mejor que el líder a 1, 3 y 6 meses? Comparado con lo que pasa un día cualquiera.
+#   2) ESTRATEGIA: la regla aplicada de verdad, decidiendo con el cierre del viernes y ejecutando el
+#      lunes, con costes, frente a comprar y mantener, pesos iguales y lo contrario (seguir al líder).
+# Solo informa: no toca scoring, cartera, CENTINELA ni el registro semanal.
+# ======================================================================
+CONV_SYMS = ("SPY", "QQQ", "DIA", "IWM")
+CONV_INI = dt.date(2000, 6, 1)
+CONV_UMBRALES = (5.0, 10.0)
+CONV_CERCA = 2.0          # 'en máximos' = a menos de un 2% de su máximo de un año
+CONV_HORIZ = ((21, "1 mes"), (63, "3 meses"), (126, "6 meses"))
+CONV_COSTE = 0.001        # 0,1% por cada cambio (comisión + horquilla), ida o vuelta
+CONV_MAX_DIAS = 126       # si no se igualan en 6 meses, se deshace la rotación
+CONV_IGUAL = 1.0          # 'se han igualado' = la caída de los dos a menos de 1 punto
+
+
+def conv_descargar(corte=None):
+    """Cierres diarios ajustados (con dividendos) de los cuatro ETFs, solo fechas comunes."""
+    cols = {}
+    for s in CONV_SYMS:
+        try:
+            d, _src = get_ohlcv(s, CONV_INI, dt.date.today())
+        except Exception as _dege:
+            _deg(f"convergencia:{s}", _dege)
+            d = None
+        if d is None or "Close" not in d.columns:
+            _avisar("convergencia", f"sin histórico largo de {s}: el backtest de convergencia no se hace hoy")
+            return None
+        c = d["Close"].dropna().astype(float)
+        if corte is not None:
+            c = c[c.index <= pd.Timestamp(corte)]
+        cols[s] = c
+        time.sleep(0.2)
+    px = pd.DataFrame(cols).dropna()
+    if len(px) < 600:
+        _avisar("convergencia", f"histórico demasiado corto ({len(px)} sesiones): backtest de convergencia omitido")
+        return None
+    return px
+
+
+def _conv_dd(px):
+    return px / px.rolling(252, min_periods=60).max() - 1.0
+
+
+def conv_episodios(px, umbral):
+    """Cada vez que un índice cruza el −umbral% con otro a menos del 2% de máximos.
+       Se rearma cuando vuelve por encima de la mitad del umbral (−2,5% / −5%)."""
+    dd = _conv_dd(px) * 100
+    arr, ddv, idx = px.values, dd.values, px.index
+    n = len(px)
+    evs = []
+    for a, A in enumerate(CONV_SYMS):
+        armado = True
+        for i in range(252, n):
+            x = ddv[i, a]
+            if x != x:
+                continue
+            if not armado and x >= -umbral / 2:
+                armado = True
+            if armado and x <= -umbral:
+                otros = [(ddv[i, b], b) for b in range(len(CONV_SYMS)) if b != a and ddv[i, b] == ddv[i, b]]
+                if not otros:
+                    continue
+                ddb, b = max(otros)
+                if ddb >= -CONV_CERCA:
+                    ev = {"fecha": idx[i], "rezagado": A, "lider": CONV_SYMS[b], "dd_a": round(float(x), 1),
+                          "dd_b": round(float(ddb), 1)}
+                    for h, _ in CONV_HORIZ:
+                        if i + h < n:
+                            ev[h] = float(arr[i + h, a] / arr[i, a] - arr[i + h, b] / arr[i, b])
+                    evs.append(ev)
+                    armado = False
+    return evs
+
+
+def conv_tasa_base(px, h):
+    """Lo que pasa un día cualquiera: cada 21 sesiones, el índice más alejado de máximos frente al
+       más cercano (si hay al menos 2 puntos de diferencia). ¿Cuántas veces gana el más alejado?"""
+    dd = _conv_dd(px).values * 100
+    arr = px.values
+    k = n = 0
+    for i in range(252, len(px) - h, 21):
+        fila = dd[i]
+        if np.isnan(fila).any():
+            continue
+        a, b = int(np.argmin(fila)), int(np.argmax(fila))
+        if fila[b] - fila[a] < 2:
+            continue
+        n += 1
+        k += int(arr[i + h, a] / arr[i, a] > arr[i + h, b] / arr[i, b])
+    return k, n
+
+
+def _conv_stats(vals):
+    v = [x for x in vals if x is not None and x == x]
+    if not v:
+        return None
+    k = sum(1 for x in v if x > 0)
+    lo, hi = _bt_wilson(k / len(v), len(v))
+    return {"n": len(v), "k": k, "pct": round(100 * k / len(v), 1), "lo": lo, "hi": hi,
+            "mediana": round(100 * float(np.median(v)), 2), "media": round(100 * float(np.mean(v)), 2)}
+
+
+def conv_estrategia(px, umbral, modo="rezagado"):
+    """La regla, viernes a viernes: se decide con el cierre del viernes y se ejecuta al cierre de la
+       sesión siguiente, pagando CONV_COSTE en cada cambio.
+       modo 'rezagado' (la idea de Pe): vas en el índice más cerca de máximos. Si otro cae un umbral%
+         y el tuyo está a menos del 2% de máximos, rotas al caído. Deshaces la rotación cuando se
+         igualan (menos de 1 punto de diferencia en la caída) o a los 6 meses, y vuelves al que esté
+         más cerca de máximos.
+       modo 'lider' (lo contrario): siempre en el que está más cerca de máximos."""
+    dd = _conv_dd(px).values * 100
+    arr = px.values
+    idx = px.index
+    n = len(px)
+    per = idx.to_period("W-FRI")
+    fin_semana = np.r_[per[1:] != per[:-1], True]
+    i0 = 252
+    hold, rot, orden = 0, None, None          # rot = (indice lider de referencia, sesion de entrada)
+    eq, serie, cambios, resultados, dias_rot = 1.0, [], 0, [], 0
+    for i in range(i0, n):
+        if i > i0:
+            eq *= arr[i, hold] / arr[i - 1, hold]
+        if orden is not None:                 # la orden del viernes se ejecuta al cierre de hoy
+            nuevo, accion, lid = orden
+            orden = None
+            if accion == "salida" and rot is not None:
+                lb, ie = rot
+                resultados.append(float(arr[i, hold] / arr[ie, hold] - arr[i, lb] / arr[ie, lb]))
+                rot = None
+            if nuevo != hold:
+                eq *= (1 - CONV_COSTE)
+                cambios += 1
+                hold = nuevo
+            if accion == "entrada":
+                rot = (lid, i)
+        serie.append(eq)
+        if rot is not None:
+            dias_rot += 1
+        if not fin_semana[i] or i == n - 1:
+            continue
+        fila = dd[i]
+        if np.isnan(fila).any():
+            continue
+        mejor, peor = int(np.argmax(fila)), int(np.argmin(fila))
+        if modo == "lider":
+            if mejor != hold and fila[mejor] - fila[hold] > CONV_IGUAL:
+                orden = (mejor, None, None)
+            continue
+        if rot is None:
+            if peor != hold and fila[hold] >= -CONV_CERCA and fila[peor] <= -umbral:
+                orden = (peor, "entrada", hold)
+            elif mejor != hold and fila[mejor] - fila[hold] > CONV_IGUAL:
+                orden = (mejor, None, None)   # fuera de rotación: con el que está en máximos
+        else:
+            lb, ie = rot
+            if fila[hold] - fila[lb] >= -CONV_IGUAL or (i - ie) >= CONV_MAX_DIAS:
+                orden = (mejor, "salida", None)
+    return pd.Series(serie, index=idx[i0:]), cambios, resultados, dias_rot
+
+
+def _conv_metricas(s):
+    if s is None or len(s) < 2:
+        return None
+    anos = (s.index[-1] - s.index[0]).days / 365.25
+    cagr = (float(s.iloc[-1]) / float(s.iloc[0])) ** (1 / anos) - 1 if anos > 0 else 0
+    mdd = float((s / s.cummax() - 1).min())
+    return {"cagr": round(100 * cagr, 1), "mdd": round(100 * mdd, 1), "x": round(float(s.iloc[-1] / s.iloc[0]), 2)}
+
+
+def backtest_convergencia(corte=None):
+    """Todo el estudio. None si no hay datos (el resto del terminal sigue igual)."""
+    try:
+        px = conv_descargar(corte)
+        if px is None:
+            return None
+        out = {"desde": str(px.index[252].date()), "hasta": str(px.index[-1].date()), "umbrales": []}
+        base = {}
+        for h, nom in CONV_HORIZ:
+            k, n = conv_tasa_base(px, h)
+            lo, hi = _bt_wilson(k / n, n) if n else (None, None)
+            base[h] = {"n": n, "pct": (round(100 * k / n, 1) if n else None), "lo": lo, "hi": hi}
+        out["base"] = base
+        i0 = px.index[252]
+        sub = px[px.index >= i0]
+        bh = {s: _conv_metricas(sub[s] / sub[s].iloc[0]) for s in CONV_SYMS}
+        # pesos iguales, reequilibrando cada mes
+        rets = sub.pct_change().fillna(0.0)
+        meses = sub.index.to_period("M")
+        w = np.full(len(CONV_SYMS), 0.25)
+        eqv, val = [], 1.0
+        for j in range(len(sub)):
+            if j > 0:
+                val_i = w * (1 + rets.values[j])
+                val = val * float(val_i.sum())
+                w = val_i / val_i.sum()
+                if meses[j] != meses[j - 1]:
+                    w = np.full(len(CONV_SYMS), 0.25)
+            eqv.append(val)
+        out["bh"] = bh
+        out["ew"] = _conv_metricas(pd.Series(eqv, index=sub.index))
+        sl, cl, _, _ = conv_estrategia(px, 5.0, modo="lider")
+        out["lider"] = dict(_conv_metricas(sl), cambios=cl)
+        for u in CONV_UMBRALES:
+            evs = conv_episodios(px, u)
+            fila = {"umbral": u, "n_ep": len(evs), "h": {}}
+            for h, nom in CONV_HORIZ:
+                fila["h"][h] = _conv_stats([e.get(h) for e in evs])
+            se, ce, rot, drot = conv_estrategia(px, u, modo="rezagado")
+            m = _conv_metricas(se)
+            st = _conv_stats(rot)
+            fila["estrategia"] = dict(m or {}, cambios=ce, rot=st, pct_tiempo=round(100 * drot / max(1, len(se)), 1))
+            fila["ultimos"] = [{"fecha": str(e["fecha"].date()), "rezagado": e["rezagado"], "lider": e["lider"],
+                                "dd_a": e["dd_a"], "r63": (round(100 * e[63], 1) if e.get(63) is not None else None)}
+                               for e in evs[-6:]]
+            fila["por_indice"] = {}
+            for s in CONV_SYMS:
+                st_s = _conv_stats([e.get(63) for e in evs if e["rezagado"] == s])
+                if st_s:
+                    fila["por_indice"][s] = st_s
+            out["umbrales"].append(fila)
+        dd = _conv_dd(px).iloc[-1] * 100
+        out["hoy"] = {s: round(float(dd[s]), 1) for s in CONV_SYMS}
+        # el veredicto lo pone el dato, no la teoria
+        u5 = out["umbrales"][0]["h"].get(63) or {}
+        b63 = base.get(63) or {}
+        if u5.get("lo") is not None and u5["lo"] > 50:
+            ver = "a 3 meses el que cayó batió al líder más de la mitad de las veces, y el intervalo no toca el 50%: hay ventaja medible"
+        elif u5.get("hi") is not None and u5["hi"] < 50:
+            ver = "a 3 meses el que cayó lo hizo PEOR que el líder la mayoría de las veces: el dato va en contra de la idea"
+        else:
+            ver = "a 3 meses es casi una moneda al aire: el intervalo incluye el 50%, así que no hay ventaja demostrada"
+        out["veredicto"] = ver
+        print(f"  🔁 Convergencia ({out['desde']}→{out['hasta']}): −5% n={out['umbrales'][0]['n_ep']} "
+              f"3m {u5.get('pct')}% [{u5.get('lo')}–{u5.get('hi')}] · base {b63.get('pct')}%")
+        return out
+    except Exception as _dege:
+        _deg("backtest_convergencia", _dege)
+        _avisar("convergencia", f"backtest de convergencia no calculado: {_dege}")
+        return None
+
+
+def _conv_pct0(v):
+    return "" if v is None else f"{v:.0f}%"
+
+
+def _conv_html(cv):
+    if not cv:
+        return ""
+    pc = lambda v: "—" if v is None else f"{v:+.1f}%"
+    filas = []
+    for u in cv["umbrales"]:
+        for h, nom in CONV_HORIZ:
+            st = u["h"].get(h)
+            b = cv["base"].get(h) or {}
+            if not st:
+                continue
+            col = "#2FD08A" if (st["lo"] or 0) > 50 else ("#F4607A" if (st["hi"] or 100) < 50 else "#F4B740")
+            filas.append(f"<tr><td class='se-l'>cae −{u['umbral']:.0f}%</td><td class='r'>{nom}</td><td class='r'>{st['n']}</td>"
+                         f"<td class='r' style='color:{col};font-weight:700'>{st['pct']:.0f}%</td>"
+                         f"<td class='r'>{st['lo']:.0f}–{st['hi']:.0f}%</td><td class='r'>{st['mediana']:+.1f}</td>"
+                         f"<td class='r' style='color:#9FB0C8'>{_conv_pct0(b.get('pct'))}</td></tr>")
+    est = []
+    for u in cv["umbrales"]:
+        e = u.get("estrategia") or {}
+        r = e.get("rot") or {}
+        est.append(f"<tr><td class='se-l'><b>Rotar al que cae −{u['umbral']:.0f}%</b></td><td class='r'>{pc(e.get('cagr'))}</td>"
+                   f"<td class='r'>{pc(e.get('mdd'))}</td><td class='r'>x{e.get('x', 0):.2f}</td><td class='r'>{e.get('cambios', 0)}</td>"
+                   f"<td class='r'>{(str(r.get('k')) + ' de ' + str(r.get('n'))) if r else '—'}</td></tr>")
+    li = cv.get("lider") or {}
+    est.append(f"<tr><td class='se-l'>Lo contrario: seguir al que está en máximos</td><td class='r'>{pc(li.get('cagr'))}</td>"
+               f"<td class='r'>{pc(li.get('mdd'))}</td><td class='r'>x{li.get('x', 0):.2f}</td><td class='r'>{li.get('cambios', 0)}</td><td class='r'>—</td></tr>")
+    ew = cv.get("ew") or {}
+    est.append(f"<tr><td class='se-l'>Los cuatro a partes iguales (reequilibrio mensual)</td><td class='r'>{pc(ew.get('cagr'))}</td>"
+               f"<td class='r'>{pc(ew.get('mdd'))}</td><td class='r'>x{ew.get('x', 0):.2f}</td><td class='r'>—</td><td class='r'>—</td></tr>")
+    for s in CONV_SYMS:
+        m = (cv.get("bh") or {}).get(s) or {}
+        est.append(f"<tr><td class='se-l'>Comprar y mantener {s}</td><td class='r'>{pc(m.get('cagr'))}</td>"
+                   f"<td class='r'>{pc(m.get('mdd'))}</td><td class='r'>x{m.get('x', 0):.2f}</td><td class='r'>—</td><td class='r'>—</td></tr>")
+    pi = []
+    u5 = cv["umbrales"][0]
+    for s, st in (u5.get("por_indice") or {}).items():
+        pi.append(f"{s}: {st['k']} de {st['n']} ({st['pct']:.0f}%, mediana {st['mediana']:+.1f})")
+    ult = " · ".join(f"{e['fecha']} {e['rezagado']} vs {e['lider']} ({e['r63']:+.1f})" if e.get("r63") is not None
+                     else f"{e['fecha']} {e['rezagado']} vs {e['lider']} (en curso)" for e in u5.get("ultimos") or [])
+    hoy = " · ".join(f"{s} {v:+.1f}%" for s, v in (cv.get("hoy") or {}).items())
+    return ("<div class='panel full'><h2>🔁 ¿Se igualan los índices? Backtest de rotar al que ha caído</h2>"
+            f"<div class='note'>La idea: cuando un índice cae un 5% o un 10% desde su máximo de un año y otro está en máximos, "
+            f"pasarse al que ha caído porque «al final se igualan». Medido con los ETFs y sus dividendos del {esc(cv['desde'])} al "
+            f"{esc(cv['hasta'])}. <b>Veredicto del dato: {esc(cv['veredicto'])}.</b></div>"
+            "<div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin:10px 0 4px'>1 · CADA VEZ QUE PASÓ: ¿EL QUE CAYÓ BATIÓ AL QUE ESTABA EN MÁXIMOS?</div>"
+            "<div class='scrollx'><table class='se' style='white-space:nowrap'><tr><th class='se-l'>cuando</th><th class='r'>después de</th>"
+            "<th class='r'>veces</th><th class='r'>ganó el caído</th><th class='r'>margen 95%</th><th class='r'>mediana (puntos)</th>"
+            "<th class='r'>un día cualquiera</th></tr>" + "".join(filas) + "</table></div>"
+            + (f"<div style='font-size:12px;margin-top:6px'><b>Por índice (cae −5%, a 3 meses):</b> {' · '.join(pi)}</div>" if pi else "")
+            + (f"<div style='font-size:12px;margin-top:4px;color:#9FB0C8'><b>Últimas veces (−5%, puntos a 3 meses):</b> {ult}</div>" if ult else "")
+            + "<div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin:12px 0 4px'>2 · LA REGLA APLICADA DE VERDAD (VIERNES A VIERNES, 0,1% POR CAMBIO)</div>"
+            "<div class='scrollx'><table class='se' style='white-space:nowrap'><tr><th class='se-l'>estrategia</th><th class='r'>al año</th>"
+            "<th class='r'>peor caída</th><th class='r'>multiplica</th><th class='r'>cambios</th><th class='r'>rotaciones ganadoras</th></tr>"
+            + "".join(est) + "</table></div>"
+            f"<div style='font-size:12px;margin-top:6px'><b>Hoy, caída desde el máximo de un año:</b> {hoy}</div>"
+            "<div class='note' style='margin-top:6px'>«Ganó el caído» = en ese plazo el índice que había caído subió más (o bajó menos) "
+            "que el que estaba en máximos. «Un día cualquiera» = lo mismo midiendo cada mes, sin esperar a ninguna caída: si los dos "
+            "porcentajes se parecen, la caída no aporta nada. La regla: vas en el índice en máximos; si otro cae el umbral, rotas a él; "
+            "vuelves cuando se igualan (menos de 1 punto de diferencia) o a los 6 meses. Pasado, no promesa. No es asesoramiento.</div></div>")
 
 
 def main():
@@ -19333,12 +19771,20 @@ def main():
         if notify(msg):
             print("\nAviso enviado.")
 
+    # v7.8 — ¿se igualan los indices? backtest de rotar al que ha caido (solo informa)
+    _conv = None
+    try:
+        _conv = backtest_convergencia(corte=(df.index[-1] if VIAJE_A else None))
+    except Exception as _e_cv:
+        _avisar("convergencia", f"backtest de convergencia no calculado: {_e_cv}")
+        _conv = None
     # v7.7 — OPERATIVA INDICES (la primera pestaña): solo lee lo ya calculado
     _oper = None
     try:
         _oper = operativa_indices(df, rrg, flow, daily, spy_flow, _comp_res, _peq_res, _pesos_ix, _stk_univ,
                                   _mcc, _zweig, _amp, _estres, _presion, plan, _centinela, risk, regime, fg_idx)
         if _oper:
+            _oper["conv"] = _conv
             print("  🧭 Operativa índices: " + " · ".join(f"{r['sym']} {r['score']}/10 {r['ver']}" for r in _oper["orden"]))
     except Exception as _e_op:
         _avisar("operativa", f"pestaña Operativa índices no calculada: {_e_op}")

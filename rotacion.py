@@ -8178,6 +8178,16 @@ def fetch_dix():
             senal, scol = "neutro", "#9FB0C8"
         else:
             senal, scol = "compra dark pool débil (sin red)", "#F4607A"
+        try:                                  # v7.9.2: la serie entera, para medir «DIX alto y GEX bajo»
+            if "price" in cols and "gex" in cols:
+                _dx = pd.to_numeric(d[cols["dix"]], errors="coerce")
+                if float(_dx.max()) <= 1.5:
+                    _dx = _dx * 100.0
+                DIX_HIST["df"] = pd.DataFrame({"px": pd.to_numeric(d[cols["price"]], errors="coerce").values,
+                                               "dix": _dx.values, "gex": pd.to_numeric(d[cols["gex"]], errors="coerce").values},
+                                              index=pd.DatetimeIndex(d["_fecha"].values)).dropna()
+        except Exception as _dege:
+            _deg("fetch_dix:historia", _dege)
         return {"last": round(last, 1), "m5": round(m5, 1), "pct": pct, "gex": gex,
                 "senal": senal, "scol": scol, "fecha": str(d["_fecha"].iloc[-1].date()),
                 "spark": [float(x) for x in dix.iloc[-40:]]}
@@ -12071,7 +12081,12 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 _idx_extra += _sect_html(operativa.get("sect"), operativa.get("sect_bt")) + _sect_bt_html(operativa.get("sect_bt"))
         except Exception as _dege:
             _deg("operativa:sectores", _dege)
-        html.append("<div id='vista-idx' style='display:contents'>" + _op_html(operativa) + _idx_extra + "</div>")
+        _ag = ""
+        try:
+            _ag = _agenda_html((rachas or {}).get("agenda"))
+        except Exception as _dege:
+            _deg("agenda:html", _dege)
+        html.append("<div id='vista-idx' style='display:contents'>" + _ag + _op_html(operativa) + _idx_extra + "</div>")
     except Exception as _dege:
         _deg("operativa:html", _dege)
         html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
@@ -12083,7 +12098,17 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _cal = _cal_html((rachas or {}).get("calidad"), (rachas or {}).get("caja"))
         except Exception as _dege:
             _deg("calidad:html", _dege)
-        html.append("<div id='vista-rn' style='display:none'>" + _rn_html(rachas) + _cal + "</div>")
+        _c2 = ""
+        try:
+            _c2 = _cal2_html((rachas or {}).get("cal"))
+        except Exception as _dege:
+            _deg("calendario:html", _dege)
+        _ag2 = ""
+        try:
+            _ag2 = _agenda_html((rachas or {}).get("agenda"))
+        except Exception as _dege:
+            _deg("agenda:html2", _dege)
+        html.append("<div id='vista-rn' style='display:none'>" + _ag2 + _rn_html(rachas) + _c2 + _cal + "</div>")
     except Exception as _dege:
         _deg("rachas:html", _dege)
         html.append("<div id='vista-rn' style='display:none'><div class='panel full'><h2>🎲 Rachas y niveles</h2>"
@@ -18758,11 +18783,17 @@ def _op_serie(op, sym):
 
 
 def _op_racha_html(op, sym, grande=False):
-    sg, n = _op_racha(_op_serie(op, sym))
+    """La racha es de la NOTA (x/10), no del precio: un índice puede subir un 1% y no cambiar de nota."""
+    serie = [x for x in _op_serie(op, sym) if x is not None]
+    sg, n = _op_racha(serie)
     if not sg:
-        return ""
+        if len(serie) < 2:
+            return ""
+        return (f"<span style='font-size:{12 if grande else 11.5}px;font-weight:600;color:{OPER_G};"
+                f"border-radius:6px;padding:1px 6px;white-space:nowrap' title='La nota de hoy es la misma que la de la "
+                f"noche anterior: ningún punto ha cambiado de color'>→ nota igual que ayer</span>")
     col = OPER_V if sg > 0 else OPER_R
-    txt = f"{'↗' if sg > 0 else '↘'} {n} noche{'s' if n != 1 else ''} {'subiendo' if sg > 0 else 'bajando'}"
+    txt = f"{'↗' if sg > 0 else '↘'} nota {'subiendo' if sg > 0 else 'bajando'} {n} noche{'s' if n != 1 else ''}"
     peso = "800" if n >= 3 else "600"
     borde = f"border:1px solid {col};" if n >= 3 else ""
     return (f"<span style='font-size:{12 if grande else 11.5}px;font-weight:{peso};color:{col};{borde}"
@@ -19927,7 +19958,7 @@ def _sect_html(filas, bt):
         obv = ("cruza ↑" if f.get("obv_cruce") else ("sobre su media" if f.get("obv") else "bajo su media")) if f.get("obv") is not None else "—"
         extra = (" <b style='color:#2FD08A'>acum. oculta</b>" if f["oculta"] else "") + (" <b style='color:#F4607A'>dist. oculta</b>" if f["dist_oculta"] else "")
         b = f.get("bt")
-        bt_t = "—" if not b else f"{b['k']}/{b['n']} ({b['pct']}%)" + ("" if b.get("med_dias") is None else f" · {b['med_dias']}d")
+        bt_t = "—" if not b else f"{b['k']}/{b['n']} ({b['pct']}%)" + ("" if b.get("med_dias") is None else f" · {b['med_dias']} ses")
         corr_t = "" if f["corr"] is None else "ρ %.2f" % f["corr"]
         lib_c = "#2FD08A" if f["libre"] == "va por libre" else ("#F4B740" if f["libre"] == "a medias" else "#9FB0C8")
         trs.append(f"<tr><td class='se-l'><b>{esc(f['sym'])}</b> <span style='color:#9FB0C8'>{esc(f['nom'])}</span>"
@@ -19952,7 +19983,7 @@ def _sect_html(filas, bt):
              f"{ESPEJO_VENT} (y en toda la caída). CMF = dinero de 20 sesiones (Chaikin) con sus tramos; OBV = volumen acumulado frente "
              "a su media; «acum. oculta» = el precio baja pero el OBV/ADL y el CMF suben. «Con el Nasdaq» = correlación de 120 sesiones "
              "con el QQQ: los que <b>van por libre</b> no son más de lo mismo. «Histórico de la regla» = en este sector, cuántas veces "
-             "volvió al máximo anterior de las que dio señal, y en cuántos días (mediana). No es asesoramiento.</div></div>")
+             "volvió al máximo anterior de las que dio señal, y en cuántas sesiones (mediana). No es asesoramiento.</div></div>")
     return "".join(h)
 
 
@@ -19981,7 +20012,7 @@ def _sect_bt_html(bt):
             "de la sesión siguiente a la señal y sale cuando el cierre vuelve al máximo que tenía el día de la señal. Una operación a la "
             "vez por sector. Sin stop: por eso importa cuánto llegó a caer después de entrar.</div>"
             "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>regla</th>"
-            "<th class='r'>veces</th><th class='r'>volvió al máximo</th><th class='r'>días (mediana)</th>"
+            "<th class='r'>veces</th><th class='r'>volvió al máximo</th><th class='r'>sesiones (mediana)</th>"
             "<th class='r'>en 3 · 6 · 12 meses</th><th class='r'>caída tras entrar (mediana)</th><th class='r'>bate al SPY</th>"
             "<th class='r'>aún abiertas</th></tr>" + rows + rows_f + "</table></div>"
             + (f"<div style='font-size:12px;margin-top:6px;color:#9FB0C8'><b>Abiertas ahora (aún no han vuelto al máximo):</b> {ab_t}</div>" if ab_t else "")
@@ -20354,7 +20385,15 @@ def rachas_niveles(daily=None, corte=None):
             c = s["c"]
             if corte is not None:
                 c = c[c.index <= pd.Timestamp(corte)]
-            out["idx"].append({"etf": etf, "nombre": nombre, "src": s.get("src"), "r": rachas_indice(c)})
+            r_i = rachas_indice(c)
+            if r_i:
+                hl_i = s.get("hl")
+                if hl_i is not None and corte is not None:
+                    hl_i = hl_i[hl_i.index <= pd.Timestamp(corte)]
+                d52 = _dd4_hoy(c, hl_i)[0]          # el mismo número que la tabla de caídas de la primera pestaña
+                if d52 is not None:
+                    r_i["hoy"]["dd52"] = d52
+            out["idx"].append({"etf": etf, "nombre": nombre, "src": s.get("src"), "r": r_i})
         sp = DD4_SERIES.get("SPY") or {}
         if sp.get("c") is not None:
             c, hl = sp["c"], sp.get("hl")
@@ -20379,6 +20418,10 @@ def rachas_niveles(daily=None, corte=None):
                 if m:
                     out["muros"].append(m)
                 time.sleep(0.3)
+        try:
+            out["cal"] = calendario_estudio(corte)
+        except Exception as _dege:
+            _deg("calendario", _dege)
         r0 = (out["idx"][0].get("r") or {}).get("hoy") if out["idx"] else None
         print("  🎲 Rachas: " + " · ".join(f"{x['etf']} {x['r']['hoy']['r']:+.1f}% (racha −{RN_UMBRAL:g}%: {x['r']['hoy']['racha2']})"
                                             for x in out["idx"] if x.get("r"))
@@ -20701,7 +20744,9 @@ def _fund_yahoo(sym):
         if not mc:
             return None
         g = lambda k: (float(inf[k]) if isinstance(inf.get(k), (int, float)) else None)
+        fcur, cur = inf.get("financialCurrency"), inf.get("currency")
         return {"fecha": str(dt.date.today()), "nom": str(inf.get("shortName") or sym)[:40], "sector": inf.get("sector"),
+                "fcur": fcur, "cur": cur, "moneda_ok": bool(not fcur or not cur or fcur == cur),
                 "mc": float(mc), "fcf": g("freeCashflow"), "per": g("trailingPE"), "per_f": g("forwardPE"),
                 "margen": g("profitMargins"), "deuda": g("totalDebt"), "caja": g("totalCash"), "ebitda": g("ebitda")}
     except Exception:
@@ -20742,7 +20787,8 @@ def cribado_caja(stk_univ, spy_close=None, viaje=False):
                 f = cache.get(x["sym"])
                 viejo = True
                 try:
-                    viejo = f is None or (hoy - dt.date.fromisoformat(f["fecha"])).days >= CAL_REFRESCO_DIAS
+                    viejo = (f is None or "moneda_ok" not in f       # las guardadas antes de v7.9.1 no sabían la moneda
+                             or (hoy - dt.date.fromisoformat(f["fecha"])).days >= CAL_REFRESCO_DIAS)
                 except Exception:
                     viejo = True
                 if not viejo or nuevas >= CAL_MAX_CONSULTAS:
@@ -20772,13 +20818,14 @@ def cribado_caja(stk_univ, spy_close=None, viaje=False):
                 x.update({"tipo": "sin dato", "nom": x["sym"]})
                 filas.append(x)
                 continue
-            fcfy = (100 * f["fcf"] / f["mc"]) if (f.get("fcf") is not None and f.get("mc")) else None
+            moneda_ok = f.get("moneda_ok", True)
+            fcfy = (100 * f["fcf"] / f["mc"]) if (moneda_ok and f.get("fcf") is not None and f.get("mc")) else None
             per = f.get("per_f") if f.get("per_f") and f["per_f"] > 0 else f.get("per")
             deuda_n = None
-            if f.get("ebitda") and f["ebitda"] > 0 and f.get("deuda") is not None:
+            if f.get("ebitda") and f["ebitda"] > 0 and f.get("deuda") is not None:      # misma moneda las tres
                 deuda_n = round((f["deuda"] - (f.get("caja") or 0)) / f["ebitda"], 1)
             m = f.get("margen")
-            if (fcfy is not None and fcfy <= 0) or (m is not None and m <= 0):
+            if (f.get("fcf") is not None and f["fcf"] <= 0) or (m is not None and m <= 0):
                 tipo = "sin beneficios"
             elif fcfy is not None and fcfy >= CAL_FCF_ALTO and per is not None and 0 < per <= CAL_PER_BAJO:
                 tipo = "caja y barata"
@@ -20786,7 +20833,7 @@ def cribado_caja(stk_univ, spy_close=None, viaje=False):
                 tipo = "mucha caja"
             else:
                 tipo = "intermedia"
-            x.update({"nom": f.get("nom") or x["sym"], "sector": f.get("sector"), "fcfy": (round(fcfy, 1) if fcfy is not None else None),
+            x.update({"moneda": (None if moneda_ok else f"cuentas en {f.get('fcur')}"), "nom": f.get("nom") or x["sym"], "sector": f.get("sector"), "fcfy": (round(fcfy, 1) if fcfy is not None else None),
                       "per": (round(per, 1) if per else None), "margen": (round(100 * m, 1) if m is not None else None),
                       "deuda_n": deuda_n, "tipo": tipo, "f_fecha": f.get("fecha")})
             filas.append(x)
@@ -20853,11 +20900,11 @@ def _cal_html(fc, cr):
              "sesiones desde el suelo hasta recuperar su precio del día del máximo. Pocas crisis: es una pista, no una ley. "
              "No es asesoramiento.</div></div>")
     # B) lista semanal
-    h.append(f"<div class='panel full'><h2>💰 Caídas con caja: acciones del S&amp;P que caen un {CAL_DD_MIN:g}% o más</h2>")
+    h.append(f"<div class='panel full'><h2>💰 Caídas con caja: acciones del S&amp;P (y de tus sectores) que caen un {CAL_DD_MIN:g}% o más</h2>")
     con_dato = [x for x in ((cr or {}).get("filas") or []) if x["tipo"] != "sin dato"]
     sin_dato = len((cr or {}).get("filas") or []) - len(con_dato)
     if cr and cr.get("filas") and not con_dato and not cr.get("viaje"):
-        h.append(f"<div class='note'>{len(cr['filas'])} acciones del S&amp;P caen un {CAL_DD_MIN:g}% o más, pero hoy Yahoo no ha dado su "
+        h.append(f"<div class='note'>{len(cr['filas'])} acciones caen un {CAL_DD_MIN:g}% o más, pero hoy Yahoo no ha dado su "
                  "contabilidad y no hay nada guardado todavía. Se irá rellenando las próximas noches.</div>")
     elif con_dato:
         trs = []
@@ -20865,7 +20912,9 @@ def _cal_html(fc, cr):
             col = {"caja y barata": "#2FD08A", "mucha caja": "#7FD8A0", "intermedia": "#9FB0C8", "sin beneficios": "#F4607A"}.get(x["tipo"], "#5E708A")
             bc = "#F4607A" if (x.get("beta") or 0) >= 1.5 else ("#F4B740" if (x.get("beta") or 0) >= 1.1 else "#9FB0C8")
             trs.append(f"<tr><td class='se-l'><b>{esc(x['sym'])}</b> <span style='color:#9FB0C8'>{esc(x.get('nom') or '')}</span>"
-                       f"<div style='font-size:10px;color:#5E708A'>{esc(x.get('sector') or '')}</div></td>"
+                       f"<div style='font-size:10px;color:#5E708A'>{esc(x.get('sector') or '')}"
+                       + ("" if not x.get("moneda") else f" · <span style='color:#F4B740'>{esc(x['moneda'])}: caja no comparable</span>")
+                       + "</div></td>"
                        f"<td class='r' style='color:{col};font-weight:700'>{esc(x['tipo'])}</td>"
                        f"<td class='r' style='color:#F4607A'>{x['dd']:+.1f}%<div style='font-size:10px;color:#9FB0C8'>máx. {esc(x['fmax'])}</div></td>"
                        f"<td class='r'>{x['r1m']:+.1f}%</td>"
@@ -20875,7 +20924,7 @@ def _cal_html(fc, cr):
                        f"<td class='r'>{'—' if x.get('deuda_n') is None else '%.1f×' % x['deuda_n']}</td>"
                        f"<td class='r' style='color:{bc}'>{'—' if x.get('beta') is None else '%.2f' % x['beta']}</td></tr>")
         nb = sum(1 for x in cr["filas"] if x["tipo"] == "caja y barata")
-        h.append(f"<div style='font-size:13px;margin-bottom:8px'><b>{len(cr['filas'])}</b> acciones del S&amp;P caen un {CAL_DD_MIN:g}% o más "
+        h.append(f"<div style='font-size:13px;margin-bottom:8px'><b>{len(cr['filas'])}</b> acciones del S&amp;P y de tus sectores caen un {CAL_DD_MIN:g}% o más "
                  f"desde su máximo de un año; <b style='color:#2FD08A'>{nb}</b> generan mucha caja (≥{CAL_FCF_ALTO:g}% de lo que valen) y "
                  f"están baratas (PER ≤ {CAL_PER_BAJO:g})."
                  + (f" <span style='color:#5E708A'>({sin_dato} aún sin contabilidad: se completan las próximas noches, "
@@ -20887,7 +20936,7 @@ def _cal_html(fc, cr):
     elif cr and cr.get("viaje"):
         h.append("<div class='note'>En modo viaje no se muestra: la contabilidad es la de hoy, no la de la fecha del viaje.</div>")
     else:
-        h.append("<div class='note'>Hoy ninguna acción del S&amp;P cae tanto, o no hay datos.</div>")
+        h.append("<div class='note'>Hoy ninguna acción del universo cae tanto, o no hay datos.</div>")
     h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> caja libre / valor = el dinero que genera al año (después de "
              "inversiones) por cada 100 € que vale en bolsa; un 5% o más es mucho. PER = el previsto si existe, si no el actual. "
              "Margen = beneficio neto sobre ventas (negativo = pierde dinero). Deuda neta / EBITDA: más de 3 empieza a pesar. "
@@ -20895,6 +20944,466 @@ def _cal_html(fc, cr):
              "refresca cada semana; puede tener errores o ir con retraso. Es una lista para mirar, no para comprar sin más: una "
              "empresa barata que cae puede estar barata por algo. No es asesoramiento.</div></div>")
     return "".join(h)
+
+
+
+# ======================================================================
+# v7.9.2 — CALENDARIO, CORRECCIONES Y COBERTURAS (más ideas del chat, medidas con datos)
+#   1) "Fechas ideales DCA trimestral: el rebalanceo de fin de trimestre, del 26 al 30. La más fuerte,
+#      la de diciembre": ¿se compran más participaciones por euro el 26 que otro día del trimestre?
+#   2) "A partir del miércoles (vencimiento del VIX) es buena tendencia".
+#   3) "De 7 a 9 velas se considera una corrección": cuánto duran de verdad, del máximo al suelo.
+#   4) "El mercado corrige hasta que GEX y DIX se van a la inversa" (DIX alto y GEX bajo).
+#   5) "Coberturas el jueves de la semana antes del vencimiento del VIX; por debajo de 141 (SKEW) son
+#      baratas".
+#   Solo informa. No es asesoramiento.
+# ======================================================================
+CAL2_DIA_REBAL = 26
+CAL2_SKEW_BARATO = 141.0
+CAL2_DIX_ALTO = 45.0
+DIX_HIST = {}            # fetch_dix deja aquí la serie entera (DIX, GEX y el S&P de SqueezeMetrics)
+
+
+def dca_trimestral(c, desde="1950-01-01"):
+    """Participaciones por euro comprando una vez por trimestre en distintos días, frente a comprar un
+       día cualquiera del mismo trimestre (la media de 1/precio de todas sus sesiones)."""
+    c = c.dropna().astype(float)
+    c = c[c.index >= pd.Timestamp(desde)]
+    if len(c) < 1000:
+        return None
+    idx, v = c.index, c.values
+    per = idx.to_period("Q")
+    res = {"rebal": [], "inicio": [], "mitad": []}
+    por_mes = {3: [], 6: [], 9: [], 12: []}
+    ventana = {3: [], 6: [], 9: [], 12: []}
+    for q in per.unique():
+        ii = np.where(per == q)[0]
+        if len(ii) < 55:                       # trimestre incompleto (el de hoy)
+            continue
+        fechas = idx[ii]
+        ref = float(np.mean(1.0 / v[ii]))
+        mfin = int(q.end_time.month)
+        reb = [k for k, d in zip(ii, fechas) if d.month == mfin and d.day >= CAL2_DIA_REBAL]
+        mit = [k for k, d in zip(ii, fechas) if d.month == mfin - 1 and d.day >= 15]
+        if not reb or not mit:
+            continue
+        ventaja = lambda k: (1.0 / v[k]) / ref - 1.0
+        res["rebal"].append(ventaja(reb[0]))
+        res["inicio"].append(ventaja(ii[0]))
+        res["mitad"].append(ventaja(mit[0]))
+        por_mes[mfin].append(ventaja(reb[0]))
+        antes = [k for k, d in zip(ii, fechas) if d.month == mfin and d.day < CAL2_DIA_REBAL]
+        if antes:
+            ventana[mfin].append(v[ii[-1]] / v[antes[-1]] - 1.0)
+    r4 = c.pct_change(4).dropna().values
+    return {"desde": str(idx[0].date()),
+            "estr": {k: _rn_stats(x) for k, x in res.items()},
+            "por_mes": {m: _rn_stats(x) for m, x in por_mes.items()},
+            "ventana": {m: _rn_stats(x) for m, x in ventana.items()},
+            "base4": _rn_stats(list(r4))}
+
+
+def _vix_venc(y, m):
+    """Vencimiento del VIX del mes (y, m): el miércoles 30 días antes del 3er viernes del mes siguiente."""
+    y2, m2 = y + m // 12, m % 12 + 1
+    return _op_tercer_viernes(y2, m2) - dt.timedelta(days=30)
+
+
+def desde_miercoles_vix(c, desde="2004-06-01"):
+    """S&P desde el cierre del día del vencimiento del VIX: 5 y 10 sesiones después, frente a cualquier día."""
+    c = c.dropna().astype(float)
+    c = c[c.index >= pd.Timestamp(desde)]
+    if len(c) < 500:
+        return None
+    idx, v = c.index, c.values
+    r = {5: [], 10: []}
+    for p in pd.period_range(idx[0], idx[-1], freq="M"):
+        d = pd.Timestamp(_vix_venc(p.year, p.month))
+        k = idx.searchsorted(d, side="right") - 1
+        if k < 1 or idx[k] < d - pd.Timedelta(days=3):
+            continue
+        for h in r:
+            if k + h < len(v):
+                r[h].append(v[k + h] / v[k] - 1)
+    return {"desde": str(idx[0].date()), "h": {h: _rn_stats(x) for h, x in r.items()},
+            "base": {h: _rn_stats(list(c.pct_change(h).dropna().values)) for h in r}}
+
+
+def correcciones_duracion(c, desde="1950-01-01", minimo=3.0):
+    """Cada caída de al menos `minimo`% desde un máximo: cuántas sesiones del máximo al suelo."""
+    c = c.dropna().astype(float)
+    c = c[c.index >= pd.Timestamp(desde)]
+    if len(c) < 1000:
+        return None
+    eps = _cal_episodios(c, minimo)
+    v = c.values
+    filas = []
+    for pi, si, ri in eps:
+        filas.append({"ses": int(si - pi), "caida": float(v[si] / v[pi] - 1) * 100, "abierta": ri is None,
+                      "pico": str(c.index[pi].date())})
+    cerr = [f for f in filas if not f["abierta"]]
+    out = {"desde": str(c.index[0].date()), "grupos": []}
+    for nom, lo, hi in ((f"de {minimo:g}% a 5%", minimo, 5), ("de 5% a 10%", 5, 10), ("de 10% a 20%", 10, 20), ("más de 20%", 20, 999)):
+        g = sorted(f["ses"] for f in cerr if lo <= -f["caida"] < hi)
+        if not g:
+            continue
+        n = len(g)
+        out["grupos"].append({"nom": nom, "n": n, "med": g[n // 2], "p25": g[n // 4], "p75": g[(3 * n) // 4],
+                              "en79": round(100 * sum(1 for x in g if 7 <= x <= 9) / n),
+                              "menos7": round(100 * sum(1 for x in g if x < 7) / n),
+                              "mas9": round(100 * sum(1 for x in g if x > 9) / n)})
+    todas = sorted(f["ses"] for f in cerr)
+    if todas:
+        out["en79_total"] = round(100 * sum(1 for x in todas if 7 <= x <= 9) / len(todas))
+        out["med_total"] = todas[len(todas) // 2]
+        out["n_total"] = len(todas)
+    # hoy: sesiones desde el último máximo y caída
+    mx_i = int(np.argmax(v[-252:])) + len(v) - min(252, len(v))
+    out["hoy"] = {"ses": int(len(v) - 1 - mx_i), "caida": round(100 * (v[-1] / v[mx_i] - 1), 1),
+                  "pico": str(c.index[mx_i].date())}
+    return out
+
+
+def dix_gex_estudio(corte=None):
+    """DIX alto (≥45%) con GEX bajo (cuartil inferior de su último año) frente a lo contrario, con el S&P
+       que trae el propio fichero de SqueezeMetrics."""
+    d = DIX_HIST.get("df")
+    if d is None or len(d) < 600:
+        return None
+    try:
+        d = d.copy()
+        if corte is not None:
+            d = d[d.index <= pd.Timestamp(corte)]
+        px, dix, gex = d["px"].values, d["dix"].values, d["gex"]
+        gp = gex.rolling(252, min_periods=120).apply(lambda a: (a <= a[-1]).mean() * 100, raw=True).values
+        n = len(d)
+        alc = [i for i in range(n) if dix[i] >= CAL2_DIX_ALTO and gp[i] == gp[i] and gp[i] <= 25]
+        baj = [i for i in range(n) if dix[i] < 41.0 and gp[i] == gp[i] and gp[i] >= 75]
+        out = {"desde": str(d.index[0].date()), "hoy": {"dix": round(float(dix[-1]), 1),
+                                                       "gex_pct": (int(round(gp[-1])) if gp[-1] == gp[-1] else None),
+                                                       "fecha": str(d.index[-1].date())}}
+        for nom, ev in (("alcista", alc), ("bajista", baj)):
+            ep = _rn_declus(ev)
+            out[nom] = {"veces": len(ev), "ep": len(ep), "h": {h: _rn_stats(_rn_fwd(px, ep, h)) for h in (21, 63)}}
+        out["base"] = {h: _rn_stats(_rn_fwd(px, list(range(n)), h)) for h in (21, 63)}
+        return out
+    except Exception as _dege:
+        _deg("dix_gex", _dege)
+        return None
+
+
+def coberturas_estudio(c, corte=None, hoy=None):
+    """SKEW por debajo de 141 = protección barata (la idea del chat). Se mide la peor caída del S&P en el mes
+       siguiente según el SKEW, y se da la fecha del próximo 'jueves de la semana antes del VIX'."""
+    out = {}
+    try:
+        hoy = hoy or dt.date.today()
+        prox = None
+        for k in range(0, 3):
+            y, m = hoy.year + (hoy.month - 1 + k) // 12, (hoy.month - 1 + k) % 12 + 1
+            vv = _op_sesion_o_antes(_vix_venc(y, m))
+            j = vv - dt.timedelta(days=vv.weekday() + 4)       # el jueves de la semana anterior
+            if j >= hoy:
+                prox = {"jueves": j, "vix": vv, "dias": (j - hoy).days}
+                break
+        out["prox"] = prox
+        sk, _, _ = _fetch_indice_yahoo("^SKEW", desde="1990-01-01")
+        vx, _, _ = _fetch_indice_yahoo("^VIX", desde="1990-01-01")
+        if sk is None:
+            return out
+        if corte is not None:
+            sk = sk[sk.index <= pd.Timestamp(corte)]
+            vx = vx[vx.index <= pd.Timestamp(corte)] if vx is not None else None
+        c = c.dropna().astype(float)
+        j = sk.index.intersection(c.index)
+        s2, c2 = sk.reindex(j).values, c.reindex(j).values
+        n = len(j)
+        def peor_mes(i):
+            return min(c2[i:i + 22]) / c2[i] - 1 if i + 21 < n else None
+        grupos = {}
+        for nom, cond in (("barato", lambda x: x < CAL2_SKEW_BARATO), ("caro", lambda x: x >= CAL2_SKEW_BARATO)):
+            xs = [peor_mes(i) for i in range(n) if cond(s2[i])]
+            xs = sorted(x for x in xs if x is not None)
+            if xs:
+                grupos[nom] = {"n": len(xs), "med": round(100 * xs[len(xs) // 2], 1),
+                               "p5": round(100 * sum(1 for x in xs if x <= -0.05) / len(xs)),
+                               "p10": round(100 * sum(1 for x in xs if x <= -0.10) / len(xs))}
+        out.update({"skew": round(float(sk.iloc[-1]), 1), "skew_fecha": str(sk.index[-1].date()),
+                    "skew_pct": int(round(100 * float((sk.iloc[-252:] <= sk.iloc[-1]).mean()))),
+                    "vix": (round(float(vx.iloc[-1]), 2) if vx is not None and len(vx) else None),
+                    "vix_pct": (int(round(100 * float((vx.iloc[-252:] <= vx.iloc[-1]).mean()))) if vx is not None and len(vx) else None),
+                    "grupos": grupos, "desde": str(j[0].date()) if n else None})
+    except Exception as _dege:
+        _deg("coberturas", _dege)
+    return out
+
+
+def calendario_estudio(corte=None):
+    sp = DD4_SERIES.get("SPY") or {}
+    c = sp.get("c")
+    if c is None:
+        return None
+    if corte is not None:
+        c = c[c.index <= pd.Timestamp(corte)]
+    out = {}
+    for k, fn in (("dca", lambda: dca_trimestral(c)), ("vix_mie", lambda: desde_miercoles_vix(c)),
+                  ("corr", lambda: correcciones_duracion(c)), ("dixgex", lambda: dix_gex_estudio(corte)),
+                  ("cob", lambda: coberturas_estudio(c, corte, (pd.Timestamp(corte).date() if corte is not None else None)))):
+        try:
+            out[k] = fn()
+        except Exception as _dege:
+            _deg(f"calendario:{k}", _dege)
+            out[k] = None
+    d = out.get("dca") or {}
+    print("  📆 Calendario: DCA el 26 " + (f"{d['estr']['rebal']['media']:+.2f}%" if d.get("estr", {}).get("rebal") else "—")
+          + " · correcciones " + (f"mediana {out['corr']['med_total']} sesiones" if (out.get("corr") or {}).get("med_total") else "—"))
+    return out
+
+
+def _cal2_html(cal):
+    if not cal:
+        return ""
+    h = ["<div class='panel full'><h2>📆 Calendario, correcciones y coberturas: más ideas del chat, medidas</h2>"]
+    # 1) DCA trimestral
+    d = cal.get("dca")
+    if d:
+        E = d["estr"]
+        def fe(nom, st):
+            if not st:
+                return ""
+            col = "#2FD08A" if st["lo"] > 50 else ("#F4607A" if st["hi"] < 50 else "#E6EDF6")
+            return (f"<tr><td class='se-l'>{nom}</td><td class='r'>{st['n']}</td>"
+                    f"<td class='r' style='font-weight:700'>{st['media']:+.2f}%</td>"
+                    f"<td class='r' style='color:{col}'>{st['pos']}% <span style='font-size:10px;color:#9FB0C8'>{st['lo']:.0f}–{st['hi']:.0f}</span></td></tr>")
+        meses = {3: "marzo", 6: "junio", 9: "septiembre", 12: "diciembre"}
+        filas_m = "".join(fe(f"&nbsp;&nbsp;el 26 de {meses[m]}", d["por_mes"].get(m)) for m in (3, 6, 9, 12))
+        h.append("<div style='font-weight:700;margin-top:4px'>1. «Compra trimestral del 26 al 30, en el rebalanceo; la más fuerte, diciembre»</div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>comprar una vez por trimestre…</th>"
+                 "<th class='r'>trimestres</th><th class='r'>participaciones de más (media)</th><th class='r'>gana a un día cualquiera</th></tr>"
+                 + fe("<b>el día 26 del último mes</b> (rebalanceo)", E.get("rebal")) + filas_m
+                 + fe("el primer día del trimestre", E.get("inicio")) + fe("a mitad del trimestre (día 15 del segundo mes)", E.get("mitad"))
+                 + "</table></div>")
+        V = d.get("ventana") or {}
+        b4 = d.get("base4")
+        vt = " · ".join(f"{meses[m]} {V[m]['media']:+.2f}% (sube {V[m]['pos']}%)" for m in (3, 6, 9, 12) if V.get(m))
+        h.append(f"<div style='font-size:12px;margin-top:4px;color:#9FB0C8'>Lo que hace el S&amp;P del 26 a fin de mes: {vt}"
+                 + (f" · cualquier tramo de 4 sesiones: {b4['media']:+.2f}% (sube {b4['pos']}%)" if b4 else "") + "</div>")
+        r = E.get("rebal")
+        if r:
+            ver = ("no se distingue de comprar un día cualquiera: la diferencia es de décimas y el margen de error cruza el 50%"
+                   if r["lo"] <= 50 <= r["hi"] else ("comprar el 26 ha dado algo más de participaciones" if r["lo"] > 50 else "comprar el 26 ha dado MENOS participaciones"))
+            h.append(f"<div style='font-size:13px;margin-top:6px'><b>Resultado:</b> {ver} ({r['media']:+.2f}% de media, desde {esc(d['desde'])}). "
+                     "Ojo: esperar al 26 es comprar al final del trimestre, y como el mercado tiende a subir, de media se compra algo más "
+                     "caro que entrando al principio (compara con la fila «primer día»). Lo que de verdad mueve un DCA es estar invertido "
+                     "más tiempo, no el día.</div>")
+    # 2) desde el miércoles del VIX
+    m = cal.get("vix_mie")
+    if m:
+        fil = []
+        for hz, nm in ((5, "1 semana"), (10, "2 semanas")):
+            st, b = m["h"].get(hz), m["base"].get(hz)
+            if st and b:
+                fil.append(f"<tr><td class='se-l'>{nm} después del vencimiento del VIX</td>" + _rn_celda(st, b) + _rn_celda(b) + "</tr>")
+        h.append("<div style='font-weight:700;margin-top:14px'>2. «A partir del miércoles (vencimiento del VIX) es buena tendencia»</div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P</th>"
+                 "<th class='r'>desde el miércoles del VIX</th><th class='r'>desde un día cualquiera</th></tr>" + "".join(fil) + "</table></div>"
+                 f"<div style='font-size:11px;color:#9FB0C8'>Desde {esc(m['desde'])} (hay futuros del VIX desde 2004).</div>")
+    # 3) duración de las correcciones
+    co = cal.get("corr")
+    if co and co.get("grupos"):
+        fil = "".join(f"<tr><td class='se-l'>caídas {esc(g['nom'])}</td><td class='r'>{g['n']}</td><td class='r' style='font-weight:700'>{g['med']}</td>"
+                      f"<td class='r'>{g['p25']}–{g['p75']}</td><td class='r'>{g['menos7']}%</td><td class='r' style='font-weight:700'>{g['en79']}%</td>"
+                      f"<td class='r'>{g['mas9']}%</td></tr>" for g in co["grupos"])
+        hoy = co.get("hoy") or {}
+        h.append("<div style='font-weight:700;margin-top:14px'>3. «De 7 a 9 velas se considera una corrección»</div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P, del máximo al suelo</th>"
+                 "<th class='r'>veces</th><th class='r'>sesiones (mediana)</th><th class='r'>la mitad, entre</th><th class='r'>menos de 7</th>"
+                 "<th class='r'>de 7 a 9</th><th class='r'>más de 9</th></tr>" + fil + "</table></div>"
+                 f"<div style='font-size:12.5px;margin-top:4px'>Solo el <b>{co.get('en79_total')}%</b> de las caídas de más de un 3% (desde {esc(co['desde'])}) "
+                 f"tocó suelo entre la vela 7 y la 9; la mediana es {co.get('med_total')} sesiones. Hoy el S&amp;P lleva <b>{hoy.get('ses')}</b> "
+                 f"sesiones desde su máximo del {esc(hoy.get('pico') or '')} y está un {abs(hoy.get('caida') or 0)}% por debajo.</div>")
+    # 4) DIX y GEX
+    dg = cal.get("dixgex")
+    h.append("<div style='font-weight:700;margin-top:14px'>4. «Corrige hasta que GEX y DIX se van a la inversa» (DIX alto y GEX bajo)</div>")
+    if dg:
+        fil = []
+        for nom, k in (("<b>DIX ≥45% y GEX bajo</b> (cuartil inferior del año)", "alcista"), ("DIX &lt;41% y GEX alto (lo contrario)", "bajista")):
+            x = dg.get(k) or {}
+            fil.append(f"<tr><td class='se-l'>{nom}<div style='font-size:10px;color:#5E708A'>{x.get('ep')} episodios ({x.get('veces')} días)</div></td>"
+                       + _rn_celda((x.get("h") or {}).get(21), dg["base"][21]) + _rn_celda((x.get("h") or {}).get(63), dg["base"][63]) + "</tr>")
+        fil.append("<tr><td class='se-l' style='color:#9FB0C8'>un día cualquiera</td>" + _rn_celda(dg["base"][21]) + _rn_celda(dg["base"][63]) + "</tr>")
+        hy = dg["hoy"]
+        h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P después de…</th>"
+                 "<th class='r'>1 mes</th><th class='r'>3 meses</th></tr>" + "".join(fil) + "</table></div>"
+                 f"<div style='font-size:12.5px;margin-top:4px'>Hoy ({esc(hy['fecha'])}): DIX {hy['dix']}%, GEX en el percentil {hy['gex_pct']} de su año"
+                 + (" → <b style='color:#2FD08A'>señal de giro activa</b>" if hy["dix"] >= CAL2_DIX_ALTO and (hy["gex_pct"] or 100) <= 25 else " → la señal de giro no está activa")
+                 + f". Datos de SqueezeMetrics desde {esc(dg['desde'])}.</div>")
+    else:
+        h.append("<div class='note'>Sin el histórico de DIX y GEX hoy (SqueezeMetrics no respondió o está apagado).</div>")
+    # 5) coberturas
+    cb = cal.get("cob") or {}
+    h.append("<div style='font-weight:700;margin-top:14px'>5. «Coberturas el jueves de la semana antes del vencimiento del VIX; con el SKEW por debajo de 141 son baratas»</div>")
+    pr = cb.get("prox")
+    lin = []
+    if pr:
+        lin.append(f"Próximo jueves de coberturas: <b>{esc(str(pr['jueves']))}</b> (en {pr['dias']} días; el VIX vence el {esc(str(pr['vix']))}).")
+    if cb.get("skew") is not None:
+        bar = cb["skew"] < CAL2_SKEW_BARATO
+        lin.append(f"SKEW hoy: <b style='color:{'#2FD08A' if bar else '#F4B740'}'>{cb['skew']}</b> (percentil {cb['skew_pct']} del año) → "
+                   + ("<b>por debajo de 141: protección barata según la regla</b>" if bar else "por encima de 141: protección cara según la regla")
+                   + (f" · VIX {cb['vix']} (percentil {cb['vix_pct']} del año)" if cb.get("vix") is not None else "") + ".")
+        G = cb.get("grupos") or {}
+        if G.get("barato") and G.get("caro"):
+            a, b = G["barato"], G["caro"]
+            lin.append(f"Lo que vino después (S&amp;P, peor momento del mes siguiente, desde {esc(cb.get('desde') or '')}): con SKEW &lt;141, caída mediana "
+                       f"{a['med']}% y un {a['p5']}% de las veces más de un −5%; con SKEW ≥141, {b['med']}% y {b['p5']}%. "
+                       "El SKEW mide lo que se paga por protegerse de un desplome, no predice cuándo llega: por eso «barato» es buen momento "
+                       "para cubrirse, no una señal de caída.")
+    else:
+        lin.append("Sin dato del SKEW hoy.")
+    h.append("<div style='font-size:12.5px;line-height:1.6'>" + "<br>".join(lin) + "</div>")
+    h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> «participaciones de más» = cuántas participaciones más (o menos) "
+             "compras con el mismo dinero ese día que de media un día cualquiera de ese trimestre. Las demás tablas: % de veces que el S&amp;P "
+             "estaba más arriba pasado ese plazo, con su margen de error; en verde si es claramente mejor que un día cualquiera. Son reglas "
+             "repetidas en el chat medidas con la historia del S&amp;P: algunas aguantan y otras no. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+
+# ======================================================================
+# v7.9.2 — AGENDA Y AVISOS ("que no se me vuelva a pasar")
+#   Las citas del calendario (vencimientos, VIX, jueves de coberturas, ventana de fin de trimestre) arriba
+#   del todo en la primera pestaña, con qué hacer en cada una y lo que dicen los datos. Y un aviso por
+#   Telegram la noche antes y el mismo día (si están puestos TELEGRAM_TOKEN y TELEGRAM_CHAT_ID).
+# ======================================================================
+AGENDA_DIAS = 45          # se enseñan las citas de los próximos 45 días
+AGENDA_AVISO = 10         # a menos de 10 días, en ámbar; a 0-1 días, en rojo y aviso por Telegram
+AVISOS_FILE = os.path.join(SEGUIMIENTO_DIR, "avisos_calendario.json")
+_DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def _sesion_o_despues(d):
+    while not _es_sesion(d):
+        d += dt.timedelta(days=1)
+    return d
+
+
+def agenda_calendario(hoy, cal=None):
+    """Próximas citas con su fecha, cuántos días faltan, qué hacer y lo que dicen los datos."""
+    ev = []
+    try:
+        cal = cal or {}
+        cob = cal.get("cob") or {}
+        dca = cal.get("dca") or {}
+        vmi = cal.get("vix_mie") or {}
+        sk = cob.get("skew")
+        sk_txt = ("" if sk is None else (f" SKEW ahora: {sk} → " + ("por debajo de 141, protección barata." if sk < CAL2_SKEW_BARATO
+                                                                   else "por encima de 141, protección cara.")))
+        reb = (dca.get("estr") or {}).get("rebal")
+        reb_txt = ("" if not reb else f" Dato: comprar el 26 ha dado {reb['media']:+.2f}% participaciones frente a un día cualquiera del trimestre"
+                   f" (gana el {reb['pos']}% de las veces).")
+        v5 = (vmi.get("h") or {}).get(5)
+        b5 = (vmi.get("base") or {}).get(5)
+        vix_txt = ("" if not (v5 and b5) else f" Dato: una semana después sube el {v5['pos']}% de las veces (un día cualquiera: {b5['pos']}%).")
+        for k in range(0, 4):
+            y, m = hoy.year + (hoy.month - 1 + k) // 12, (hoy.month - 1 + k) % 12 + 1
+            q = m in (3, 6, 9, 12)
+            o = _op_sesion_o_antes(_op_tercer_viernes(y, m))
+            ev.append({"fecha": o, "tipo": "opex", "que": ("Vencimiento TRIMESTRAL de opciones (cuádruple)" if q else "Vencimiento mensual de opciones"),
+                       "hacer": "Más movimiento la semana y media previa. La semana siguiente ha sido algo más floja que las demás: sin prisa por entrar."})
+            v = _op_sesion_o_antes(_vix_venc(y, m))
+            ev.append({"fecha": v, "tipo": "vix", "que": "Vencimiento del VIX",
+                       "hacer": "El chat dice que desde este miércoles hay «buena tendencia»." + vix_txt})
+            j = _op_sesion_o_antes(v - dt.timedelta(days=v.weekday() + 4))
+            ev.append({"fecha": j, "tipo": "cob", "que": "Jueves de coberturas (la semana antes del VIX)",
+                       "hacer": "Si quieres protección (puts o VIX), comprarla ahora, antes de necesitarla." + sk_txt})
+            if q:
+                d26 = _sesion_o_despues(dt.date(y, m, CAL2_DIA_REBAL))
+                ev.append({"fecha": d26, "tipo": "dca", "que": "Ventana de rebalanceo de fin de trimestre (del 26 al 30)",
+                           "hacer": "La fecha del chat para la aportación trimestral." + reb_txt})
+        vistos, out = set(), []
+        prox = _sesion_o_despues(hoy + dt.timedelta(days=1))
+        for e in sorted(ev, key=lambda e: (e["fecha"], e["tipo"])):
+            e["dias"] = (e["fecha"] - hoy).days
+            e["urge"] = bool(e["dias"] == 0 or e["fecha"] == prox)      # hoy o la próxima sesión (el viernes avisa del lunes)
+            clave = (e["tipo"], e["fecha"])
+            if e["dias"] < 0 or e["dias"] > AGENDA_DIAS or clave in vistos:
+                continue
+            vistos.add(clave)
+            out.append(e)
+        dg = (cal.get("dixgex") or {}).get("hoy") or {}
+        if dg.get("dix") is not None and dg["dix"] >= CAL2_DIX_ALTO and (dg.get("gex_pct") if dg.get("gex_pct") is not None else 100) <= 25:
+            out.insert(0, {"fecha": hoy, "dias": 0, "urge": False, "tipo": "dixgex", "que": "SEÑAL ACTIVA: DIX alto y GEX bajo",
+                           "hacer": f"DIX {dg['dix']}% y GEX en el percentil {dg['gex_pct']}: es la combinación que, según el chat, termina las correcciones. Mira su histórico en Rachas y niveles."})
+        return out
+    except Exception as _dege:
+        _deg("agenda", _dege)
+        return out if "out" in locals() else []
+
+
+def _agenda_html(ev):
+    if not ev:
+        return ""
+    filas = []
+    for e in ev:
+        d = e["dias"]
+        urge = e.get("urge") or d == 0
+        col = "#F4607A" if urge else ("#F4B740" if d <= AGENDA_AVISO else "#9FB0C8")
+        cuando = "HOY" if d == 0 else ("MAÑANA" if d == 1 else ("PRÓXIMA SESIÓN" if urge else f"en {d} días"))
+        f_ = e["fecha"]
+        filas.append(f"<div style='display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)'>"
+                     f"<div style='min-width:96px;flex:none'><b style='color:{col}'>{cuando}</b>"
+                     f"<div style='font-size:11px;color:#9FB0C8'>{_DIAS_ES[f_.weekday()]} {f_.day}/{f_.month}</div></div>"
+                     f"<div style='font-size:12.5px;line-height:1.45'><b style='color:{col if d <= AGENDA_AVISO else '#E6EDF6'}'>{esc(e['que'])}</b>"
+                     f"<div style='color:#9FB0C8'>{esc(e['hacer'])}</div></div></div>")
+    urg = sum(1 for e in ev if e.get("urge") or e["dias"] == 0)
+    return ("<div class='panel full' style='border-color:#F4B74066'><h2>🔔 Agenda: lo que viene"
+            + (f" <span style='color:#F4607A'>· {urg} para hoy o la próxima sesión</span>" if urg else "") + "</h2>"
+            + "".join(filas)
+            + "<div class='note' style='margin-top:6px'>Fechas calculadas por regla (3er viernes, VIX = miércoles 30 días antes del 3er "
+              "viernes del mes siguiente, festivos de Nueva York). Lo que dice cada una viene del chat; el «Dato» es lo que ha pasado "
+              "de verdad en el S&amp;P. Si tienes Telegram configurado, te llega un aviso la noche antes y el mismo día. "
+              "No es asesoramiento.</div></div>")
+
+
+def avisar_agenda(ev, hoy=None):
+    """Telegram la noche antes y el día (una sola vez por cita). Devuelve cuántos avisos se enviaron."""
+    try:
+        urg = [e for e in (ev or []) if e.get("urge")]
+        if not urg:
+            return 0
+        try:
+            with open(AVISOS_FILE, encoding="utf-8") as f:
+                enviados = json.load(f)
+            if not isinstance(enviados, list):
+                enviados = []
+        except Exception:
+            enviados = []
+        nuevos = []
+        for e in urg:
+            clave = f"{e['tipo']}:{e['fecha']}:{e['dias']}"
+            if clave in enviados:
+                continue
+            nuevos.append((clave, e))
+        if not nuevos:
+            return 0
+        txt = "🔔 AGENDA PeVR\n" + "\n".join(
+            f"{'HOY' if e['dias'] == 0 else ('MAÑANA' if e['dias'] == 1 else 'PRÓXIMA SESIÓN')} ({_DIAS_ES[e['fecha'].weekday()]} {e['fecha'].day}/{e['fecha'].month}): {e['que']}\n   {e['hacer']}"
+            for _, e in nuevos)
+        if notify(txt):
+            enviados = (enviados + [k for k, _ in nuevos])[-300:]
+            try:
+                os.makedirs(SEGUIMIENTO_DIR, exist_ok=True)
+                guardar_json_seguro(AVISOS_FILE, enviados, indent=0)
+            except Exception as _dege:
+                _deg("agenda:guardar", _dege)
+            print(f"  🔔 Agenda: {len(nuevos)} aviso(s) enviados por Telegram")
+            return len(nuevos)
+        print("  🔔 Agenda: hay citas para hoy/mañana, pero Telegram no está configurado (TELEGRAM_TOKEN / TELEGRAM_CHAT_ID)")
+        return 0
+    except Exception as _dege:
+        _deg("agenda:avisar", _dege)
+        return 0
 
 
 def main():
@@ -21468,6 +21977,12 @@ def main():
     _rn = None
     try:
         _rn = rachas_niveles(daily, corte=(df.index[-1] if VIAJE_A else None))
+        try:
+            _rn["agenda"] = agenda_calendario(pd.Timestamp(_cierre_real(daily, df)).date(), _rn.get("cal"))   # misma fecha que la caja DATOS
+            if not VIAJE_A:
+                avisar_agenda(_rn["agenda"])
+        except Exception as _e_ag:
+            _avisar("agenda", f"agenda no calculada: {_e_ag}")
         try:
             _rn["calidad"] = factores_crisis(corte=(df.index[-1] if VIAJE_A else None))
         except Exception as _e_fc:

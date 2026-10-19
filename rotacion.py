@@ -12080,7 +12080,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             if operativa:
                 _idx_extra += _sect_html(operativa.get("sect"), operativa.get("sect_bt")) + _sect_bt_html(operativa.get("sect_bt"))
                 try:
-                    _idx_extra += _lab_html(operativa.get("sect_lab"))
+                    _idx_extra += _prop_html(operativa.get("sect_prop")) + _lab_html(operativa.get("sect_lab"))
                 except Exception as _dege:
                     _deg("lab:html", _dege)
         except Exception as _dege:
@@ -21658,7 +21658,19 @@ def _lab_html(lab):
                      f"<td class='r' style='font-weight:800;color:{'#2FD08A' if mejor else '#F4607A'}'>{pc(r['anual'])}</td>"
                      f"<td class='r' style='color:#9FB0C8'>{pc(r['anual_spy'])}</td><td class='r'>{pc(r['bate'], False)}</td>"
                      f"<td class='r'>{r['abiertas']}</td></tr>")
-    h = ["<div class='panel full'><h2>🔬 Laboratorio de la regla de sectores: lo que el «vuelve al máximo» no cuenta</h2>"
+    ver = ""
+    try:
+        ganan = [r for r in lab["reglas"] if r["anual"] is not None and r["anual_spy"] is not None and r["anual"] > r["anual_spy"]]
+        cl0 = (lab.get("cartera") or {}).get("spy") or {}
+        ver = (f"<div style='margin:8px 0;padding:9px 12px;background:#0E1626;border-radius:8px;font-size:13px;line-height:1.5'><b>Veredicto:</b> "
+               f"la regla de ahora rinde <b>{b['anual']:+.1f}% por año invertido</b> frente a <b>{b['anual_spy']:+.1f}%</b> del SPY esos mismos días"
+               + (f"; en cartera, {cl0.get('cagr'):+.1f}% al año frente a {cl0.get('spy_cagr'):+.1f}% de tener solo el SPY" if cl0 else "") + ". "
+               + ("<b style='color:#2FD08A'>Gana al SPY.</b>" if b["anual"] > b["anual_spy"] else "<b style='color:#F4607A'>No gana al SPY:</b> acertar casi siempre no basta si el dinero se queda años parado en los que no vuelven.")
+               + (" Variantes que sí le ganan: " + ", ".join(esc(r["nom"]) for r in ganan) + "." if ganan else " Ninguna variante le gana.")
+               + "</div>")
+    except Exception:
+        ver = ""
+    h = ["<div class='panel full'><h2>🔬 Laboratorio de la regla de sectores: lo que el «vuelve al máximo» no cuenta</h2>" + ver +
          "<div class='note'>El «88% vuelve al máximo» dice si acaba volviendo, no cuánto tarda ni cuánto rinde el dinero mientras "
          "espera. Aquí se mide la <b>rentabilidad por año invertido</b> (todas las operaciones juntas, contando el tiempo que el dinero "
          "estuvo dentro) y se compara con haber tenido el SPY esos mismos días. Las abiertas cuentan a precio de hoy.</div>",
@@ -21697,6 +21709,194 @@ def _lab_html(lab):
              "mismos días: es lo que de verdad dice si la regla vale más que no hacer nada. «Peor momento dentro» = lo que llegó a ir en "
              "contra antes de salir (lo que hay que aguantar). La lista de sectores es la de hoy (los fondos que cerraron no están), así que "
              "el pasado sale algo mejor de lo que fue. Pasado, no promesa. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+
+# ======================================================================
+# v7.9.4 — CAÍDAS PROPIAS: el sector cae un 10% y el índice NO (la idea de Pe)
+#   Sectores que van por libre del S&P/Nasdaq y que, en pocas semanas, caen un 10% desde su máximo
+#   reciente mientras el S&P sube o está plano. ¿Rebotan? Operación corta: sale al volver a ese máximo
+#   reciente o a los 3 meses, lo que llegue antes. Se compara con el SPY de esos mismos días.
+#   Reutiliza los históricos de backtest_sectores (sin descargas).
+# ======================================================================
+PROP_VENT = 60          # máximo reciente: el de las últimas 60 sesiones (unos 3 meses)
+PROP_CAIDA = 10.0       # caída del sector desde ese máximo
+PROP_SPY_MAX = 3.0      # el S&P, a menos de un 3% de su propio máximo de 60 sesiones (sube o plano)
+PROP_RHO = 0.6          # correlación de 120 sesiones con el SPY por debajo de esto = va por libre
+PROP_DIAS = 63          # salida por tiempo: 3 meses
+PROP_RECIENTE = "2023-01-01"
+
+
+def _prop_series(d, sp):
+    c = d["Close"].astype(float)
+    mx = c.rolling(PROP_VENT, min_periods=PROP_VENT).max()
+    spa = sp.reindex(c.index).ffill()
+    smx = spa.rolling(PROP_VENT, min_periods=PROP_VENT).max()
+    rho = c.pct_change().rolling(120, min_periods=100).corr(spa.pct_change())
+    return pd.DataFrame({"c": c, "max": mx, "dd": (c / mx - 1) * 100, "spy": spa,
+                         "spy_dd": (spa / smx - 1) * 100, "rho": rho}).dropna()
+
+
+def _prop_ops(S, entrada, dias_max=PROP_DIAS, stop=None, desde=None):
+    c, mx, spy, dd = S["c"].values, S["max"].values, S["spy"].values, S["dd"].values
+    idx = S.index
+    n = len(c)
+    ops, t = [], 0
+    t0 = idx.searchsorted(pd.Timestamp(desde)) if desde else 0
+    t = max(t, t0)
+    while t < n - 1:
+        if not entrada[t]:
+            t += 1
+            continue
+        e = t + 1
+        pin, obj = c[e], mx[t]
+        j, fin, motivo = e, None, None
+        while j < n - 1:
+            j += 1
+            if c[j] >= obj:
+                fin, motivo = j, "máximo"
+                break
+            if stop is not None and c[j] <= pin * (1 - stop):
+                fin, motivo = j, "stop"
+                break
+            if j - e >= dias_max:
+                fin, motivo = j, "tiempo"
+                break
+        cerrada = fin is not None
+        fin = fin if cerrada else n - 1
+        ops.append({"e": idx[e], "f": idx[fin], "dias": max(1, fin - e), "ret": c[fin] / pin - 1,
+                    "spy": (spy[fin] / spy[e] - 1) if spy[e] > 0 else None, "cerrada": cerrada,
+                    "motivo": motivo or "abierta", "mae": float(min(c[e:fin + 1]) / pin - 1)})
+        t = fin + 1
+        # no repetir en la misma caída: hace falta que se recupere hasta el −5% o que pasen 21 sesiones
+        while t < n - 1 and dd[t] <= -PROP_CAIDA / 2 and t - fin < 21:
+            t += 1
+    return ops
+
+
+def lab_caidas_propias():
+    try:
+        sp = SECT_HIST.get("__SPY__")
+        if sp is None:
+            return None
+        S = {}
+        for sym, d in SECT_HIST.items():
+            if sym == "__SPY__" or d is None or len(d) < 300:
+                continue
+            x = _prop_series(d, sp)
+            if len(x) > 200:
+                S[sym] = x
+        if not S:
+            return None
+        fams = {k: familia_de(k) for k in S}
+        def ent(x, caida=PROP_CAIDA, rho=PROP_RHO, spy_max=PROP_SPY_MAX):
+            m = np.array((x["dd"] <= -caida).values, dtype=bool)
+            if spy_max is not None:
+                m = m & np.array((x["spy_dd"] >= -spy_max).values, dtype=bool)
+            if rho is not None:
+                m = m & np.array((x["rho"] < rho).values, dtype=bool)
+            return m
+        variantes = [
+            ("La idea: −10% en 3 meses, el S&P sube o plano, va por libre (ρ<0,6); sale al máximo o a 3 meses", {}, {}),
+            ("Lo mismo, solo desde 2023 (los últimos años)", {}, {"desde": PROP_RECIENTE}),
+            ("Muy por libre (ρ<0,4)", {"rho": 0.4}, {}),
+            ("Sin mirar la correlación (cualquier sector)", {"rho": None}, {}),
+            ("Sin mirar al S&P (aunque el índice también caiga)", {"spy_max": None}, {}),
+            ("Caída de −7%", {"caida": 7.0}, {}),
+            ("Caída de −15%", {"caida": 15.0}, {}),
+            ("Dando 6 meses en vez de 3", {}, {"dias_max": 126}),
+            ("Con stop del −10% desde la entrada", {}, {"stop": 0.10}),
+        ]
+        filas, base_ops = [], None
+        for nom, ke, ko in variantes:
+            ops = []
+            for sym, x in S.items():
+                for o in _prop_ops(x, np.nan_to_num(ent(x, **ke).astype(float)).astype(bool), **ko):
+                    o["sym"], o["fam"] = sym, fams[sym]
+                    ops.append(o)
+            if base_ops is None:
+                base_ops = ops
+            r = _lab_resumen(ops)
+            if r:
+                r["nom"] = nom
+                r["exceso"] = round(100 * float(np.median([o["ret"] - o["spy"] for o in ops if o["spy"] is not None])), 1) if ops else None
+                filas.append(r)
+        por_sym = []
+        for sym in S:
+            oo = [o for o in base_ops if o["sym"] == sym]
+            r = _lab_resumen(oo)
+            if r and r["n"] >= 3:
+                r.update({"sym": sym, "fam": fams[sym], "rho": round(float(S[sym]["rho"].iloc[-1]), 2),
+                          "exceso": round(100 * float(np.median([o["ret"] - o["spy"] for o in oo if o["spy"] is not None])), 1),
+                          "rec": sum(1 for o in oo if o["e"] >= pd.Timestamp(PROP_RECIENTE))})
+                por_sym.append(r)
+        por_sym.sort(key=lambda r: -(r["exceso"] if r["exceso"] is not None else -999))
+        hoy = []
+        for sym, x in S.items():
+            u = x.iloc[-1]
+            if u["dd"] <= -PROP_CAIDA and u["spy_dd"] >= -PROP_SPY_MAX and u["rho"] < PROP_RHO:
+                hoy.append({"sym": sym, "fam": fams[sym], "dd": round(float(u["dd"]), 1), "rho": round(float(u["rho"]), 2),
+                            "obj": round(float(u["max"]), 2), "c": round(float(u["c"]), 2)})
+        hoy.sort(key=lambda h: h["dd"])
+        b = filas[0] if filas else {}
+        print(f"  🔍 Caídas propias: {b.get('n')} operaciones · acaban ganando {b.get('gana')}% · {b.get('anual')}%/año vs SPY {b.get('anual_spy')}% · hoy: {', '.join(h['sym'] for h in hoy) or 'ninguna'}")
+        return {"filas": filas, "por_sym": por_sym, "hoy": hoy}
+    except Exception as _dege:
+        _deg("caidas_propias", _dege)
+        _avisar("sectores", f"estudio de caídas propias no calculado: {_dege}")
+        return None
+
+
+def _prop_html(p):
+    if not p or not p.get("filas"):
+        return ""
+    def pc(v, signo=True):
+        return "—" if v is None else (f"{v:+.1f}%" if signo else f"{v:.0f}%")
+    b = p["filas"][0]
+    gana = b["anual"] is not None and b["anual_spy"] is not None and b["anual"] > b["anual_spy"]
+    h = ["<div class='panel full'><h2>🔍 Caídas propias: el sector cae un 10% y el índice no</h2>"
+         "<div class='note'>Sectores que van por libre del S&amp;P (correlación de 120 sesiones por debajo de 0,6) y que caen un "
+         f"{PROP_CAIDA:g}% desde su máximo de los últimos 3 meses mientras el S&amp;P está a menos de un {PROP_SPY_MAX:g}% de su propio "
+         "máximo (sube o está plano). Entra al cierre siguiente; sale cuando vuelve a ese máximo o a los 3 meses, lo que llegue antes. "
+         "Operación corta, no de años.</div>",
+         f"<div style='margin:8px 0;padding:9px 12px;background:#0E1626;border-radius:8px;font-size:13px;line-height:1.5'><b>Veredicto:</b> "
+         f"{b['n']} operaciones; acaban ganando el {b['gana']}% y vuelven al máximo el {b['max']}%. Rinde <b>{pc(b['anual'])} por año invertido</b> "
+         f"frente a <b>{pc(b['anual_spy'])}</b> del SPY esos mismos días (diferencia mediana por operación: {pc(b.get('exceso'))}). "
+         + ("<b style='color:#2FD08A'>Le gana al SPY.</b>" if gana else "<b style='color:#F4607A'>No le gana al SPY.</b>") + "</div>"]
+    filas = "".join(
+        f"<tr><td class='se-l' style='white-space:normal;min-width:220px;max-width:340px'>{esc(r['nom'])}</td><td class='r'>{r['n']}</td>"
+        f"<td class='r'>{r['gana']}%<div style='font-size:10px;color:#9FB0C8'>{r['lo']:.0f}–{r['hi']:.0f}</div></td><td class='r'>{r['max']}%</td>"
+        f"<td class='r'>{r['dias_med']}</td><td class='r'>{pc(r['ret_med'])}<div style='font-size:10px;color:#F4607A'>10% peores {pc(r['ret_p10'])}</div></td>"
+        f"<td class='r' style='color:#F4B740'>{pc(r['mae_p10'])}</td>"
+        f"<td class='r' style='font-weight:800;color:{'#2FD08A' if (r['anual'] or -99) > (r['anual_spy'] or 99) else '#F4607A'}'>{pc(r['anual'])}</td>"
+        f"<td class='r' style='color:#9FB0C8'>{pc(r['anual_spy'])}</td><td class='r'>{pc(r.get('exceso'))}</td><td class='r'>{pc(r['bate'], False)}</td></tr>"
+        for r in p["filas"])
+    h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>variante</th><th class='r'>operaciones</th>"
+             "<th class='r'>acaban ganando</th><th class='r'>vuelven al máximo</th><th class='r'>sesiones (mediana)</th><th class='r'>resultado (mediana)</th>"
+             "<th class='r'>peor momento (10% peores)</th><th class='r'>por año invertido</th><th class='r'>SPY esos días</th>"
+             "<th class='r'>frente al SPY (mediana)</th><th class='r'>bate al SPY</th></tr>" + filas + "</table></div>")
+    ps = p.get("por_sym") or []
+    if ps:
+        fil = "".join(f"<tr><td class='se-l'><b>{esc(r['sym'])}</b> <span style='font-size:10px;color:#5E708A'>{esc(r['fam'])}</span></td>"
+                      f"<td class='r'>{r['n']}<div style='font-size:10px;color:#9FB0C8'>{r['rec']} desde 2023</div></td><td class='r'>{r['gana']}%</td><td class='r'>{r['max']}%</td>"
+                      f"<td class='r'>{r['dias_med']}</td><td class='r' style='color:#F4B740'>{pc(r['mae_p10'])}</td>"
+                      f"<td class='r' style='font-weight:800;color:{'#2FD08A' if (r['exceso'] or 0) > 0 else '#F4607A'}'>{pc(r['exceso'])}</td>"
+                      f"<td class='r'>{pc(r['anual'])}</td><td class='r' style='color:#9FB0C8'>{pc(r['anual_spy'])}</td>"
+                      f"<td class='r'>{r['rho']:.2f}</td></tr>" for r in ps)
+        h.append("<div style='font-weight:700;margin-top:12px'>Sector a sector (la idea), de mejor a peor frente al SPY</div>"
+                 "<div class='scrollx' style='max-height:420px;overflow-y:auto'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>sector</th>"
+                 "<th class='r'>veces</th><th class='r'>acaban ganando</th><th class='r'>vuelven al máximo</th><th class='r'>sesiones</th>"
+                 "<th class='r'>peor momento (10% peores)</th><th class='r'>frente al SPY (mediana)</th><th class='r'>por año</th><th class='r'>SPY esos días</th>"
+                 "<th class='r'>ρ hoy</th></tr>" + fil + "</table></div>")
+    hy = p.get("hoy") or []
+    h.append("<div style='font-size:13px;margin-top:8px'><b>Hoy cumplen la condición:</b> "
+             + (" · ".join(f"<b>{esc(x['sym'])}</b> ({esc(x['fam'])}, {x['dd']:+.1f}% desde su máximo de 3 meses, ρ {x['rho']:.2f}, volvería a {x['obj']:g})" for x in hy)
+                if hy else "ninguno.") + "</div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> «frente al SPY» = lo que ganó la operación menos lo que hizo el SPY "
+             "esos mismos días (mediana). «Por año invertido» cuenta el tiempo dentro. Si una variante no gana al SPY, comprar el índice esos "
+             "días habría sido mejor que comprar el sector caído. Lista de sectores de hoy: el pasado sale algo mejor de lo que fue. "
+             "No es asesoramiento.</div></div>")
     return "".join(h)
 
 
@@ -22263,6 +22463,7 @@ def main():
             _oper["sect"] = tabla_sectores(daily, flow, _oper.get("sect_bt"))
             try:
                 _oper["sect_lab"] = lab_sectores()
+                _oper["sect_prop"] = lab_caidas_propias()
             except Exception as _e_lab:
                 _avisar("sectores", f"laboratorio de sectores no calculado: {_e_lab}")
             _cands = [f["sym"] for f in _oper["sect"] if f["senal"] == "CANDIDATO"]

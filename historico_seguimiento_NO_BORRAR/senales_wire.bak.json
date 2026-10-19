@@ -4070,6 +4070,12 @@
 {
 "date": "2026-10-19",
 "tag": "GRADUADO",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-10-19",
+"tag": "GRADUADO",
 "sym": "DRIV",
 "dir": 1
 },
@@ -4087,12 +4093,6 @@
 },
 {
 "date": "2026-10-19",
-"tag": "GRADUADO",
-"sym": "GRID",
-"dir": 1
-},
-{
-"date": "2026-10-19",
 "tag": "GIRO",
 "sym": "NCLD",
 "dir": -1
@@ -4106,7 +4106,7 @@
 {
 "date": "2026-10-19",
 "tag": "GIRO",
-"sym": "XME",
+"sym": "MSTR",
 "dir": -1
 },
 {
@@ -4130,20 +4130,14 @@
 {
 "date": "2026-10-19",
 "tag": "SUELO",
-"sym": "XLI",
-"dir": 1
-},
-{
-"date": "2026-10-19",
-"tag": "SUELO",
-"sym": "EWG",
-"dir": 1
-},
-{
-"date": "2026-10-19",
-"tag": "SUELO",
 "sym": "EWP",
 "dir": 1
+},
+{
+"date": "2026-10-19",
+"tag": "SUELO",
+"sym": "ITA",
+"dir": 0
 },
 {
 "date": "2026-10-19",
@@ -4160,13 +4154,7 @@
 {
 "date": "2026-10-19",
 "tag": "EARLY",
-"sym": "HYDR",
-"dir": 1
-},
-{
-"date": "2026-10-19",
-"tag": "SENT",
-"sym": "F&G",
+"sym": "XLRE",
 "dir": 1
 }
 ]

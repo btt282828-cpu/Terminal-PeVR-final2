@@ -201,12 +201,12 @@
 "date": "2026-10-19",
 "idx": {
 "SPY": {
-"score": 3,
-"ver": "NO TOCAR",
+"score": 4,
+"ver": "ESPERAR",
 "p": [
 "a",
 "r",
-"r",
+"a",
 "a",
 "a"
 ]
@@ -223,11 +223,11 @@
 ]
 },
 "DIA": {
-"score": 4,
+"score": 5,
 "ver": "ESPERAR",
 "p": [
 "a",
-"a",
+"v",
 "a",
 "r",
 "a"

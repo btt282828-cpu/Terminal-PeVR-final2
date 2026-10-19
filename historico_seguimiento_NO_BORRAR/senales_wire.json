@@ -4106,7 +4106,7 @@
 {
 "date": "2026-10-19",
 "tag": "GIRO",
-"sym": "MSTR",
+"sym": "XME",
 "dir": -1
 },
 {
@@ -4136,6 +4136,12 @@
 {
 "date": "2026-10-19",
 "tag": "SUELO",
+"sym": "EWG",
+"dir": 1
+},
+{
+"date": "2026-10-19",
+"tag": "SUELO",
 "sym": "ITA",
 "dir": 0
 },
@@ -4154,7 +4160,7 @@
 {
 "date": "2026-10-19",
 "tag": "EARLY",
-"sym": "XLRE",
+"sym": "HYDR",
 "dir": 1
 }
 ]

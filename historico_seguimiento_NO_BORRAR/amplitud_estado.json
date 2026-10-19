@@ -243,15 +243,15 @@
 "date": "2026-10-19",
 "rsp": "ESTABLE",
 "iwm": "ESTRECHANDO",
-"p50": 38.1,
-"p200": 47.2,
-"nhnl10": -3.5,
+"p50": 38.6,
+"p200": 47.5,
+"nhnl10": -2.8,
 "div": true,
 "lectura": "SIN ESTRECHAMIENTO",
 "px": {
-"SPY": 767.46,
-"RSP": 213.5,
-"IWM": 271.4477
+"SPY": 767.84,
+"RSP": 213.725,
+"IWM": 271.235
 }
 }
 ]

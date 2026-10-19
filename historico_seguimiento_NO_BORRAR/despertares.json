@@ -431,5 +431,34 @@
 "eslabon": "C5-RETORNO",
 "cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
 }
+},
+{
+"date": "2026-10-19",
+"sym": "XRT",
+"fase": "DESPERTANDO",
+"pts": 6,
+"pre": 2,
+"caida": -4.2,
+"cmf": 0.074,
+"sil": 0,
+"vr": 1.39,
+"huellas": [
+"1/3 estructurales",
+"GIRO VERTICAL 2.5× (impulso +2.2 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA",
+"OBV con mínimos crecientes (compran las caídas)"
+],
+"px0": 86.79,
+"inval": 79.64,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 98.1,
+"usd_cmf": -0.178,
+"china": "floja",
+"china_cmf": 0.004,
+"eslabon": "C0-HIPER",
+"cascada": "sin sentido claro"
+}
 }
 ]

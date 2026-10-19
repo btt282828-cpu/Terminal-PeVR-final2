@@ -4100,13 +4100,13 @@
 {
 "date": "2026-10-19",
 "tag": "GIRO",
-"sym": "KLAC",
+"sym": "EWY",
 "dir": -1
 },
 {
 "date": "2026-10-19",
 "tag": "GIRO",
-"sym": "XME",
+"sym": "DRAM",
 "dir": -1
 },
 {
@@ -4161,6 +4161,12 @@
 "date": "2026-10-19",
 "tag": "EARLY",
 "sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-10-19",
+"tag": "SENT",
+"sym": "F&G",
 "dir": 1
 }
 ]

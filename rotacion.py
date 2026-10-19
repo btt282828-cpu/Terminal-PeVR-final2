@@ -21963,7 +21963,7 @@ def _idxc_resumen(ops, c):
             "abierta": next((o for o in ops if not o["cerrada"]), None)}
 
 
-def _idxc_cartera(px, umbral, cash_rate=None):
+def _idxc_cartera(px, umbral, cash_rate=None, aparcar=None):
     """5 huecos (uno por índice). Al caer `umbral`% desde su máximo histórico entra con 1/5 del valor; sale al máximo.
        La liquidez cobra el tipo de las letras del Tesoro si se tiene (^IRX)."""
     idx = px.index
@@ -21973,6 +21973,8 @@ def _idxc_cartera(px, umbral, cash_rate=None):
     caja, pos, eq, inv = 1.0, {}, [], []
     armado = {k: True for k in range(len(cols))}
     r = cash_rate.reindex(idx).ffill().fillna(0.0).values / 100.0 / 252.0 if cash_rate is not None else np.zeros(len(idx))
+    if aparcar is not None:                       # el dinero que espera, dentro de otra cosa (p. ej. los cinco a partes iguales)
+        r = aparcar.reindex(idx).fillna(0.0).values
     for i in range(1, len(idx)):
         caja *= (1 + r[i])
         for k in list(pos):
@@ -21998,7 +22000,31 @@ def _idxc_cartera(px, umbral, cash_rate=None):
     e = pd.Series(eq, index=idx[1:])
     anos = (e.index[-1] - e.index[0]).days / 365.25
     return {"cagr": round(100 * (e.iloc[-1] ** (1 / anos) - 1), 1), "mdd": round(100 * float((e / e.cummax() - 1).min()), 1),
-            "inv": round(100 * float(np.mean(inv))), "en": [cols[k] for k in pos]}
+            "inv": round(100 * float(np.mean(inv))), "en": [cols[k] for k in pos], "_e": e}
+
+
+def _idxc_metr(e):
+    anos = (e.index[-1] - e.index[0]).days / 365.25
+    e = e / e.iloc[0]
+    return {"cagr": round(100 * (float(e.iloc[-1]) ** (1 / anos) - 1), 1), "mdd": round(100 * float((e / e.cummax() - 1).min()), 1)}
+
+
+def _idxc_ew_mensual(P):
+    """Los cinco a partes iguales, reequilibrando al empezar cada mes. Devuelve (curva, rentabilidad diaria)."""
+    R = P.pct_change().fillna(0.0)
+    mes = P.index.to_period("M")
+    w = np.full(P.shape[1], 1.0 / P.shape[1])
+    val, eq, rd = 1.0, [1.0], [0.0]
+    for i in range(1, len(P)):
+        if mes[i] != mes[i - 1]:
+            w = np.full(P.shape[1], 1.0 / P.shape[1])
+        g = w * (1 + R.values[i])
+        r_d = float(g.sum()) - 1.0
+        w = g / g.sum()
+        val *= 1 + r_d
+        eq.append(val)
+        rd.append(r_d)
+    return pd.Series(eq, index=P.index), pd.Series(rd, index=P.index)
 
 
 def lab_indices_caida(corte=None):
@@ -22064,7 +22090,32 @@ def lab_indices_caida(corte=None):
                          "mdd": round(100 * float((sp / sp.cummax() - 1).min()), 1)}
         ew = (P / P.iloc[0]).mean(axis=1)
         bh["EW"] = {"cagr": round(100 * (float(ew.iloc[-1]) ** (1 / anos) - 1), 1), "mdd": round(100 * float((ew / ew.cummax() - 1).min()), 1)}
-        out = {"tabla": tabla, "largo": largo, "cartera": cart, "bh": bh, "desde_cart": str(P.index[0].date()), "irx": irx is not None}
+        # v7.9.5 — mixtas: una parte siempre en los cinco (reequilibrio mensual) y otra para las caídas
+        mixtas = []
+        try:
+            ewm, ewr = _idxc_ew_mensual(P)
+            base_m = _idxc_metr(ewm.iloc[1:])
+            mixtas.append({"nom": "100% en los cinco a partes iguales, reequilibrando cada mes", **base_m, "inv": 100})
+            for u in (5, 10):
+                sl = (cart.get(u) or {}).get("_e")
+                if sl is None:
+                    continue
+                for cf in (0.5, 0.7):
+                    e_core = ewm.loc[sl.index] / ewm.loc[sl.index].iloc[0]
+                    comb = cf * e_core + (1 - cf) * (sl / sl.iloc[0])
+                    inv = round(100 * cf + (1 - cf) * cart[u]["inv"])
+                    mixtas.append({"nom": f"{int(cf * 100)}% siempre en los cinco + {int(round((1 - cf) * 100))}% para caídas del −{u}% (espera en letras)",
+                                   **_idxc_metr(comb), "inv": inv})
+                ap = _idxc_cartera(P, u, None, aparcar=ewr)
+                mixtas.append({"nom": f"todo para caídas del −{u}%, esperando dentro de los cinco (nunca en liquidez)",
+                               **_idxc_metr(ap["_e"]), "inv": 100})
+        except Exception as _dege:
+            _deg("idxc:mixtas", _dege)
+        for u in list(cart):
+            if cart[u]:
+                cart[u].pop("_e", None)
+        out = {"tabla": tabla, "largo": largo, "cartera": cart, "bh": bh, "mixtas": mixtas,
+               "desde_cart": str(P.index[0].date()), "irx": irx is not None}
         c10 = (cart.get(10) or {})
         print(f"  📐 Índices que caen: cartera −10% {c10.get('cagr')}%/año (invertida {c10.get('inv')}%) vs SPY {bh.get('SPY', {}).get('cagr')}%")
         return out
@@ -22125,6 +22176,13 @@ def _idxc_html(L):
                       for u, x in sorted(ca.items()) if x)
         fil += "".join(f"<tr><td class='se-l' style='color:#9FB0C8'>{nm}</td><td class='r'>{pc(bh[k]['cagr'])}</td><td class='r'>{pc(bh[k]['mdd'])}</td>"
                        f"<td class='r'>100%</td><td class='r'>—</td></tr>" for k, nm in (("SPY", "tener el SPY siempre"), ("EW", "tener los cinco a partes iguales siempre")) if k in bh)
+        mx = L.get("mixtas") or []
+        if mx:
+            mejor = max(mx, key=lambda m: m["cagr"])
+            fil += ("<tr><td class='se-l' colspan='5' style='padding-top:10px;color:#F4B740;font-weight:700'>Mixtas: una parte siempre dentro y otra para las caídas</td></tr>"
+                    + "".join(f"<tr><td class='se-l' style='white-space:normal;max-width:360px'>{'<b>' if m is mejor else ''}{esc(m['nom'])}{'</b>' if m is mejor else ''}</td>"
+                              f"<td class='r' style='font-weight:800;color:{'#2FD08A' if m is mejor else '#E6EDF6'}'>{pc(m['cagr'])}</td><td class='r'>{pc(m['mdd'])}</td>"
+                              f"<td class='r'>{m['inv']}%</td><td class='r'>—</td></tr>" for m in mx))
         h.append(f"<div style='font-weight:700;margin-top:12px'>Como cartera, desde {esc(L['desde_cart'])}</div>"
                  "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>estrategia</th><th class='r'>rentabilidad anual</th>"
                  "<th class='r'>peor caída</th><th class='r'>dinero invertido (media)</th><th class='r'>dentro ahora</th></tr>" + fil + "</table></div>"

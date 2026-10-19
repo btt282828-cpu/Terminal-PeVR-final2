@@ -12073,6 +12073,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     try:
         _idx_extra = ""
         try:
+            if operativa:
+                _idx_extra += _idxc_html(operativa.get("idxc"))
+        except Exception as _dege:
+            _deg("idxc:html", _dege)
+        try:
             _idx_extra += _ctx_html(estres, presion, zweig, dix, mcc)
         except Exception as _dege:
             _deg("operativa:ctx", _dege)
@@ -21900,6 +21905,238 @@ def _prop_html(p):
     return "".join(h)
 
 
+
+# ======================================================================
+# v7.9.5 — COMPRAR EL ÍNDICE QUE CAE Y ESPERAR A SU MÁXIMO (SPY, QQQ, DIA, IWM y RSP)
+#   La idea de Pe: «los índices siempre acaban haciendo un máximo nuevo; si uno cae un 5 o un 10%,
+#   entro y espero a que vuelva». Se mide con los ETFs (con dividendos) desde que existen y, para ver
+#   las esperas más largas de verdad, con los índices desde los años 20-80.
+#   Entra al cierre siguiente a tocar la caída desde su MÁXIMO HISTÓRICO; sale al volver a ese máximo.
+#   Una operación por caída (se rearma al hacer un máximo nuevo). Solo informa. No es asesoramiento.
+# ======================================================================
+IDXC_SYMS = [("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000"), ("RSP", "S&P igual ponderado")]
+IDXC_UMBRALES = (5, 10, 15, 20)
+IDXC_INI = dt.date(1993, 1, 1)
+
+
+def _idxc_ops(c, umbral):
+    v, idx = c.values, c.index
+    n = len(v)
+    ath = np.maximum.accumulate(v)
+    ops, armado, i = [], True, 0
+    while i < n - 1:
+        if v[i] >= ath[i]:
+            armado = True
+        if armado and v[i] / ath[i] - 1 <= -umbral / 100.0:
+            e, obj = i + 1, ath[i]
+            pin = v[e]
+            j = e
+            while j < n - 1 and v[j] < obj:
+                j += 1
+            cerrada = bool(v[j] >= obj)
+            ops.append({"e": idx[e], "f": idx[j], "dias": max(1, j - e), "ret": v[j] / pin - 1, "cerrada": cerrada,
+                        "mae": float(v[e:j + 1].min() / pin - 1), "obj": float(obj)})
+            armado = False
+            i = j
+            continue
+        i += 1
+    return ops
+
+
+def _idxc_resumen(ops, c):
+    if not ops:
+        return None
+    n = len(ops)
+    dias = sorted(o["dias"] for o in ops)
+    larga = max(ops, key=lambda o: o["dias"])
+    tot = sum(o["dias"] for o in ops)
+    lg = sum(math.log(max(1e-6, 1 + o["ret"])) for o in ops)
+    anos = (c.index[-1] - c.index[0]).days / 365.25
+    bh = (float(c.iloc[-1] / c.iloc[0]) ** (1 / anos) - 1) if anos > 0 else None
+    return {"n": n, "rec": sum(1 for o in ops if o["cerrada"]), "dias_med": dias[n // 2], "dias_max": larga["dias"],
+            "larga": f"{larga['e'].date()} → " + (str(larga["f"].date()) if larga["cerrada"] else "sigue abierta"),
+            "ret_med": round(100 * sorted(o["ret"] for o in ops)[n // 2], 1),
+            "mae_med": round(100 * sorted(o["mae"] for o in ops)[n // 2], 1),
+            "mae_peor": round(100 * min(o["mae"] for o in ops), 1),
+            "anual": round(100 * (math.exp(lg / (tot / 252.0)) - 1), 1) if tot else None,
+            "bh": (round(100 * bh, 1) if bh is not None else None),
+            "abierta": next((o for o in ops if not o["cerrada"]), None)}
+
+
+def _idxc_cartera(px, umbral, cash_rate=None):
+    """5 huecos (uno por índice). Al caer `umbral`% desde su máximo histórico entra con 1/5 del valor; sale al máximo.
+       La liquidez cobra el tipo de las letras del Tesoro si se tiene (^IRX)."""
+    idx = px.index
+    V = px.values
+    cols = list(px.columns)
+    ath = np.maximum.accumulate(np.nan_to_num(V, nan=0.0), axis=0)
+    caja, pos, eq, inv = 1.0, {}, [], []
+    armado = {k: True for k in range(len(cols))}
+    r = cash_rate.reindex(idx).ffill().fillna(0.0).values / 100.0 / 252.0 if cash_rate is not None else np.zeros(len(idx))
+    for i in range(1, len(idx)):
+        caja *= (1 + r[i])
+        for k in list(pos):
+            if V[i][k] >= pos[k]["obj"]:
+                caja += pos[k]["n"] * V[i][k]
+                del pos[k]
+        valor = caja + sum(pos[k]["n"] * V[i][k] for k in pos)
+        for k in range(len(cols)):
+            p, a = V[i - 1][k], ath[i - 1][k]
+            if not (p == p) or a <= 0:
+                continue
+            if p >= a:
+                armado[k] = True
+            if k not in pos and armado[k] and p / a - 1 <= -umbral / 100.0:
+                monto = min(caja, valor / len(cols))
+                if monto > 0 and V[i][k] == V[i][k]:
+                    pos[k] = {"n": monto / V[i][k], "obj": a}
+                    caja -= monto
+                    armado[k] = False
+        valor = caja + sum(pos[k]["n"] * V[i][k] for k in pos)
+        eq.append(valor)
+        inv.append(1 - caja / valor if valor > 0 else 0)
+    e = pd.Series(eq, index=idx[1:])
+    anos = (e.index[-1] - e.index[0]).days / 365.25
+    return {"cagr": round(100 * (e.iloc[-1] ** (1 / anos) - 1), 1), "mdd": round(100 * float((e / e.cummax() - 1).min()), 1),
+            "inv": round(100 * float(np.mean(inv))), "en": [cols[k] for k in pos]}
+
+
+def lab_indices_caida(corte=None):
+    try:
+        px = {}
+        for sym, _ in IDXC_SYMS:
+            try:
+                d, _s = get_ohlcv(sym, IDXC_INI, dt.date.today())
+            except Exception as _dege:
+                _deg(f"idxc:{sym}", _dege)
+                d = None
+            time.sleep(0.2)
+            if d is None or "Close" not in d.columns:
+                continue
+            s = d["Close"].dropna().astype(float)
+            if corte is not None:
+                s = s[s.index <= pd.Timestamp(corte)]
+            if len(s) > 1000:
+                px[sym] = s
+        if not px:
+            return None
+        tabla = []
+        for sym, nom in IDXC_SYMS:
+            c = px.get(sym)
+            if c is None:
+                continue
+            fila = {"sym": sym, "nom": nom, "desde": str(c.index[0].date()), "u": {}}
+            for u in IDXC_UMBRALES:
+                fila["u"][u] = _idxc_resumen(_idxc_ops(c, u), c)
+            ath = float(c.cummax().iloc[-1])
+            fila["hoy"] = round(100 * (float(c.iloc[-1]) / ath - 1), 1)
+            fila["ath"] = round(ath, 2)
+            tabla.append(fila)
+        # la historia larga, con los índices (sin dividendos: las esperas salen algo más largas que con ETF)
+        largo = []
+        for etf, nom in (("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000")):
+            s = (DD4_SERIES.get(etf) or {})
+            c = s.get("c")
+            if c is None or str(s.get("src", "")).startswith(etf):
+                continue
+            if corte is not None:
+                c = c[c.index <= pd.Timestamp(corte)]
+            for u in (10, 20):
+                r = _idxc_resumen(_idxc_ops(c.dropna().astype(float), u), c)
+                if r:
+                    largo.append({"nom": nom, "src": s.get("src"), "desde": str(c.index[0].date()), "u": u, **r})
+        # cartera: 5 huecos
+        P = pd.DataFrame(px).dropna(how="all").ffill(limit=5)
+        P = P[P.index >= P.dropna().index[0]]
+        irx = None
+        try:
+            irx, _, _ = _fetch_indice_yahoo("^IRX", desde="1993-01-01")
+        except Exception:
+            irx = None
+        cart = {}
+        for u in (5, 10, 20):
+            cart[u] = _idxc_cartera(P, u, irx)
+        sp = P["SPY"] if "SPY" in P else None
+        anos = (P.index[-1] - P.index[0]).days / 365.25
+        bh = {}
+        if sp is not None:
+            bh["SPY"] = {"cagr": round(100 * (float(sp.iloc[-1] / sp.iloc[0]) ** (1 / anos) - 1), 1),
+                         "mdd": round(100 * float((sp / sp.cummax() - 1).min()), 1)}
+        ew = (P / P.iloc[0]).mean(axis=1)
+        bh["EW"] = {"cagr": round(100 * (float(ew.iloc[-1]) ** (1 / anos) - 1), 1), "mdd": round(100 * float((ew / ew.cummax() - 1).min()), 1)}
+        out = {"tabla": tabla, "largo": largo, "cartera": cart, "bh": bh, "desde_cart": str(P.index[0].date()), "irx": irx is not None}
+        c10 = (cart.get(10) or {})
+        print(f"  📐 Índices que caen: cartera −10% {c10.get('cagr')}%/año (invertida {c10.get('inv')}%) vs SPY {bh.get('SPY', {}).get('cagr')}%")
+        return out
+    except Exception as _dege:
+        _deg("lab_indices_caida", _dege)
+        _avisar("indices", f"estudio de índices que caen no calculado: {_dege}")
+        return None
+
+
+def _idxc_html(L):
+    if not L or not L.get("tabla"):
+        return ""
+    def pc(v):
+        return "—" if v is None else f"{v:+.1f}%"
+    def anos(d):
+        return f"{d / 252:.1f} años" if d >= 252 else f"{d} ses"
+    h = ["<div class='panel full'><h2>📐 Comprar el índice que cae y esperar a su máximo: SPY, QQQ, DIA, IWM y RSP</h2>"
+         "<div class='note'>Cuando uno de los cinco cae un 5, 10, 15 o 20% desde su <b>máximo histórico</b>, entra al cierre siguiente y "
+         "sale cuando vuelve a ese máximo. Una operación por caída. Con los ETFs (dividendos incluidos) desde que existen. La pregunta: "
+         "¿vuelven siempre?, ¿cuánto tardan?, ¿cuánto hay que aguantar?, ¿rinde más que tenerlos siempre?</div>"]
+    filas = []
+    for f in L["tabla"]:
+        for u in IDXC_UMBRALES:
+            r = f["u"].get(u)
+            if not r:
+                continue
+            ab = r.get("abierta")
+            fin = (f"<b style='color:#F4B740'>abierta</b> desde {ab['e'].date()} ({100 * ab['ret']:+.1f}%)" if ab else "")
+            filas.append(f"<tr><td class='se-l'>{'<b>' + esc(f['nom']) + '</b>' if u == IDXC_UMBRALES[0] else ''}</td><td class='r'>−{u}%</td>"
+                         f"<td class='r'>{r['n']}</td><td class='r'>{r['rec']} de {r['n']}</td><td class='r'>{anos(r['dias_med'])}</td>"
+                         f"<td class='r' style='color:{'#F4607A' if r['dias_max'] >= 756 else '#E6EDF6'}'>{anos(r['dias_max'])}"
+                         f"<div style='font-size:10px;color:#9FB0C8'>{esc(r['larga'])}</div></td>"
+                         f"<td class='r'>{pc(r['ret_med'])}</td><td class='r' style='color:#F4B740'>{pc(r['mae_med'])}"
+                         f"<div style='font-size:10px;color:#F4607A'>peor {pc(r['mae_peor'])}</div></td>"
+                         f"<td class='r' style='font-weight:800;color:{'#2FD08A' if (r['anual'] or -99) > (r['bh'] or 99) else '#F4607A'}'>{pc(r['anual'])}</td>"
+                         f"<td class='r' style='color:#9FB0C8'>{pc(r['bh'])}</td><td class='r' style='font-size:11px'>{fin}</td></tr>")
+    h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>índice</th><th class='r'>caída</th>"
+             "<th class='r'>veces</th><th class='r'>volvió al máximo</th><th class='r'>tardó (mediana)</th><th class='r'>la espera más larga</th>"
+             "<th class='r'>ganancia (mediana)</th><th class='r'>cayó más tras entrar (mediana)</th><th class='r'>por año invertido</th>"
+             "<th class='r'>tenerlo siempre</th><th class='r'>hoy</th></tr>" + "".join(filas) + "</table></div>")
+    hoy = " · ".join(f"<b>{esc(f['sym'])}</b> {f['hoy']:+.1f}%" for f in L["tabla"])
+    h.append(f"<div style='font-size:13px;margin-top:6px'><b>Hoy, desde su máximo histórico:</b> {hoy}</div>")
+    lg = L.get("largo") or []
+    if lg:
+        h.append("<div style='font-weight:700;margin-top:12px'>La historia larga (los índices, sin dividendos): las esperas de verdad</div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>índice</th><th class='r'>caída</th>"
+                 "<th class='r'>veces</th><th class='r'>volvió</th><th class='r'>tardó (mediana)</th><th class='r'>la espera más larga</th>"
+                 "<th class='r'>cayó más tras entrar (peor)</th></tr>"
+                 + "".join(f"<tr><td class='se-l'>{esc(x['nom'])} <span style='font-size:10px;color:#5E708A'>desde {esc(x['desde'][:4])}</span></td>"
+                           f"<td class='r'>−{x['u']}%</td><td class='r'>{x['n']}</td><td class='r'>{x['rec']} de {x['n']}</td><td class='r'>{anos(x['dias_med'])}</td>"
+                           f"<td class='r' style='color:{'#F4607A' if x['dias_max'] >= 756 else '#E6EDF6'}'>{anos(x['dias_max'])}"
+                           f"<div style='font-size:10px;color:#9FB0C8'>{esc(x['larga'])}</div></td><td class='r' style='color:#F4607A'>{pc(x['mae_peor'])}</td></tr>"
+                           for x in lg) + "</table></div>")
+    ca, bh = L.get("cartera") or {}, L.get("bh") or {}
+    if ca:
+        fil = "".join(f"<tr><td class='se-l'>entrar al −{u}% (5 huecos, uno por índice)</td><td class='r' style='font-weight:800'>{pc(x['cagr'])}</td>"
+                      f"<td class='r'>{pc(x['mdd'])}</td><td class='r'>{x['inv']}%</td><td class='r'>{esc(', '.join(x['en']) or '—')}</td></tr>"
+                      for u, x in sorted(ca.items()) if x)
+        fil += "".join(f"<tr><td class='se-l' style='color:#9FB0C8'>{nm}</td><td class='r'>{pc(bh[k]['cagr'])}</td><td class='r'>{pc(bh[k]['mdd'])}</td>"
+                       f"<td class='r'>100%</td><td class='r'>—</td></tr>" for k, nm in (("SPY", "tener el SPY siempre"), ("EW", "tener los cinco a partes iguales siempre")) if k in bh)
+        h.append(f"<div style='font-weight:700;margin-top:12px'>Como cartera, desde {esc(L['desde_cart'])}</div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>estrategia</th><th class='r'>rentabilidad anual</th>"
+                 "<th class='r'>peor caída</th><th class='r'>dinero invertido (media)</th><th class='r'>dentro ahora</th></tr>" + fil + "</table></div>"
+                 + ("<div style='font-size:11px;color:#9FB0C8'>El dinero que espera cobra el tipo de las letras del Tesoro (^IRX).</div>" if L.get("irx")
+                    else "<div style='font-size:11px;color:#9FB0C8'>El dinero que espera no cobra nada (no se ha podido bajar el tipo de las letras).</div>"))
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> «volvió al máximo» = cuántas de esas caídas acabaron recuperando el "
+             "máximo; «la espera más larga» es lo que de verdad importa si necesitas el dinero. «Por año invertido» en verde si supera a tener "
+             "ese índice siempre. La cartera muestra el coste de esperar: si el dinero está fuera mucho tiempo, aunque cada compra salga bien "
+             "puede rendir menos que no tocar nada. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -22464,6 +22701,7 @@ def main():
             try:
                 _oper["sect_lab"] = lab_sectores()
                 _oper["sect_prop"] = lab_caidas_propias()
+                _oper["idxc"] = lab_indices_caida(corte=(df.index[-1] if VIAJE_A else None))
             except Exception as _e_lab:
                 _avisar("sectores", f"laboratorio de sectores no calculado: {_e_lab}")
             _cands = [f["sym"] for f in _oper["sect"] if f["senal"] == "CANDIDATO"]

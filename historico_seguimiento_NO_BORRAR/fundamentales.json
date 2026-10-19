@@ -4764,5 +4764,21 @@
 "deuda": 2912773120.0,
 "caja": 1057889024.0,
 "ebitda": 1682222976.0
+},
+"WPM": {
+"fecha": "2026-10-19",
+"nom": "Wheaton Precious Metals Corp",
+"sector": "Basic Materials",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 59862822912.0,
+"fcf": -3523585536.0,
+"per": 29.226162,
+"per_f": 25.88372,
+"margen": 0.64659,
+"deuda": 1976749952.0,
+"caja": 100192000.0,
+"ebitda": 2667892992.0
 }
 }

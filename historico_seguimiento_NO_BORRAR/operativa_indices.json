@@ -212,22 +212,22 @@
 ]
 },
 "QQQ": {
-"score": 5,
-"ver": "ESPERAR",
-"p": [
-"a",
-"a",
-"a",
-"a",
-"a"
-]
-},
-"DIA": {
-"score": 5,
+"score": 7,
 "ver": "ESPERAR",
 "p": [
 "a",
 "v",
+"a",
+"v",
+"a"
+]
+},
+"DIA": {
+"score": 4,
+"ver": "ESPERAR",
+"p": [
+"a",
+"a",
 "a",
 "r",
 "a"

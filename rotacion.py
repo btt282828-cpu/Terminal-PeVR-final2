@@ -1507,6 +1507,29 @@ def _pega_dia(d, esp, barra):
     fila = pd.DataFrame([{k: barra[k] for k in d.columns if k in barra}], index=[pd.Timestamp(esp)])
     return pd.concat([d, fila]).sort_index()
 
+
+def _fresco_una(sym, d):
+    """v8.0.1 — control de frescura para una serie bajada aparte (el QQQ no está en la descarga principal y el
+    lunes 19-oct se quedó con el cierre del viernes: la pestaña Operativa puntuó el QQQ con datos de 3 días antes).
+    Si falta la última sesión cerrada: reintento y, si no, el día rehecho con barras de 1 hora."""
+    try:
+        esp = pd.Timestamp(sesion_esperada()).normalize()
+        if d is None or not _falta_dia(d, esp):
+            return d
+        time.sleep(5)
+        d2 = fetch_yahoo(sym, pd.Timestamp(d.index[0]).date(), dt.date.today())
+        if d2 is not None and len(d2) >= 30 and not _falta_dia(d2, esp):
+            print(f"  Frescura {sym}: reintento ok, ya trae el {esp.date()}")
+            return d2
+        hb = _barras_horarias([sym], esp.date())
+        if sym in hb:
+            _avisar("frescura", f"{sym}: cierre del {esp.date()} rehecho con barras de 1 hora (Yahoo aún no daba la barra diaria)")
+            return _pega_dia(d, esp, hb[sym])
+        _avisar("frescura", f"{sym}: Yahoo no ha dado el cierre del {esp.date()}: va con el día anterior")
+    except Exception as _dege:
+        _deg(f"frescura:{sym}", _dege)
+    return d
+
 def _asegurar_cierre(daily, sources, esperado):
     """Comprueba que cada serie diaria trae la ultima sesion cerrada. Reintenta y, si hace falta,
     reconstruye el dia con barras horarias. Devuelve el estado (tambien en ESTADO_CIERRE)."""
@@ -4874,7 +4897,8 @@ def laboratorio_suelos(df, daily, horizontes=(4, 8, 12), ruta=None, verbose=True
 #     peso), ese indice se mide con los ETFs de sector del S&P y se avisa.
 # ----------------------------------------------------------------------
 COMP_NOMBRES = {"QQQ": "NASDAQ 100 (QQQ)", "SPY": "S&P 500 (SPY)",
-                "DIA": "DOW JONES (DIA)", "IWM": "RUSSELL 2000 (IWM)"}
+                "DIA": "DOW JONES (DIA)", "IWM": "RUSSELL 2000 (IWM)", "MAGS": "7 MAGNÍFICAS (MAGS)",
+                "RSP": "S&P IGUAL PONDERADO (RSP)"}
 COMP_PESOS_URLS = {
     "SPY": ["https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx",
             "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx"],
@@ -11931,7 +11955,8 @@ def _amplitud_html(amp):
 
 
 def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=None, bt=None,
-               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None, operativa=None, rachas=None):
+               dd=None, dd_meta=None, plan=None, fx=None, long_src="", ai_text=None, leaders=None, leaders_n=0, bt2=None, heatmap=None, scores=None, probs=None, season=None, early=None, sector_breadth=None, meanrev=None, nq_close=None, fg_idx=None, spy_flow=None, watch=None, giro=None, desks=None, dix=None, suelo_pre=None, centinela=None, graduados=None, daily=None, ia_auto=None, tau=None, analogos=None, es_fut=None, options=None, despertares=None, cascada=None, momento=None, cobertura=None, mcc=None, stk_univ=None, amplitud=None, zweig=None, estres=None, presion=None, composicion=None, pequenas=None, operativa=None, rachas=None, estc=None):
+    _estc_cap = {}           # v8.2: paneles que también salen en la pestaña Estacionalidad
     rank = {"leading": 0, "weakening": 1, "improving": 2, "lagging": 3}
     ranked = sorted(rrg.items(), key=lambda kv: (rank[kv[1]["quad"]], -kv[1]["mom"]))
     last_date = df.index[-1].date()
@@ -12055,6 +12080,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append(
         "<div class='viewtabs mainbar' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
         "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Operativa índices y sectores</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('est',this)\" style='font-size:13px;padding:7px 16px;border-color:#4CC2E077'>📅 Estacionalidad</button>"
         "<button class='viewtab mainview' onclick=\"mainView('rn',this)\" style='font-size:13px;padding:7px 16px;border-color:#F4B74055;color:#F4B740'>🎲 Rachas y niveles</button>"
         "<button class='viewtab mainview' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
         "<button class='viewtab mainview' onclick=\"mainView('op',this)\" style='font-size:13px;padding:7px 16px'>🎯 Operativa</button>"
@@ -12074,7 +12100,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _idx_extra = ""
         try:
             if operativa:
-                _idx_extra += _idxc_html(operativa.get("idxc"))
+                _idx_extra += _est_html(operativa.get("estilos")) + _fe_html(operativa.get("fe")) + _idxc_html(operativa.get("idxc"))
         except Exception as _dege:
             _deg("idxc:html", _dege)
         try:
@@ -12095,7 +12121,12 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _ag = _agenda_html((rachas or {}).get("agenda"))
         except Exception as _dege:
             _deg("agenda:html", _dege)
-        html.append("<div id='vista-idx' style='display:contents'>" + _ag + _op_html(operativa) + _idx_extra + "</div>")
+        _res = ""
+        try:
+            _res = _resumen_html(estc, operativa, centinela, dix, rachas)
+        except Exception as _dege:
+            _deg("resumen:html0", _dege)
+        html.append("<div id='vista-idx' style='display:contents'>" + _res + _ag + _op_html(operativa) + _idx_extra + "</div>")
     except Exception as _dege:
         _deg("operativa:html", _dege)
         html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
@@ -12122,6 +12153,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _deg("rachas:html", _dege)
         html.append("<div id='vista-rn' style='display:none'><div class='panel full'><h2>🎲 Rachas y niveles</h2>"
                     "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
+    _estc_pos = len(html)
+    html.append("<div id='vista-est' style='display:none'></div>")       # v8.2: se rellena al final (usa paneles de otras pestañas)
     html.append("<div id='vista-ctx' style='display:none'>")
 
     # ---- barra-resumen de rotacion ----
@@ -13122,10 +13155,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                        "<b style='color:#2FD08A'>verde = el miedo baja</b> (mercado tranquilo), <b style='color:#F4607A'>rojo = el miedo sube</b>. "
                        "El patrón clásico del VIX es suelo en julio y pico en octubre — si la quincena que viene es roja en el VIX, "
                        "es un aviso de que suele venir más volatilidad, no de que el mercado vaya a caer sí o sí.</div>" if _vix_on else "")
-                    + f"<table class='se'><tr><th class='se-l'></th>{head}</tr>{body}</table>"
+                    + f"<div class='scrollx'><table class='se'><tr><th class='se-l'></th>{head}</tr>{body}</table></div>"
                     "<div class='note' style='margin-top:8px'>El Russell (small caps) y el Nasdaq suelen tener su patrón propio "
                     "(p. ej. fuerza de fin de año en small caps). Por eso conviene mirar el índice del activo que vas a tocar. "
                     "No es asesoramiento.</div></div>")
+        _estc_cap["season"] = html[-1]
 
     # ---- PUNTUACION (SCORING): el entregable de 5 minutos ----
     # historico para "% desde que entro" (racha continua; reinicia si sale y vuelve) — disponible para scoring Y cartera
@@ -14517,6 +14551,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                         "El efecto lo generan los losers del decil inferior; ordenar por <b>distancia al máximo de 52 semanas</b> (lo que mide DURMIENTES) captura la venta forzada aún mejor que el momentum clásico ($45.7 vs $18.8 por dólar en ventana). "
                         "~70% del castigo de ventana revierte en la semana siguiente; el 30% restante tarda meses. Overlay informativo sobre tu ritmo viernes→lunes, no un sistema. "
                         "<b>Invalidación:</b> 6 meses de registro losers dentro-vs-fuera de ventana; si dentro no es peor, se retira. Anomalía muy publicada (Money Stuff, mar-2026): puede decaer rápido.</div></div>")
+            _estc_cap["tau"] = html[-1]
         # --- todo lo clasico de Operativa queda debajo, plegado por defecto (nada se elimina) ---
         html.append("<details style='margin:4px 0 10px'><summary style='cursor:pointer;font-size:13px;color:#8FA3C0;"
                     "padding:8px 12px;background:#0E1626;border:1px solid #24344F;border-radius:8px'>"
@@ -16831,7 +16866,20 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     except Exception:
         pass
 
+    try:
+        _ex = dict(_estc_cap)
+        try:
+            _ex["opex"] = _estc_opex_html((rachas or {}).get("opex"))
+            _ex["cal2"] = _cal2_html((rachas or {}).get("cal"))
+        except Exception as _dege:
+            _deg("estc:extra", _dege)
+        html[_estc_pos] = "<div id='vista-est' style='display:none'>" + _estc_html(estc, _ex) + "</div>"
+    except Exception as _dege:
+        _deg("estc:html", _dege)
+        html[_estc_pos] = ("<div id='vista-est' style='display:none'><div class='panel full'><h2>📅 Estacionalidad</h2>"
+                           "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     html.append("<script>function mainView(v,b){var ix=document.getElementById('vista-idx');if(ix)ix.style.display=(v=='idx')?'contents':'none';"
+                "var es=document.getElementById('vista-est');if(es)es.style.display=(v=='est')?'contents':'none';"
                 "var rn=document.getElementById('vista-rn');if(rn)rn.style.display=(v=='rn')?'contents':'none';"
                 "document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
                 "if(v=='ctx'&&!window._tvok){window._tvok=1;try{var _s=document.getElementById('tvsel');if(_s&&window.tvload)tvload(_s.value);}catch(e){}}"
@@ -18212,6 +18260,8 @@ def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
         # v7.7: 600 dias (la pestaña Operativa necesita la media de 200 y el RRG semanal); el flujo se
         # sigue calculando con los mismos 260 dias de antes, para que la composicion no cambie
         d, _src = get_ohlcv("QQQ", dt.date.today() - dt.timedelta(days=600), dt.date.today())
+        if d is not None and corte is None:
+            d = _fresco_una("QQQ", d)            # v8.0.1: el QQQ también pasa el control de frescura
         if d is not None and corte is not None:
             d = d[d.index <= pd.Timestamp(corte)]
         if d is not None and len(d) >= 30:
@@ -18220,8 +18270,9 @@ def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
             OPER_QQQ.clear(); OPER_QQQ.update({"d": d, "flow": qqq_flow})
     except Exception as _dege:
         _deg("componer:qqq", _dege)
-    propios = {"QQQ": qqq_flow, "SPY": spy_flow, "DIA": (flow or {}).get("DIA"), "IWM": (flow or {}).get("IWM")}
-    for idx in ("QQQ", "SPY", "DIA"):
+    propios = {"QQQ": qqq_flow, "SPY": spy_flow, "DIA": (flow or {}).get("DIA"), "IWM": (flow or {}).get("IWM"),
+               "MAGS": (flow or {}).get("MAGS"), "RSP": (flow or {}).get("RSP")}
+    for idx in ("QQQ", "SPY", "DIA") + tuple(k for k in ("RSP", "MAGS") if (pesos or {}).get(k)):
         p = pesos.get(idx) or {}
         dc = None
         motivo = ""
@@ -18270,7 +18321,33 @@ def componer_indices(pesos, flow, rrg, daily, spy_flow, peq, corte=None):
 # se ordena y se le pone un checklist igual para los cuatro. No toca scoring, cartera,
 # CENTINELA ni el registro semanal. Guarda su propia memoria (operativa_indices.json).
 # ======================================================================
-OPER_IDX = (("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000"))
+OPER_IDX = (("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000"), ("RSP", "S&P igual ponderado"), ("MAGS", "7 Magníficas"))
+# v8.0.2 — MAGS (Roundhill): las 7 grandes a partes iguales. No es un índice: va en el checklist por si llega un momento
+# en que solo hay que estar en las grandes. Su cartera se pone por regla (el fondo reparte a partes iguales).
+MAGS_FILAS = [["AAPL", 100 / 7, "Information Technology"], ["MSFT", 100 / 7, "Information Technology"],
+              ["NVDA", 100 / 7, "Information Technology"], ["AMZN", 100 / 7, "Consumer Discretionary"],
+              ["GOOGL", 100 / 7, "Communication Services"], ["META", 100 / 7, "Communication Services"],
+              ["TSLA", 100 / 7, "Consumer Discretionary"]]
+
+
+def _pesos_con_mags(pesos):
+    if not isinstance(pesos, dict):
+        return pesos
+    if "MAGS" not in pesos:
+        pesos = dict(pesos)
+        pesos["MAGS"] = {"filas": [list(f) for f in MAGS_FILAS], "fuente": "regla del fondo: las 7 a partes iguales", "estado": "regla",
+                         "fecha": str(dt.date.today())}
+    # v8.1 — RSP: las mismas empresas del SPY, cada una con el mismo peso
+    spy_f = (pesos.get("SPY") or {}).get("filas") or []
+    if "RSP" not in pesos and spy_f:
+        acc = [f for f in spy_f if f and isinstance(f[0], str) and 0 < len(f[0]) <= 6
+               and f[0].replace(".", "").replace("-", "").isalpha() and not f[0].upper().startswith("CASH") and float(f[1] or 0) > 0.001]
+        if acc:
+            pesos = dict(pesos)
+            pesos["RSP"] = {"filas": [[f[0], 100.0 / len(acc), f[2] if len(f) > 2 else "-"] for f in acc],
+                            "fuente": "regla del fondo: las del S&P a partes iguales", "estado": "regla",
+                            "fecha": (pesos.get("SPY") or {}).get("fecha")}
+    return pesos
 OPER_FILE = os.path.join(SEGUIMIENTO_DIR, "operativa_indices.json")
 OPER_QQQ = {}          # componer_indices deja aquí el QQQ (precios y flujo): no es una bolita del RRG
 # (ETF, nombre, sector GICS si es un sector entero, subsector: 'semis'/'software'/'banca'/'biotec')
@@ -18525,7 +18602,7 @@ def _op_pesos_sector(pesos):
     out = {}
     try:
         mapa = _mapa_sectores(pesos)
-        for idx in ("SPY", "QQQ", "DIA"):
+        for idx in ("SPY", "QQQ", "DIA", "RSP", "MAGS"):
             filas = ((pesos or {}).get(idx) or {}).get("filas") or []
             acc = {}
             for t, w, sec_raw in filas:
@@ -18920,7 +18997,7 @@ def _op_html(op):
                                f"<div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin-bottom:6px'>{tit}</div>"
                                + "".join(f"<div style='font-size:12.5px;line-height:1.55'>{l}</div>" for l in lines) + "</div>")
     h.append("<div class='panel full'><h2>🧭 Operativa índices — ¿en qué índice estar?</h2>"
-             "<div class='note'>Lo imprescindible para decidir entre <b>SPY, QQQ, DIA e IWM</b>, en una pantalla. "
+             "<div class='note'>Lo imprescindible para decidir entre <b>SPY, QQQ, DIA, IWM, RSP</b> (el S&amp;P igual ponderado) <b>y MAGS</b> (las 7 Magníficas), en una pantalla. "
              "Cada índice pasa el mismo examen de 5 puntos (verde 2, ámbar 1, rojo 0): <b>8–10</b> entrar poco a poco · "
              "<b>6–7</b> mantener / vigilar · <b>4–5</b> esperar · <b>0–3</b> no tocar. Ordena lo que ya calcula el terminal; "
              "<b>no está probado que acierte</b>: es un checklist, no una predicción. No es asesoramiento.</div>"
@@ -18992,7 +19069,7 @@ def _op_html(op):
                      + "".join(filas) + tf + nt + ex + gt
                      + (f"<div style='margin-top:8px;font-size:11px;color:#9FB0C8;line-height:2'>Puntuación de las últimas noches: {mem}</div>" if mem else "")
                      + "</div>")
-    h.append("<div class='panel full'><h2>📋 Los cuatro índices, punto por punto</h2>"
+    h.append("<div class='panel full'><h2>📋 Los índices, el igual ponderado y las 7 Magníficas, punto por punto</h2>"
              "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px'>"
              + "".join(cards) + "</div>"
              "<div class='note' style='margin-top:8px'>Tendencia: medias de 50 y 200 sesiones. Dinero: CMF de 20 sesiones con la regla del anillo "
@@ -19684,8 +19761,8 @@ def _mot_html(mot, ns):
                      f"si el viernes cerrara así: <b>{esc(prop)}</b>")
         h.append("<div style='margin-top:10px;padding:10px 12px;background:#0E1626;border-radius:10px;font-size:12.5px;line-height:1.6'>"
                  f"<b>Regla núcleo y satélite</b> (para operar solo los cuatro índices, sin perseguir sectores): "
-                 f"<b>{100 - SAT_PCT}%</b> núcleo = los cuatro a partes iguales, no se toca; <b>{SAT_PCT}%</b> satélite = el índice con mejor "
-                 f"puntuación. Cambia solo con el cierre del viernes y si el nuevo saca {SAT_DIF} puntos al actual; con el CENTINELA en "
+                 f"<b>{100 - SAT_PCT}%</b> núcleo = los cuatro índices a partes iguales, no se toca; <b>{SAT_PCT}%</b> satélite = el que tenga mejor "
+                 f"puntuación (también puede ser MAGS, las 7 Magníficas, si son lo único que tira). Cambia solo con el cierre del viernes y si el nuevo saca {SAT_DIF} puntos al actual; con el CENTINELA en "
                  f"liquidez o acecho, el satélite va a liquidez.<br>{linea} — <span style='color:#9FB0C8'>{esc(ns.get('motivo', ''))}</span></div>")
     h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> «lo explican» = cuánto ha aportado cada sector al índice "
              "(su peso en el índice × lo que se ha movido), en puntos. Un sector puede subir un 2% y aportar casi nada si pesa poco. "
@@ -19932,6 +20009,7 @@ def tabla_sectores(daily, flow, bt=None):
 def _sect_html(filas, bt):
     if not filas:
         return ""
+    con_bt = bool(bt and bt.get("por_sym"))
     cand = [f for f in filas if f["senal"] == "CANDIDATO"]
     vistos, top = set(), []
     for f in cand:
@@ -19939,23 +20017,24 @@ def _sect_html(filas, bt):
             continue
         vistos.add(f["fam"])
         top.append(f)
-    h = ["<div class='panel full'><h2>🎯 Sectores: la estrategia del −9% (caída + un mes + espejo del Koncorde)</h2>"
-         f"<div class='note'>Un sector es <b>CANDIDATO</b> cuando cumple las tres: cae al menos un {SECT_CAIDA:g}% desde su máximo "
-         f"de un año, han pasado al menos {SECT_MIN_SES} sesiones (un mes) desde ese máximo, y el Koncorde marca <b>espejo</b>: "
-         f"en al menos {ESPEJO_MIN} de las últimas {ESPEJO_VENT} sesiones las manos débiles venden (verde bajo el marrón) mientras "
-         "las fuertes compran (azul por encima de cero), es decir, se venden paquetes pequeños y se compran grandes. "
-         "<b>CASI</b> = le falta una. Como mucho uno por familia: dos sectores de la misma familia son la misma apuesta.</div>"]
-    if top:
-        h.append("<div style='margin:8px 0;padding:9px 12px;background:rgba(47,208,138,.08);border:1px solid #2FD08A55;border-radius:8px;font-size:13px'>"
-                 "<b style='color:#2FD08A'>Candidatos hoy:</b> "
-                 + " · ".join(f"<b>{esc(f['sym'])}</b> ({esc(f['nom'])}, {f['dd']:+.1f}%, {f['sem']:g} sem, espejo {f['esp_rec']}/{ESPEJO_VENT})"
-                              for f in top) + "</div>")
-    else:
-        casi = [f for f in filas if f["senal"] == "CASI"][:6]
-        h.append("<div style='margin:8px 0;padding:9px 12px;background:#0E1626;border-radius:8px;font-size:13px'>"
-                 "<b>Hoy no hay ningún candidato.</b>"
-                 + (" Los más cerca: " + " · ".join(f"<b>{esc(f['sym'])}</b> (le falta {esc(', '.join(f['falta']))})" for f in casi)
-                    if casi else "") + "</div>")
+    # v8.0 — lo primero: DÓNDE ENTRA EL DINERO (la regla del −9% no ganó al SPY en el backtest: queda como dato)
+    orden_sg = {1: 0, 0: 1, -1: 2, None: 3}
+    filas = sorted(filas, key=lambda f: (orden_sg.get(f["signo"], 3), not f["oculta"], -(f.get("cmf") or 0) if f["signo"] != -1 else (f.get("cmf") or 0)))
+    entra = [f for f in filas if f["signo"] == 1]
+    gira = [f for f in filas if f["signo"] != 1 and f["sube3"]]
+    sale = sorted([f for f in filas if f["signo"] == -1 and not f["sube3"]], key=lambda f: (f.get("cmf") or 0))
+    def chip(f):
+        return (f"<b>{esc(f['sym'])}</b> <span style='color:#9FB0C8'>{esc(f['nom'])}</span> "
+                f"{'' if f.get('cmf') is None else '%+.2f' % f['cmf']}{' · acum. oculta' if f['oculta'] else ''}{' ↗3t' if f['sube3'] else ''}"
+                f" <span style='color:#5E708A'>({f['dd']:+.0f}% desde máx.)</span>")
+    h = ["<div class='panel full'><h2>💰 Sectores: dónde está entrando el dinero</h2>"
+         "<div class='note'>Cada sector y subsector con su dinero de hoy (la regla del anillo del RRG: CMF de 20 sesiones, OBV, "
+         "divergencias), sus tramos (si el CMF mejora o empeora), cuánto cae desde su máximo de un año, el Koncorde y si va por "
+         "libre del Nasdaq. Ordenado: primero donde entra dinero.</div>",
+         "<div style='margin:8px 0;padding:9px 12px;background:rgba(47,208,138,.08);border:1px solid #2FD08A55;border-radius:8px;font-size:12.5px;line-height:1.7'>"
+         f"<b style='color:#2FD08A'>Entra dinero ({len(entra)}):</b> " + (" · ".join(chip(f) for f in entra[:14]) or "ninguno")
+         + (f"<br><b style='color:#7FD8A0'>Sale todavía pero mejora 3 tramos seguidos ({len(gira)}):</b> " + " · ".join(chip(f) for f in gira[:10]) if gira else "")
+         + f"<br><b style='color:#F4607A'>Sale dinero ({len(sale)}):</b> " + (" · ".join(chip(f) for f in sale[:12]) or "ninguno") + "</div>"]
     trs = []
     for f in filas:
         col = "#2FD08A" if f["senal"] == "CANDIDATO" else ("#F4B740" if f["senal"] == "CASI" else "#5E708A")
@@ -19971,6 +20050,7 @@ def _sect_html(filas, bt):
         extra = (" <b style='color:#2FD08A'>acum. oculta</b>" if f["oculta"] else "") + (" <b style='color:#F4607A'>dist. oculta</b>" if f["dist_oculta"] else "")
         b = f.get("bt")
         bt_t = "—" if not b else f"{b['k']}/{b['n']} ({b['pct']}%)" + ("" if b.get("med_dias") is None else f" · {b['med_dias']} ses")
+        bt_td = f"<td class='r'>{bt_t}</td>" if con_bt else ""
         corr_t = "" if f["corr"] is None else "ρ %.2f" % f["corr"]
         lib_c = "#2FD08A" if f["libre"] == "va por libre" else ("#F4B740" if f["libre"] == "a medias" else "#9FB0C8")
         trs.append(f"<tr><td class='se-l'><b>{esc(f['sym'])}</b> <span style='color:#9FB0C8'>{esc(f['nom'])}</span>"
@@ -19984,18 +20064,19 @@ def _sect_html(filas, bt):
                    f"<td class='r'>{obv}{extra}</td>"
                    f"<td class='r' style='color:{lib_c}'>{esc(f['libre'] or '—')}<div style='font-size:10.5px;color:#5E708A'>"
                    f"{corr_t}</div></td>"
-                   f"<td class='r'>{bt_t}</td></tr>")
+                   + bt_td + "</tr>")
     h.append("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>sector</th>"
-             "<th class='r'>señal</th><th class='r'>caída</th><th class='r'>máximo</th><th class='r'>rebote</th>"
+             "<th class='r'>regla −9%</th><th class='r'>caída</th><th class='r'>máximo</th><th class='r'>rebote</th>"
              "<th class='r'>Koncorde hoy</th><th class='r'>espejo</th><th class='r'>CMF · tramos</th><th class='r'>OBV</th>"
-             "<th class='r'>con el Nasdaq</th><th class='r'>histórico de la regla</th></tr>" + "".join(trs) + "</table></div>")
+             "<th class='r'>con el Nasdaq</th>" + ("<th class='r'>histórico de la regla</th>" if con_bt else "") + "</tr>" + "".join(trs) + "</table></div>")
     h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> caída y máximo = desde el máximo de cierre de un año y "
              "cuándo fue. Rebote = desde el mínimo de esta caída. Koncorde hoy: <b>v</b> = verde menos marrón (manos débiles; negativo = "
              "venden), <b>a</b> = azul (manos fuertes; positivo = compran). Espejo = sesiones con las dos cosas a la vez en las últimas "
              f"{ESPEJO_VENT} (y en toda la caída). CMF = dinero de 20 sesiones (Chaikin) con sus tramos; OBV = volumen acumulado frente "
              "a su media; «acum. oculta» = el precio baja pero el OBV/ADL y el CMF suben. «Con el Nasdaq» = correlación de 120 sesiones "
-             "con el QQQ: los que <b>van por libre</b> no son más de lo mismo. «Histórico de la regla» = en este sector, cuántas veces "
-             "volvió al máximo anterior de las que dio señal, y en cuántas sesiones (mediana). No es asesoramiento.</div></div>")
+             "con el QQQ: los que <b>van por libre</b> no son más de lo mismo."
+             + (" «Histórico de la regla» = en este sector, cuántas veces volvió al máximo anterior de las que dio señal, y en cuántas "
+                "sesiones (mediana)." if con_bt else "") + " No es asesoramiento.</div></div>")
     return "".join(h)
 
 
@@ -22195,6 +22276,1716 @@ def _idxc_html(L):
     return "".join(h)
 
 
+
+# ======================================================================
+# v8.0 — CAÍDA + FLUJO: ¿ESPERAR A QUE ENTRE DINERO ANTES DE ENTRAR?
+#   Pe: «los backtest solo me sirven si tienen en cuenta si está entrando dinero, para ajustar la entrada
+#   (ahora el IWM está a 0)». Aquí: cada vez que un índice cae un 5/10% (o un sector un 10%) desde su
+#   máximo de un año, se mira el FLUJO de ese día con la MISMA regla del terminal (CMF 20, OBV/ADL,
+#   divergencias, tramos) y qué pasó 1 y 3 meses después. Así se ve si «entra dinero» mejora la entrada
+#   frente a «plano» o «sale». Una observación al mes por símbolo como mucho (no contar 20 veces la misma).
+#   Los backtest antiguos de la primera pestaña quedan apagados (BT_PESADOS_ON). Solo informa.
+# ======================================================================
+BT_PESADOS_ON = False          # convergencia, regla −9% de sectores, laboratorio, caídas propias, índices que caen
+FE_INI = dt.date(2006, 1, 1)
+FE_IDX = ["SPY", "QQQ", "DIA", "IWM", "RSP"]
+FE_ESTADOS = [("entra_oc", "ENTRA · acumulación oculta", "#2FD08A"), ("entra", "ENTRA (CMF > +0,05)", "#2FD08A"),
+              ("sube3", "el CMF mejora 3 tramos seguidos (↗3t)", "#7FD8A0"), ("plano", "PLANO (CMF entre −0,05 y +0,05)", "#9FB0C8"),
+              ("sale", "SALE (CMF < −0,05)", "#F4607A"), ("sale_oc", "SALE · distribución oculta", "#F4607A")]
+
+
+def _fe_tend(v, L=20):
+    """Tendencia en desviaciones típicas × L (la misma _trend del terminal), en toda la serie."""
+    from numpy.lib.stride_tricks import sliding_window_view
+    v = np.asarray(v, dtype=float)
+    out = np.full(len(v), np.nan)
+    if len(v) < L:
+        return out
+    W = sliding_window_view(v, L)
+    x = np.arange(L) - (L - 1) / 2.0
+    ym = W.mean(axis=1)
+    sd = W.std(axis=1)
+    sl = (W - ym[:, None]) @ x / float(x @ x)
+    out[L - 1:] = np.where(sd > 0, sl / np.where(sd > 0, sd, 1.0) * L, 0.0)
+    return out
+
+
+def _fe_estados(d):
+    """Estado de flujo de cada día con la regla de clasificar_flujo (y ↗3t aparte)."""
+    c = d["Close"].astype(float).values
+    hi, lo = d["High"].astype(float).values, d["Low"].astype(float).values
+    vol = d["Volume"].astype(float).fillna(0).values
+    rng = hi - lo
+    mfm = np.where(rng > 0, ((c - lo) - (hi - c)) / np.where(rng > 0, rng, 1.0), 0.0)
+    mfv = mfm * vol
+    cmf = pd.Series(mfv).rolling(20).sum().values / pd.Series(vol).rolling(20).sum().replace(0, np.nan).values
+    obv = np.cumsum(np.sign(np.r_[0.0, np.diff(c)]) * vol)
+    adl = np.cumsum(mfv)
+    flow = (_fe_tend(obv) + _fe_tend(adl)) / 2.0
+    prt = _fe_tend(c)
+    est = np.array(["plano"] * len(c), dtype=object)
+    est[cmf > 0.05] = "entra"
+    est[cmf < -0.05] = "sale"
+    est[(prt < -0.5) & (flow > 0.5) & (cmf > 0.05)] = "entra_oc"
+    est[(prt > 0.5) & (flow < -0.5) & (cmf < -0.05)] = "sale_oc"
+    est[np.isnan(cmf)] = None
+    sube3 = np.zeros(len(c), dtype=bool)
+    sube3[15:] = (cmf[15:] > cmf[10:-5]) & (cmf[10:-5] > cmf[5:-10]) & (cmf[5:-10] > cmf[:-15])
+    return est, sube3, cmf
+
+
+def _fe_obs(d, umbral):
+    c = d["Close"].astype(float)
+    mx = c.rolling(252, min_periods=120).max().values
+    v = c.values
+    est, sube3, cmf = _fe_estados(d)
+    n, out, ult = len(v), [], -10 ** 9
+    for t in range(252, n):
+        if mx[t] != mx[t] or v[t] / mx[t] - 1 > -umbral / 100.0 or est[t] is None:
+            continue
+        if t - ult < 21:
+            continue
+        ult = t
+        out.append({"t": c.index[t], "est": est[t], "sube3": bool(sube3[t]), "dd": v[t] / mx[t] - 1,
+                    "r21": (v[t + 21] / v[t] - 1) if t + 21 < n else None,
+                    "r63": (v[t + 63] / v[t] - 1) if t + 63 < n else None,
+                    "mae63": (min(v[t:t + 64]) / v[t] - 1) if t + 63 < n else None})
+    hoy = {"dd": round(100 * (v[-1] / mx[-1] - 1), 1) if mx[-1] == mx[-1] else None, "est": est[-1],
+           "sube3": bool(sube3[-1]), "cmf": (round(float(cmf[-1]), 3) if cmf[-1] == cmf[-1] else None)}
+    return out, hoy
+
+
+def _fe_stats(obs):
+    a = [o for o in obs if o["r63"] is not None]
+    b = [o for o in obs if o["r21"] is not None]
+    if not a:
+        return None
+    n = len(a)
+    k = sum(1 for o in a if o["r63"] > 0)
+    lo, hi = _bt_wilson(k / n, n)
+    r63 = sorted(o["r63"] for o in a)
+    m63 = sorted(o["mae63"] for o in a)
+    return {"n": n, "p63": round(100 * k / n), "lo": lo, "hi": hi, "m63": round(100 * r63[n // 2], 1),
+            "p10": round(100 * r63[int(0.1 * n)], 1), "mae": round(100 * m63[n // 2], 1),
+            "p21": (round(100 * sum(1 for o in b if o["r21"] > 0) / len(b)) if b else None),
+            "m21": (round(100 * sorted(o["r21"] for o in b)[len(b) // 2], 1) if b else None)}
+
+
+def flujo_entrada_estudio(corte=None):
+    try:
+        hist = {}
+        for sym in list(FE_IDX) + [s for s in SECT_UNIV if s not in FE_IDX]:
+            try:
+                d, _s = get_ohlcv(sym, FE_INI, dt.date.today())
+            except Exception as _dege:
+                _deg(f"fe:{sym}", _dege)
+                d = None
+            time.sleep(0.15)
+            if d is None or not {"Close", "High", "Low", "Volume"}.issubset(d.columns):
+                continue
+            d = d.dropna(subset=["Close"])
+            if corte is not None:
+                d = d[d.index <= pd.Timestamp(corte)]
+            if len(d) >= 400:
+                hist[sym] = d
+        if not hist:
+            return None
+        grupos = [("Los cinco índices, cayendo un 5% o más", [s for s in FE_IDX if s in hist], 5),
+                  ("Los cinco índices, cayendo un 10% o más", [s for s in FE_IDX if s in hist], 10),
+                  ("Sectores y temáticos, cayendo un 10% o más", [s for s in hist if s not in FE_IDX], 10)]
+        out = {"grupos": [], "hoy": [], "desde": str(min(d.index[0] for d in hist.values()).date())}
+        hoy_sym = {}
+        for nom, syms, u in grupos:
+            obs = []
+            for s in syms:
+                o, h = _fe_obs(hist[s], u)
+                for x in o:
+                    x["sym"] = s
+                obs += o
+                hoy_sym[s] = h
+            filas = []
+            for k, etq, col in FE_ESTADOS:
+                sel = [o for o in obs if (o["sube3"] if k == "sube3" else o["est"] == k)]
+                st = _fe_stats(sel)
+                if st:
+                    filas.append({"k": k, "etq": etq, "col": col, **st})
+            base = _fe_stats(obs)
+            out["grupos"].append({"nom": nom, "u": u, "filas": filas, "base": base, "syms": syms})
+        for s, h in hoy_sym.items():
+            if h["dd"] is None:
+                continue
+            es_idx = s in FE_IDX
+            u = 5 if es_idx else 10
+            if es_idx or h["dd"] <= -u:
+                out["hoy"].append({"sym": s, "idx": es_idx, **h})
+        out["hoy"].sort(key=lambda x: (not x["idx"], x["dd"]))
+        g0 = out["grupos"][0]["base"] or {}
+        print(f"  💧 Caída + flujo: {len(hist)} símbolos desde {out['desde']} · índices −5%: {g0.get('n')} casos, suben a 3 meses {g0.get('p63')}%")
+        return out
+    except Exception as _dege:
+        _deg("flujo_entrada", _dege)
+        _avisar("flujo", f"estudio caída + flujo no calculado: {_dege}")
+        return None
+
+
+def _fe_html(fe):
+    if not fe or not fe.get("grupos"):
+        return ""
+    def pc(v):
+        return "—" if v is None else f"{v:+.1f}%"
+    nombre_est = {k: (e, c) for k, e, c in FE_ESTADOS}
+    h = ["<div class='panel full'><h2>💧 ¿Esperar a que entre dinero? Caídas + flujo: lo que pasó después</h2>"
+         "<div class='note'>Cada vez que un índice cae un 5 o un 10% (o un sector un 10%) desde su máximo de un año, se mira el "
+         "<b>flujo de ese día con la misma regla del terminal</b> (CMF de 20 sesiones, OBV y ADL, divergencias y tramos) y qué hizo "
+         f"el precio 1 y 3 meses después. Desde {esc(fe['desde'])}, como mucho una observación al mes por símbolo. Sirve para ajustar "
+         "la entrada: si comprar con el dinero ENTRANDO ha salido claramente mejor que con el dinero PLANO o SALIENDO.</div>"]
+    hoy = fe.get("hoy") or []
+    if hoy:
+        lin = []
+        for x in hoy:
+            etq, col = nombre_est.get(x["est"], (str(x["est"]), "#9FB0C8"))
+            g = fe["grupos"][0 if x["idx"] and x["dd"] > -10 else (1 if x["idx"] else 2)]
+            fila = next((f for f in g["filas"] if f["k"] == x["est"]), None)
+            dato = (f" → históricamente, en ese estado, subía a 3 meses el <b>{fila['p63']}%</b> (todas las caídas: {g['base']['p63']}%)"
+                    if fila and g.get("base") and x["dd"] <= -g["u"] else "")
+            lin.append(f"<b>{esc(x['sym'])}</b> {x['dd']:+.1f}% · <b style='color:{col}'>{esc(etq.split(' (')[0])}</b>"
+                       + (f" (CMF {x['cmf']:+.2f})" if x.get("cmf") is not None else "") + (" · ↗3t" if x["sube3"] else "") + dato)
+        h.append("<div style='font-size:12.5px;line-height:1.7;margin-bottom:8px'><b>Hoy:</b><br>" + "<br>".join(lin[:16]) + "</div>")
+    for g in fe["grupos"]:
+        b = g.get("base")
+        if not b:
+            continue
+        filas = []
+        for f in g["filas"]:
+            mejor = f["lo"] > b["p63"]
+            peor = f["hi"] < b["p63"]
+            colp = "#2FD08A" if mejor else ("#F4607A" if peor else "#E6EDF6")
+            filas.append(f"<tr><td class='se-l'><b style='color:{f['col']}'>{esc(f['etq'])}</b></td><td class='r'>{f['n']}</td>"
+                         f"<td class='r'>{'—' if f['p21'] is None else str(f['p21']) + '%'}<div style='font-size:10px;color:#9FB0C8'>mediana {pc(f['m21'])}</div></td>"
+                         f"<td class='r' style='font-weight:800;color:{colp}'>{f['p63']}%<div style='font-size:10px;color:#9FB0C8;font-weight:400'>{f['lo']:.0f}–{f['hi']:.0f}</div></td>"
+                         f"<td class='r'>{pc(f['m63'])}<div style='font-size:10px;color:#F4607A'>10% peores {pc(f['p10'])}</div></td>"
+                         f"<td class='r' style='color:#F4B740'>{pc(f['mae'])}</td></tr>")
+        filas.append(f"<tr><td class='se-l' style='color:#9FB0C8'>todas las caídas (sin mirar el flujo)</td><td class='r'>{b['n']}</td>"
+                     f"<td class='r'>{b['p21']}%</td><td class='r'>{b['p63']}%</td><td class='r'>{pc(b['m63'])}</td><td class='r'>{pc(b['mae'])}</td></tr>")
+        h.append(f"<div style='font-weight:700;margin-top:10px'>{esc(g['nom'])} <span style='font-weight:400;font-size:11px;color:#5E708A'>"
+                 f"({esc(', '.join(g['syms'][:8]))}{'…' if len(g['syms']) > 8 else ''})</span></div>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>el día de la caída, el dinero…</th>"
+                 "<th class='r'>veces</th><th class='r'>sube a 1 mes</th><th class='r'>sube a 3 meses</th><th class='r'>resultado a 3 meses (mediana)</th>"
+                 "<th class='r'>cayó más en esos 3 meses (mediana)</th></tr>" + "".join(filas) + "</table></div>")
+    h.append("<div class='note' style='margin-top:6px'><b>Cómo se lee:</b> «sube a 3 meses» = de todas esas veces, cuántas el precio estaba más arriba "
+             "3 meses después (con su margen de error). En <b style='color:#2FD08A'>verde</b> si es claramente mejor que todas las caídas juntas, en "
+             "<b style='color:#F4607A'>rojo</b> si es claramente peor. Si «ENTRA» no sale en verde, esperar a que entre dinero no ha mejorado la entrada; "
+             "si «SALE» sale en rojo, lo útil es no comprar mientras sale. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+
+# ======================================================================
+# v8.1 — ESTILOS: HACIA DÓNDE VA EL DINERO (growth/value, igual ponderado, 7 grandes, dividendo, baja volatilidad)
+#   Pares de ETFs: quién gana a quién a 1, 3 y 12 meses, si la ventaja está sobre su media de 50 (rotación real
+#   o un día suelto), en qué punto de sus últimos 5 años está (percentil) y si el dinero (CMF, la regla del
+#   terminal) acompaña. Más: rentabilidad por dividendo del SCHD frente al bono a 10 años.
+#   Solo informa, no entra en el RRG ni en la cartera. No es asesoramiento.
+# ======================================================================
+EST_PARES = [("VUG", "VTV", "Growth contra value", "growth", "value"),
+             ("RSP", "SPY", "Igual ponderado contra el S&P", "todo el mercado", "las grandes"),
+             ("MAGS", "RSP", "Las 7 Magníficas contra el resto", "las 7 grandes", "el resto del mercado"),
+             ("SCHD", "SPY", "Dividendo alto y de calidad contra el S&P", "dividendo", "el S&P"),
+             ("SDOG", "SPY", "Los «perros» (más dividendo de cada sector) contra el S&P", "los perros", "el S&P"),
+             ("USMV", "SPY", "Baja volatilidad contra el S&P", "lo defensivo", "el S&P")]
+EST_ANOS = 6
+EST_NOMBRES = {"VUG": "Vanguard Growth", "VTV": "Vanguard Value", "RSP": "S&P 500 igual ponderado", "SPY": "S&P 500",
+               "MAGS": "7 Magníficas", "SCHD": "Schwab dividendo", "SDOG": "ALPS Sector Dividend Dogs", "USMV": "iShares baja volatilidad"}
+
+
+def _est_par(a, b, da, db, fa, fb):
+    ca, cb = da["Close"].astype(float), db["Close"].astype(float)
+    j = ca.index.intersection(cb.index)
+    if len(j) < 120:
+        return None
+    r = (ca.reindex(j) / cb.reindex(j)).dropna()
+    def rel(n):
+        return round(100 * (float(r.iloc[-1]) / float(r.iloc[-1 - n]) - 1), 1) if len(r) > n else None
+    m50 = r.rolling(50).mean()
+    sobre = bool(r.iloc[-1] > m50.iloc[-1]) if m50.notna().iloc[-1] else None
+    pend = (float(m50.iloc[-1]) / float(m50.iloc[-11]) - 1) * 100 if len(m50.dropna()) > 11 else None
+    vent = r.iloc[-1260:]
+    pct = int(round(100 * float((vent <= r.iloc[-1]).mean())))
+    ch63 = (r / r.shift(63) - 1).dropna().iloc[-1260:]
+    pct_mom = int(round(100 * float((ch63 <= ch63.iloc[-1]).mean()))) if len(ch63) > 100 else None
+    ea, sa = clasificar_flujo(fa)
+    eb, sb = clasificar_flujo(fb)
+    r1, r3, r12 = rel(21), rel(63), rel(252)
+    if r3 is not None and r3 > 0 and sobre:
+        dire = 1
+    elif r3 is not None and r3 < 0 and sobre is False:
+        dire = -1
+    else:
+        dire = 0
+    giro = None
+    if r1 is not None and r3 is not None and r1 * r3 < 0 and abs(r1) >= 1.0:
+        giro = 1 if r1 > 0 else -1
+    return {"a": a, "b": b, "r1": r1, "r3": r3, "r12": r12, "sobre": sobre, "pend": (round(pend, 2) if pend is not None else None),
+            "pct": pct, "pct_mom": pct_mom, "dire": dire, "giro": giro, "fa": (fa or {}).get("cmf"), "fb": (fb or {}).get("cmf"),
+            "ea": ea, "eb": eb, "sa": sa, "sb": sb, "desde": str(r.index[max(0, len(r) - 1260)].date()),
+            "serie": [round(float(x), 5) for x in (r.iloc[-252:] / r.iloc[-252:].iloc[0]).values]}
+
+
+def _est_a(x):
+    return ("al " + x[3:]) if x.startswith("el ") else ("a " + x)
+
+
+def _est_lectura(p, ga, gb):
+    if not p:
+        return ""
+    ganador, perdedor = (ga, gb) if p["dire"] == 1 else ((gb, ga) if p["dire"] == -1 else (None, None))
+    if ganador:
+        t = (f"Gana <b>{esc(ganador)}</b>: le saca un {abs(p['r3']):.1f}% {esc(_est_a(perdedor))} en 3 meses y la media de 50 de la línea lo "
+             "confirma: es tendencia, no un día suelto.")
+    else:
+        t = "Sin dirección clara: el último trimestre y la media de 50 no coinciden."
+    if p["giro"]:
+        hacia = ga if p["giro"] == 1 else gb
+        t += f" <b style='color:#F4B740'>Posible giro hacia {esc(hacia)}</b>: el último mes va al revés ({p['r1']:+.1f}%)."
+    din_a = {1: "entra", 0: "plano", -1: "sale"}.get(p["sa"], "sin dato")
+    din_b = {1: "entra", 0: "plano", -1: "sale"}.get(p["sb"], "sin dato")
+    acomp = ""
+    if p["sa"] is not None and p["sb"] is not None:
+        if p["sa"] > p["sb"]:
+            acomp = f" El dinero favorece a <b>{esc(ga)}</b>."
+        elif p["sb"] > p["sa"]:
+            acomp = f" El dinero favorece a <b>{esc(gb)}</b>."
+        else:
+            acomp = " El dinero no se decanta."
+    t += f" Dinero: {esc(p['a'])} {din_a}, {esc(p['b'])} {din_b}.{acomp}"
+    if p["pct"] <= 10:
+        t += f" En 5 años, {esc(ga)} frente {esc(_est_a(gb))} está en <b>mínimos</b> (percentil {p['pct']}): muy castigado en relativo."
+    elif p["pct"] >= 90:
+        t += f" En 5 años, {esc(ga)} frente {esc(_est_a(gb))} está en <b>máximos</b> (percentil {p['pct']}): muy estirado en relativo."
+    return t
+
+
+def _est_div_bono(corte=None):
+    """Rentabilidad por dividendo del SCHD (dividendos de los últimos 12 meses / precio sin ajustar) frente al bono a 10 años."""
+    try:
+        if yf is None:
+            return None
+        px, _, _ = _fetch_indice_yahoo("SCHD", desde="2012-01-01")
+        divs = yf.Ticker("SCHD").dividends
+        if px is None or divs is None or not len(divs):
+            return None
+        dv = divs.copy()
+        dv.index = pd.to_datetime(dv.index)
+        dv.index = dv.index.tz_localize(None) if getattr(dv.index, "tz", None) is not None else dv.index
+        dv.index = dv.index.normalize()
+        cs = dv.groupby(level=0).sum().sort_index().cumsum()
+        idx = px.index
+        atras = idx - pd.Timedelta(days=365)
+        todo = cs.reindex(cs.index.union(idx).union(atras)).ffill().fillna(0.0)
+        ttm = todo.reindex(idx).values - todo.reindex(atras).values
+        y = pd.Series(100 * ttm / px.values, index=idx)
+        y = y[idx >= idx[0] + pd.Timedelta(days=370)]
+        b10 = _fred_csv("DGS10", desde="2012-01-01")
+        if b10 is None or not len(y):
+            return None
+        if corte is not None:
+            y = y[y.index <= pd.Timestamp(corte)]
+            b10 = b10[b10.index <= pd.Timestamp(corte)]
+        b = b10.reindex(y.index).ffill()
+        sp = (y - b).dropna()
+        if len(sp) < 250:
+            return None
+        v = sp.iloc[-1260:]
+        return {"div": round(float(y.iloc[-1]), 2), "bono": round(float(b.iloc[-1]), 2), "dif": round(float(sp.iloc[-1]), 2),
+                "pct": int(round(100 * float((v <= sp.iloc[-1]).mean()))), "dif_1a": round(float(sp.iloc[-252]), 2) if len(sp) > 252 else None,
+                "serie": [round(float(x), 3) for x in sp.iloc[-756:].values], "desde": str(v.index[0].date())}
+    except Exception as _dege:
+        _deg("estilos:div_bono", _dege)
+        return None
+
+
+def estilos_dinero(corte=None):
+    try:
+        ini = dt.date.today() - dt.timedelta(days=int(365.25 * EST_ANOS))
+        syms = sorted({x for p in EST_PARES for x in p[:2]})
+        D, F = {}, {}
+        for s in syms:
+            try:
+                d, _src = get_ohlcv(s, ini, dt.date.today())
+                if d is not None and corte is None:
+                    d = _fresco_una(s, d)
+            except Exception as _dege:
+                _deg(f"estilos:{s}", _dege)
+                d = None
+            time.sleep(0.15)
+            if d is None or "Close" not in d.columns:
+                continue
+            d = d.dropna(subset=["Close"])
+            if corte is not None:
+                d = d[d.index <= pd.Timestamp(corte)]
+            if len(d) < 130:
+                continue
+            D[s] = d
+            try:
+                d260 = d[d.index >= d.index[-1] - pd.Timedelta(days=260)]
+                F[s] = compute_volume_flow({s: d260}, only=s).get(s)
+            except Exception as _dege:
+                _deg(f"estilos:flujo:{s}", _dege)
+        pares = []
+        for a, b, nom, ga, gb in EST_PARES:
+            if a not in D or b not in D:
+                pares.append({"nom": nom, "a": a, "b": b, "ga": ga, "gb": gb, "p": None})
+                continue
+            p = _est_par(a, b, D[a], D[b], F.get(a), F.get(b))
+            pares.append({"nom": nom, "a": a, "b": b, "ga": ga, "gb": gb, "p": p, "lect": _est_lectura(p, ga, gb)})
+        db = _est_div_bono(corte)
+        g = next((x["p"] for x in pares if x["a"] == "VUG" and x["p"]), None)
+        print("  🧭 Estilos: " + " · ".join(f"{x['a']}/{x['b']} 3m {x['p']['r3']:+.1f}%" for x in pares if x.get("p"))
+              + (f" · SCHD {db['div']}% vs bono {db['bono']}%" if db else ""))
+        return {"pares": pares, "div_bono": db}
+    except Exception as _dege:
+        _deg("estilos", _dege)
+        _avisar("estilos", f"panel de estilos no calculado: {_dege}")
+        return None
+
+
+def _est_html(E):
+    if not E or not E.get("pares"):
+        return ""
+    def pc(v):
+        return "—" if v is None else f"{v:+.1f}%"
+    def din(cmf, sg):
+        col = {1: "#2FD08A", 0: "#9FB0C8", -1: "#F4607A"}.get(sg, "#5E708A")
+        txt = {1: "entra", 0: "plano", -1: "sale"}.get(sg, "sin dato")
+        return f"<span style='color:{col}'>{txt}{'' if cmf is None else ' %+.2f' % cmf}</span>"
+    h = ["<div class='panel full'><h2>🧭 Estilos: hacia dónde va el dinero</h2>"
+         "<div class='note'>Cada fila compara dos ETFs: cuánto gana el primero al segundo en 1, 3 y 12 meses, si esa ventaja está "
+         "sobre su media de 50 (rotación de verdad) o no, en qué punto de sus últimos 5 años está (percentil: 0 = el primero nunca "
+         "ha estado tan castigado frente al segundo, 100 = nunca tan estirado) y qué hace el dinero en cada uno (CMF, la regla del "
+         "terminal). La línea es la del último año: sube = gana el primero.</div>"]
+    for x in E["pares"]:
+        p = x.get("p")
+        if not p:
+            h.append(f"<div style='margin-top:10px'><b>{esc(x['nom'])}</b> <span style='color:#5E708A'>— sin datos de {esc(x['a'])} o {esc(x['b'])} hoy</span></div>")
+            continue
+        col = "#2FD08A" if p["dire"] == 1 else ("#F4607A" if p["dire"] == -1 else "#9FB0C8")
+        graf = _svg_linea_umbral(p["serie"], refs=[(1.0, "#3A4658", "")], w=320, h=64, color=col)
+        h.append("<div style='display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px;padding:10px 12px;"
+                 "border:1px solid var(--line);border-radius:10px'>"
+                 f"<div style='flex:1 1 380px;min-width:260px'><div style='font-weight:700'>{esc(x['nom'])} "
+                 f"<span style='font-weight:400;color:#9FB0C8;font-size:12px'>{esc(x['a'])} / {esc(x['b'])}</span></div>"
+                 f"<div style='font-size:12px;margin:4px 0;font-family:monospace'>1 mes <b>{pc(p['r1'])}</b> · 3 meses <b style='color:{col}'>{pc(p['r3'])}</b> · "
+                 f"12 meses <b>{pc(p['r12'])}</b> · {'sobre' if p['sobre'] else 'bajo'} su media de 50 · percentil 5 años <b>{p['pct']}</b></div>"
+                 f"<div style='font-size:12px'>Dinero: {esc(x['a'])} {din(p['fa'], p['sa'])} · {esc(x['b'])} {din(p['fb'], p['sb'])}</div>"
+                 f"<div style='font-size:12.5px;margin-top:4px;line-height:1.5'>{x.get('lect', '')}</div></div>"
+                 f"<div style='flex:0 1 320px;min-width:220px'>{graf}</div></div>")
+    db = E.get("div_bono")
+    if db:
+        col = "#2FD08A" if db["dif"] > 0 else "#F4607A"
+        graf = _svg_linea_umbral(db["serie"], refs=[(0.0, "#3A4658", "0")], w=320, h=64, color=col)
+        lect = (f"El bono a 10 años paga <b>{db['bono']:.2f}%</b> y el SCHD reparte <b>{db['div']:.2f}%</b> de dividendo: "
+                + (f"<b style='color:#F4607A'>el bono paga {abs(db['dif']):.2f} puntos más</b>. Al ahorrador conservador le compensa más el bono, "
+                   "y las empresas de dividendo pierden atractivo." if db["dif"] < 0 else
+                   f"<b style='color:#2FD08A'>el dividendo paga {db['dif']:.2f} puntos más</b> que el bono: las empresas de dividendo compiten bien.")
+                + f" En 5 años, esa diferencia está en el percentil <b>{db['pct']}</b>"
+                + (f" (hace un año: {db['dif_1a']:+.2f} puntos)" if db.get("dif_1a") is not None else "") + ". Cuando el bono empiece a bajar, "
+                  "esta diferencia mejora y suele ser cuando despiertan las de dividendo.")
+        h.append("<div style='display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px;padding:10px 12px;"
+                 "border:1px solid #F4B74055;border-radius:10px'>"
+                 "<div style='flex:1 1 380px;min-width:260px'><div style='font-weight:700'>Dividendo contra bono: ¿compensa más el bono?</div>"
+                 f"<div style='font-size:12.5px;margin-top:4px;line-height:1.5'>{lect}</div></div>"
+                 f"<div style='flex:0 1 320px;min-width:220px'>{graf}<div style='font-size:10px;color:#5E708A'>dividendo del SCHD menos bono a 10 años, últimos 3 años</div></div></div>")
+    h.append("<div class='note' style='margin-top:8px'><b>Los ETFs:</b> VUG/VTV = Vanguard growth/value (las grandes de EE. UU. separadas por estilo); "
+             "RSP = el S&amp;P con las 500 a partes iguales; MAGS = las 7 Magníficas; SCHD = dividendo alto y de calidad (Schwab); SDOG = "
+             "las 5 de más dividendo de cada sector del S&amp;P («perros»); USMV = baja volatilidad (iShares). Solo es contexto: no entran en el "
+             "RRG ni en la cartera. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+# ======================================================================
+# v8.2 — ESTACIONALIDAD (pestaña propia) + RESUMEN de la primera pestaña
+#   Todo lo de calendario en un sitio: lo que ya había (quincenas, τ, vencimientos, DCA) y lo nuevo:
+#   recompras (blackout / a todo gas), ciclo presidencial, meses, «sell in May», Santa Claus, cambio de
+#   mes, las próximas semanas, y los gráficos que pasó Pe recalculados con datos: VIX, dólar, petróleo,
+#   bono a 30 años, mercados alcistas y bajistas, frecuencia de retrocesos y correcciones con/sin recesión.
+#   Solo informa: el viernes y el semáforo deciden. No es asesoramiento.
+# ======================================================================
+ESTC_DESDE = "1950-01-01"
+# Recompras: % acumulado de empresas del S&P que ya han publicado, por días tras el cierre del trimestre
+# (aproximación de una temporada típica). Blackout ≈ 30 días antes de publicar hasta 2 días después.
+ESTC_REC_DIST = [(0, 0.0), (10, 0.02), (14, 0.07), (21, 0.25), (28, 0.55), (35, 0.80), (42, 0.92), (49, 0.97), (60, 1.0)]
+ESTC_REC_ANTES = 30
+ESTC_REC_DESPUES = 2
+ESTC_REC_Q4_EXTRA = 7          # las cuentas anuales (4º trimestre) se publican ~1 semana más tarde
+ESTC_REC_PARA = 0.9            # ~10% sigue comprando en blackout con planes automáticos (10b5-1)
+ESTC_REC_ALTO = 60.0           # % en blackout desde el que es «blackout»
+ESTC_REC_BAJO = 25.0           # % por debajo del cual es «a todo gas»
+ESTC_REC_DESDE = "1995-01-01"
+ESTC_FOMC = ["2026-10-28", "2026-12-09", "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-09",
+             "2027-07-28", "2027-09-15", "2027-10-27", "2027-12-08"]          # federalreserve.gov (2027: provisional)
+ESTC_EVENTOS = [("2026-11-03", "Elecciones de mitad de mandato en EE. UU.")]
+ESTC_RECESIONES = [("1948-11-01", "1949-10-31"), ("1953-07-01", "1954-05-31"), ("1957-08-01", "1958-04-30"),
+                   ("1960-04-01", "1961-02-28"), ("1969-12-01", "1970-11-30"), ("1973-11-01", "1975-03-31"),
+                   ("1980-01-01", "1980-07-31"), ("1981-07-01", "1982-11-30"), ("1990-07-01", "1991-03-31"),
+                   ("2001-03-01", "2001-11-30"), ("2007-12-01", "2009-06-30"), ("2020-02-01", "2020-04-30")]   # NBER
+# Del gráfico que pasó Pe: flujo mediano a fondos y ETF de bolsa por mes (1996-2022). 2 fuerte, 1 medio, 0 ~nada, -1 salidas
+ESTC_FLUJOS_FONDOS = {1: 2, 2: 2, 3: 1, 4: 2, 5: 1, 6: -1, 7: 1, 8: -1, 9: 0, 10: -1, 11: 2, 12: 0}
+ESTC_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+              "noviembre", "diciembre"]
+ESTC_MES3 = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+ESTC_CICLO = {0: "año electoral", 1: "primer año tras elecciones", 2: "año de mitad de mandato (midterm)", 3: "año preelectoral"}
+
+
+def _estc_fecha(x):
+    return pd.Timestamp(x).date()
+
+
+def _estc_fin_trimestres(d):
+    out = []
+    for y in (d.year - 1, d.year, d.year + 1):
+        for m in (3, 6, 9, 12):
+            out.append((pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)).date())
+    return out
+
+
+def _estc_F(x):
+    D = ESTC_REC_DIST
+    if x <= D[0][0]:
+        return 0.0
+    if x >= D[-1][0]:
+        return 1.0
+    for (a, fa), (b, fb) in zip(D, D[1:]):
+        if a <= x <= b:
+            return fa + (fb - fa) * (x - a) / (b - a)
+    return 1.0
+
+
+def estc_blackout(d):
+    """% aproximado de empresas del S&P 500 que no pueden recomprar ese día (por reglas, no es un dato)."""
+    d = _estc_fecha(d)
+    p = 0.0
+    for qe in _estc_fin_trimestres(d):
+        x = (d - qe).days - (ESTC_REC_Q4_EXTRA if qe.month == 12 else 0)
+        if -45 <= x <= 90:
+            p += _estc_F(x + ESTC_REC_ANTES) - _estc_F(x - ESTC_REC_DESPUES)
+    return round(100.0 * min(1.0, p) * ESTC_REC_PARA, 1)
+
+
+def estc_fase_rec(p, sube=None):
+    if p >= ESTC_REC_ALTO:
+        return "BLACKOUT", "#F4607A"
+    if p >= ESTC_REC_BAJO:
+        return ("ENTRANDO EN BLACKOUT", "#F4B740") if sube else ("REABRIENDO", "#F4B740")
+    return "A TODO GAS", "#2FD08A"
+
+
+def estc_resultados(d):
+    """Fase de la temporada de resultados por reglas (días tras el cierre del trimestre)."""
+    d = _estc_fecha(d)
+    qs = [q for q in _estc_fin_trimestres(d) if q <= d]
+    qe = max(qs)
+    x = (d - qe).days - (ESTC_REC_Q4_EXTRA if qe.month == 12 else 0)
+    if x < 12:
+        f = "antes de la temporada"
+    elif x <= 20:
+        f = "arranca la temporada (bancos)"
+    elif x <= 38:
+        f = "pico de la temporada (las grandes tecnológicas)"
+    elif x <= 52:
+        f = "cola de la temporada (Nvidia, comercio)"
+    else:
+        f = "fuera de temporada"
+    ini = qe + dt.timedelta(days=12 + (ESTC_REC_Q4_EXTRA if qe.month == 12 else 0))
+    if ini <= d:
+        sig = min(q for q in _estc_fin_trimestres(d) if q > qe)
+        ini = sig + dt.timedelta(days=12 + (ESTC_REC_Q4_EXTRA if sig.month == 12 else 0))
+    return {"fase": f, "x": x, "prox_inicio": ini}
+
+
+def recompras_estado(hoy):
+    try:
+        hoy = _estc_fecha(hoy)
+        p = estc_blackout(hoy)
+        sube = estc_blackout(hoy + dt.timedelta(days=3)) > p
+        fase, col = estc_fase_rec(p, sube)
+        cambios, prev = [], fase
+        for k in range(1, 200):
+            d = hoy + dt.timedelta(days=k)
+            pk = estc_blackout(d)
+            fk, ck = estc_fase_rec(pk, estc_blackout(d + dt.timedelta(days=3)) > pk)
+            if fk != prev:
+                cambios.append({"fecha": _sesion_o_despues(d), "fase": fk, "col": ck, "p": pk})
+                prev = fk
+            if len(cambios) >= 5:
+                break
+        curva = [(k, estc_blackout(hoy + dt.timedelta(days=k))) for k in range(-90, 181, 2)]
+        return {"hoy": hoy, "p": p, "fase": fase, "col": col, "sube": sube, "cambios": cambios, "curva": curva}
+    except Exception as _dege:
+        _deg("estc:recompras", _dege)
+        return None
+
+
+def recompras_backtest(c):
+    """S&P en días de blackout, transición y ventana abierta (desde 1995)."""
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp(ESTC_REC_DESDE)]
+        if len(c) < 1500:
+            return None
+        r = c.pct_change().dropna()
+        g = {"BLACKOUT": [], "TRANSICIÓN": [], "A TODO GAS": []}
+        for d, x in r.items():
+            p = estc_blackout(d.date())
+            k = "BLACKOUT" if p >= ESTC_REC_ALTO else ("A TODO GAS" if p < ESTC_REC_BAJO else "TRANSICIÓN")
+            g[k].append(float(x))
+        out = {}
+        for k, v in g.items():
+            if len(v) < 100:
+                continue
+            a = np.array(v)
+            out[k] = {"n": len(a), "anual": round(float(a.mean()) * 252 * 100, 1), "vol": round(float(a.std()) * np.sqrt(252) * 100, 1),
+                      "pos": round(100 * float((a > 0).mean())), "peor": round(100 * float(a.min()), 1)}
+        return {"desde": str(c.index[0].date()), "g": out}
+    except Exception as _dege:
+        _deg("estc:rec_bt", _dege)
+        return None
+
+
+def _estc_mensuales(c):
+    """Cierres de fin de mes, sin el mes en curso si aún no ha terminado."""
+    c = c.dropna().astype(float)
+    m = c.resample("ME").last().dropna()
+    try:
+        ult = c.index[-1]
+        ses = _nyse_bdays(ult.replace(day=1), ult + pd.offsets.MonthEnd(0))
+        if ses and pd.Timestamp(ses[-1]).normalize() > ult.normalize():
+            m = m.iloc[:-1]
+    except Exception:
+        pass
+    return m
+
+
+def estc_mensual(series):
+    """Por cada índice: % de años que sube cada mes y la media."""
+    out = {}
+    for nom, c in series.items():
+        try:
+            if c is None or len(c.dropna()) < 252 * 5:
+                continue
+            c = c.dropna()
+            c = c[c.index >= pd.Timestamp(ESTC_DESDE)]
+            m = _estc_mensuales(c)
+            r = m.pct_change().dropna()
+            st = {k: _rn_stats([float(x) for x in r[r.index.month == k].values]) for k in range(1, 13)}
+            out[nom] = {"desde": int(r.index[0].year), "st": st}
+        except Exception as _dege:
+            _deg(f"estc:mensual:{nom}", _dege)
+    return out
+
+
+def _estc_anuales(c):
+    c = c.dropna().astype(float)
+    y = c.groupby(c.index.year).last()
+    ult = c.index[-1]
+    if not (ult.month == 12 and ult.day >= 24):
+        y = y.iloc[:-1]
+    return y
+
+
+def estc_ciclo(c, hoy):
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp("1949-01-01")]
+        y = _estc_anuales(c)
+        r = y.pct_change().dropna()
+        r = r[r.index >= 1950]
+        st = {k: _rn_stats([float(v) for a, v in r.items() if a % 4 == k]) for k in range(4)}
+        # desde el 30 de septiembre del midterm, 12 meses después (el famoso «suelo del midterm»)
+        m = _estc_mensuales(c)
+        mid12, mid6, otros12 = [], [], []
+        for a in range(1950, hoy.year):
+            try:
+                s0 = m[(m.index.year == a) & (m.index.month == 9)]
+                s6 = m[(m.index.year == a + 1) & (m.index.month == 3)]
+                s12 = m[(m.index.year == a + 1) & (m.index.month == 9)]
+                if len(s0) and len(s12):
+                    v = float(s12.iloc[0] / s0.iloc[0] - 1)
+                    (mid12 if a % 4 == 2 else otros12).append(v)
+                if a % 4 == 2 and len(s0) and len(s6):
+                    mid6.append(float(s6.iloc[0] / s0.iloc[0] - 1))
+            except Exception:
+                continue
+        # peor caída dentro del año, midterm frente al resto
+        dd_mid, dd_otros = [], []
+        for a in range(1950, hoy.year):
+            ca = c[c.index.year == a]
+            if len(ca) < 200:
+                continue
+            dd = float((ca / ca.cummax() - 1).min())
+            (dd_mid if a % 4 == 2 else dd_otros).append(dd)
+        return {"hoy": hoy.year % 4, "st": st, "mid12": _rn_stats(mid12), "mid6": _rn_stats(mid6), "otros12": _rn_stats(otros12),
+                "dd_mid": (round(100 * float(np.median(dd_mid)), 1) if dd_mid else None),
+                "dd_otros": (round(100 * float(np.median(dd_otros)), 1) if dd_otros else None)}
+    except Exception as _dege:
+        _deg("estc:ciclo", _dege)
+        return None
+
+
+def estc_halloween(c, hoy):
+    try:
+        c = c.dropna().astype(float)
+        m = _estc_mensuales(c)
+        inv, ver, gana = [], [], 0
+        for a in range(1950, hoy.year + 1):
+            o = m[(m.index.year == a) & (m.index.month == 10)]
+            ab0 = m[(m.index.year == a) & (m.index.month == 4)]
+            ab1 = m[(m.index.year == a + 1) & (m.index.month == 4)]
+            if len(o) and len(ab0):
+                ver.append(float(o.iloc[0] / ab0.iloc[0] - 1))
+            if len(o) and len(ab1):
+                inv.append(float(ab1.iloc[0] / o.iloc[0] - 1))
+                if len(ab0):
+                    gana += int(inv[-1] > ver[-1])
+        n = min(len(inv), len(ver))
+        en_inv = hoy.month in (11, 12, 1, 2, 3, 4)
+        ini = dt.date(hoy.year, 11, 1) if hoy.month <= 10 else None
+        return {"inv": _rn_stats(inv), "ver": _rn_stats(ver), "gana": (round(100 * gana / n) if n else None), "n": n,
+                "en_inv": en_inv, "ini_inv": ini, "ini_ver": (dt.date(hoy.year + (hoy.month > 4), 5, 1) if en_inv else None)}
+    except Exception as _dege:
+        _deg("estc:halloween", _dege)
+        return None
+
+
+def _estc_santa_fechas(a):
+    """(cierre previo, inicio, fin) del rally de Santa Claus: 5 últimas sesiones de diciembre + 2 primeras de enero."""
+    dic = _nyse_bdays(dt.date(a, 12, 1), dt.date(a, 12, 31))
+    ene = _nyse_bdays(dt.date(a + 1, 1, 1), dt.date(a + 1, 1, 15))
+    if len(dic) < 6 or len(ene) < 2:
+        return None
+    return pd.Timestamp(dic[-6]).date(), pd.Timestamp(dic[-5]).date(), pd.Timestamp(ene[1]).date()
+
+
+def estc_santa(c, hoy):
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp(ESTC_DESDE)]
+        idx = c.index
+        rs, sig_si, sig_no = [], [], []
+        y = _estc_anuales(c)
+        for a in range(1950, hoy.year):
+            dic = c[(idx.year == a) & (idx.month == 12)]
+            ene = c[(idx.year == a + 1) & (idx.month == 1)]
+            if len(dic) < 6 or len(ene) < 2:
+                continue
+            v = float(ene.iloc[1] / dic.iloc[-6] - 1)
+            rs.append(v)
+            if (a + 1) in y.index and a in y.index:
+                ya = float(y[a + 1] / y[a] - 1)
+                (sig_si if v > 0 else sig_no).append(ya)
+        base = c.pct_change(7).dropna()
+        a0 = hoy.year if hoy.month >= 2 else hoy.year - 1
+        f = _estc_santa_fechas(a0)
+        return {"st": _rn_stats(rs), "base": _rn_stats([float(x) for x in base.values]),
+                "si": _rn_stats(sig_si), "no": _rn_stats(sig_no), "fechas": f}
+    except Exception as _dege:
+        _deg("estc:santa", _dege)
+        return None
+
+
+def _estc_tom_mask(idx):
+    """True en la última sesión de cada mes y en las 3 primeras del siguiente."""
+    per = idx.to_period("M")
+    s = pd.Series(range(len(idx)), index=idx)
+    pos_ini = s.groupby(per).rank(method="first").values
+    pos_fin = s.groupby(per).rank(method="first", ascending=False).values
+    return (pos_ini <= 3) | (pos_fin == 1)
+
+
+def estc_cambio_mes(c, hoy):
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp(ESTC_DESDE)]
+        r = c.pct_change().dropna()
+        mk = _estc_tom_mask(c.index)[1:]
+        a, b = r.values[mk], r.values[~mk]
+        cum_tom = float(np.prod(1 + a) - 1)
+        cum_tot = float(np.prod(1 + r.values) - 1)
+        ses = _nyse_bdays(hoy.replace(day=1), (pd.Timestamp(hoy) + pd.offsets.MonthEnd(0)).date())
+        sig = _nyse_bdays((pd.Timestamp(hoy) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=1)).date(),
+                          (pd.Timestamp(hoy) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=12)).date())[:3]
+        ini, fin = pd.Timestamp(ses[-1]).date(), pd.Timestamp(sig[-1]).date()
+        if hoy > fin:
+            ini = None
+        return {"tom": round(float(a.mean()) * 100, 3), "resto": round(float(b.mean()) * 100, 3),
+                "pos_tom": round(100 * float((a > 0).mean())), "pos_resto": round(100 * float((b > 0).mean())),
+                "pct_dias": round(100 * len(a) / len(r)), "parte": (round(100 * np.log1p(cum_tom) / np.log1p(cum_tot)) if cum_tot > 0 else None),
+                "ini": ini, "fin": fin, "desde": int(r.index[0].year)}
+    except Exception as _dege:
+        _deg("estc:cambio_mes", _dege)
+        return None
+
+
+def _estc_ret_ventana(c, mm, dd, dias, antes=0, solo=None, hasta=None):
+    """Retorno del S&P cada año entre (mm/dd − antes) y (mm/dd + dias), de cierre a cierre."""
+    idx, v, rs = c.index, c.values, []
+    for a in range(max(1950, idx[0].year), (hasta or idx[-1].year) + 1):
+        if solo is not None and a % 4 != solo:
+            continue
+        try:
+            d0 = pd.Timestamp(dt.date(a, mm, min(dd, 28 if mm == 2 else dd))) - pd.Timedelta(days=antes)
+        except ValueError:
+            continue
+        d1 = d0 + pd.Timedelta(days=dias + antes)
+        i0 = idx.searchsorted(d0, side="right") - 1
+        i1 = idx.searchsorted(d1, side="right") - 1
+        if i0 < 0 or i1 >= len(v) or i1 <= i0 or d1 > idx[-1]:
+            continue
+        rs.append(float(v[i1] / v[i0] - 1))
+    return rs
+
+
+def estc_ventanas(c, hoy):
+    try:
+        c = c.dropna().astype(float)
+        out = []
+        for dias, nom in ((7, "1 semana"), (14, "2 semanas"), (28, "4 semanas"), (56, "8 semanas"), (91, "3 meses")):
+            todos = _estc_ret_ventana(c, hoy.month, hoy.day, dias, hasta=hoy.year - 1)
+            mid = _estc_ret_ventana(c, hoy.month, hoy.day, dias, solo=hoy.year % 4, hasta=hoy.year - 1)
+            r = c.pct_change(max(1, int(round(dias * 252 / 365)))).dropna()
+            r = r[r.index >= pd.Timestamp(ESTC_DESDE)]
+            out.append({"nom": nom, "dias": dias, "st": _rn_stats(todos), "mid": _rn_stats(mid), "base": _rn_stats([float(x) for x in r.values])})
+        return out
+    except Exception as _dege:
+        _deg("estc:ventanas", _dege)
+        return None
+
+
+def _estc_tray(s, desde="1950-01-01", modo="ret", excl=(), solo=None):
+    """Camino medio del año (366 días): % acumulado desde el 1 de enero (modo ret) o nivel medio (modo nivel)."""
+    s = s.dropna().astype(float)
+    s = s[s.index >= pd.Timestamp(desde) - pd.Timedelta(days=10)]
+    if modo == "ret":
+        s = s[s > 0]
+    if len(s) < 252 * 3:
+        return None
+    ult = s.index[-1]
+    mats, mats_ex, actual, anios = [], [], None, []
+    for a in sorted(set(s.index.year)):
+        if a < pd.Timestamp(desde).year:
+            continue
+        sa = s[s.index.year == a]
+        if len(sa) < 15:
+            continue
+        if modo == "ret":
+            prev = s[s.index.year == a - 1]
+            b0 = float(prev.iloc[-1]) if len(prev) else float(sa.iloc[0])
+            d = np.clip(np.diff(np.log(np.r_[b0, sa.values])), -0.25, 0.25)
+            v = (np.exp(np.cumsum(d)) - 1) * 100
+        else:
+            v = sa.values
+        doy = sa.index.dayofyear.values - 1
+        arr = pd.Series(np.nan, index=range(366))
+        arr.iloc[doy] = v
+        arr = arr.ffill()
+        if modo == "ret":
+            arr = arr.fillna(0.0)
+        else:
+            arr = arr.bfill()
+        if a == ult.year and not (ult.month == 12 and ult.day >= 24):
+            act = arr.copy()
+            act.iloc[int(ult.dayofyear):] = np.nan
+            actual = act
+            continue
+        if solo is not None and a % 4 != solo:
+            continue
+        anios.append(a)
+        (mats_ex if a in excl else mats).append(arr.values)
+    if len(mats) < 3:
+        return None
+    media = np.nanmean(np.vstack(mats + mats_ex), axis=0)
+    sin = np.nanmean(np.vstack(mats), axis=0) if mats_ex else None
+    r = lambda a: [None if (x is None or x != x) else round(float(x), 2) for x in a]
+    return {"media": r(media), "sin": (r(sin) if sin is not None else None), "actual": (r(actual.values) if actual is not None else None),
+            "n": len(anios), "desde": (anios[0] if anios else None), "hasta": (anios[-1] if anios else None)}
+
+
+def _estc_episodios(c, x, reb):
+    """Caídas de al menos x desde un máximo. Terminan cuando rebota reb desde el mínimo o supera el máximo."""
+    v, eps = c.values, []
+    if len(v) < 2:
+        return eps
+    peak, pi, en, tr, ti = v[0], 0, False, None, None
+    for i in range(1, len(v)):
+        p = v[i]
+        if not en:
+            if p > peak:
+                peak, pi = p, i
+            elif p <= peak * (1 - x):
+                en, tr, ti = True, p, i
+        else:
+            if p < tr:
+                tr, ti = p, i
+            elif p >= tr * (1 + reb) or p > peak:
+                eps.append({"pi": pi, "ti": ti, "fin": i, "dd": float(tr / peak - 1), "abierto": False})
+                en, peak, pi = False, p, i
+    if en:
+        eps.append({"pi": pi, "ti": ti, "fin": None, "dd": float(tr / peak - 1), "abierto": True})
+    return eps
+
+
+def estc_mercados(c):
+    """Mercados alcistas y bajistas del S&P desde 1942 (regla del 20% sobre cierres)."""
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp("1942-01-01")]
+        if len(c) < 252 * 20:
+            return None
+        i0 = int(np.argmin(c[c.index < c.index[0] + pd.Timedelta(days=365)].values))
+        c = c.iloc[i0:]
+        idx, v = c.index, c.values
+        bears = _estc_episodios(c, 0.20, 0.20)
+        per, tr_i = [], 0
+        for b in bears:
+            per.append({"tipo": "alcista", "i0": tr_i, "i1": b["pi"], "abierto": False})
+            per.append({"tipo": "bajista", "i0": b["pi"], "i1": b["ti"], "abierto": b["abierto"]})
+            tr_i = b["ti"]
+        if not bears or not bears[-1]["abierto"]:
+            per.append({"tipo": "alcista", "i0": tr_i, "i1": len(v) - 1, "abierto": True})
+        for p in per:
+            p["desde"], p["hasta"] = str(idx[p["i0"]].date()), str(idx[p["i1"]].date())
+            p["anios"] = round((idx[p["i1"]] - idx[p["i0"]]).days / 365.25, 1)
+            p["ret"] = round(100 * (v[p["i1"]] / v[p["i0"]] - 1), 1)
+        cerr = lambda t: [p for p in per if p["tipo"] == t and not p["abierto"]]
+        prom = lambda t, k: (round(float(np.mean([p[k] for p in cerr(t)])), 1) if cerr(t) else None)
+        med = lambda t, k: (round(float(np.median([p[k] for p in cerr(t)])), 1) if cerr(t) else None)
+        act = per[-1]
+        mas_largos = sum(1 for p in cerr(act["tipo"]) if p["anios"] > act["anios"])
+        # serie semanal para el gráfico (log)
+        w = c.resample("W-FRI").last().dropna()
+        return {"per": per, "act": act, "mas_largos": mas_largos, "desde": int(idx[0].year),
+                "alc": {"n": len(cerr("alcista")), "anios": prom("alcista", "anios"), "ret": prom("alcista", "ret"),
+                        "anios_med": med("alcista", "anios"), "ret_med": med("alcista", "ret")},
+                "baj": {"n": len(cerr("bajista")), "anios": prom("bajista", "anios"), "ret": prom("bajista", "ret"),
+                        "anios_med": med("bajista", "anios"), "ret_med": med("bajista", "ret")},
+                "w": [(str(d.date()), round(float(x), 2)) for d, x in w.items()]}
+    except Exception as _dege:
+        _deg("estc:mercados", _dege)
+        return None
+
+
+def estc_retrocesos(c, hoy):
+    """Cuántas caídas del 5, 10, 15 y 20% hay al año (cada caída cuenta una vez: termina al rebotar lo mismo)."""
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp("1930-01-01")]
+        if len(c) < 252 * 10:
+            return None
+        idx = c.index
+        a0, a1 = int(idx[0].year), int(hoy.year)
+        cerrados = list(range(a0, a1))
+        out = []
+        for x in (0.05, 0.10, 0.15, 0.20):
+            eps = _estc_episodios(c, x, x)
+            por = {a: 0 for a in range(a0, a1 + 1)}
+            for e in eps:
+                a = int(idx[e["pi"]].year)
+                if a in por:
+                    por[a] += 1
+            ult = eps[-1] if eps else None
+            out.append({"x": int(x * 100), "media": round(float(np.mean([por[a] for a in cerrados])), 1),
+                        "sin": round(100 * float(np.mean([por[a] == 0 for a in cerrados]))),
+                        "este": por.get(a1, 0), "por": [por[a] for a in range(a0, a1 + 1)],
+                        "ult": (None if not ult else {"pico": str(idx[ult["pi"]].date()), "suelo": str(idx[ult["ti"]].date()),
+                                                     "dd": round(100 * ult["dd"], 1), "abierto": ult["abierto"]})})
+        dd_hoy = round(100 * float(c.iloc[-1] / c.max() - 1), 1)
+        return {"desde": a0, "hasta": a1, "x": out, "dd_hoy": dd_hoy}
+    except Exception as _dege:
+        _deg("estc:retrocesos", _dege)
+        return None
+
+
+def estc_correcciones(c):
+    """Correcciones de 10% o más desde 1965: profundidad, duración y si hubo recesión."""
+    try:
+        c = c.dropna().astype(float)
+        c = c[c.index >= pd.Timestamp("1965-01-01")]
+        if len(c) < 252 * 10:
+            return None
+        idx = c.index
+        eps = _estc_episodios(c, 0.10, 0.25)
+        rec = [(pd.Timestamp(a) - pd.Timedelta(days=183), pd.Timestamp(b)) for a, b in ESTC_RECESIONES]
+        out = []
+        for e in eps:
+            p, t = idx[e["pi"]], idx[e["ti"]]
+            con = any(p <= rb and t >= ra for ra, rb in rec)
+            out.append({"pico": str(p.date()), "suelo": str(t.date()), "dd": round(100 * e["dd"], 1),
+                        "ses": int(e["ti"] - e["pi"]), "dias": int((t - p).days), "rec": con, "abierto": e["abierto"],
+                        "rec_ses": (int(e["fin"] - e["ti"]) if e["fin"] is not None else None)})
+        cer = [x for x in out if not x["abierto"]]
+        def g(lst):
+            if not lst:
+                return None
+            return {"n": len(lst), "dd": round(float(np.mean([x["dd"] for x in lst])), 1),
+                    "dias": int(np.median([x["dias"] for x in lst])), "ses": int(np.median([x["ses"] for x in lst]))}
+        return {"lista": out, "todas": g(cer), "sin": g([x for x in cer if not x["rec"]]), "con": g([x for x in cer if x["rec"]]),
+                "abierta": next((x for x in out if x["abierto"]), None)}
+    except Exception as _dege:
+        _deg("estc:correcciones", _dege)
+        return None
+
+
+def _estc_bajar(sym, desde, corte=None):
+    try:
+        d, _ = get_ohlcv(sym, pd.Timestamp(desde).date(), dt.date.today() + dt.timedelta(days=1))
+        if d is None or "Close" not in d.columns:
+            return None
+        s = d["Close"].dropna().astype(float)
+        if corte is not None:
+            s = s[s.index <= pd.Timestamp(corte)]
+        return s if len(s) > 252 * 5 else None
+    except Exception as _dege:
+        _deg(f"estc:bajar:{sym}", _dege)
+        return None
+
+
+def _estc_fred(sid, corte=None):
+    s = _fred_csv(sid, desde="1985-01-01")
+    if s is None:
+        return None
+    if corte is not None:
+        s = s[s.index <= pd.Timestamp(corte)]
+    return s if len(s) > 252 * 5 else None
+
+
+def estc_activos(vix, corte=None):
+    """Caminos medios del año: VIX (nivel), dólar, petróleo y bono a 30 años."""
+    out = {}
+    try:
+        if vix is not None:
+            v = vix.dropna()
+            if corte is not None:
+                v = v[v.index <= pd.Timestamp(corte)]
+            t = _estc_tray(v, "1990-01-01", modo="nivel", excl=(2008, 2020))
+            if t:
+                t["ult"] = round(float(v.iloc[-1]), 1)
+                out["vix"] = t
+    except Exception as _dege:
+        _deg("estc:vix", _dege)
+    for clave, sym, fred, nom in (("dolar", "DX-Y.NYB", "DTWEXBGS", "Índice dólar (DXY)"),
+                                   ("petroleo", "CL=F", "DCOILWTICO", "Petróleo WTI"),
+                                   ("bono", "ZB=F", None, "Futuro del bono a 30 años")):
+        try:
+            s, src = _estc_bajar(sym, "1986-01-01", corte), sym
+            if s is None and fred:
+                s, src = _estc_fred(fred, corte), "FRED " + fred
+            if s is None and clave == "bono":
+                y = _estc_fred("DGS30", corte)
+                if y is not None:
+                    s = 100 * np.exp(np.cumsum(-17.0 * y.diff().fillna(0) / 100.0))      # precio aproximado (duración ~17)
+                    src = "FRED DGS30 (precio aproximado)"
+            if s is None:
+                continue
+            t = _estc_tray(s, "1990-01-01" if clave != "bono" else "2000-01-01")
+            if t:
+                t["src"], t["nom"] = src, nom
+                out[clave] = t
+        except Exception as _dege:
+            _deg(f"estc:{clave}", _dege)
+    return out
+
+
+def _estc_tau_win(y, m):
+    ses = _nyse_bdays(dt.date(y, m, 1), (pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)).date())
+    if len(ses) < 10:
+        return []
+    i = len(ses) - 1
+    return [pd.Timestamp(d).date() for d in ses[max(0, i - 9): max(0, i - 2)]]
+
+
+def estc_semanas(c, hoy, n=6):
+    """Las próximas semanas: lo que ha hecho el S&P esa semana del calendario, recompras, resultados y citas."""
+    try:
+        c = c.dropna().astype(float)
+        lun0 = hoy - dt.timedelta(days=hoy.weekday())
+        if hoy.weekday() >= 4:
+            lun0 += dt.timedelta(days=7)
+        out = []
+        santa = None
+        try:
+            santa = _estc_santa_fechas(hoy.year)
+        except Exception:
+            santa = None
+        for k in range(n):
+            lun = lun0 + dt.timedelta(days=7 * k)
+            vie = lun + dt.timedelta(days=4)
+            dias = [lun + dt.timedelta(days=j) for j in range(5)]
+            mie = lun + dt.timedelta(days=2)
+            todos = _estc_ret_ventana(c, lun.month, lun.day, 4, antes=3, hasta=hoy.year - 1)
+            mid = _estc_ret_ventana(c, lun.month, lun.day, 4, antes=3, solo=hoy.year % 4, hasta=hoy.year - 1)
+            st, sm = _rn_stats(todos), _rn_stats(mid)
+            p = estc_blackout(mie)
+            fase, col = estc_fase_rec(p, estc_blackout(mie + dt.timedelta(days=3)) > p)
+            ev = []
+            for f in ESTC_FOMC:
+                if lun <= dt.date.fromisoformat(f) <= vie:
+                    ev.append(f"Fed (FOMC) el {_DIAS_ES[dt.date.fromisoformat(f).weekday()]} {dt.date.fromisoformat(f).day}")
+            for f, t in ESTC_EVENTOS:
+                if lun <= dt.date.fromisoformat(f) <= vie:
+                    ev.append(f"{t} ({dt.date.fromisoformat(f).day}/{dt.date.fromisoformat(f).month})")
+            for (y, m) in {(d.year, d.month) for d in dias}:
+                o = _op_sesion_o_antes(_op_tercer_viernes(y, m))
+                if lun <= o <= vie:
+                    ev.append(("vencimiento trimestral de opciones" if m in (3, 6, 9, 12) else "vencimiento de opciones") + f" ({o.day}/{o.month})")
+                vv = _op_sesion_o_antes(_vix_venc(y, m))
+                if lun <= vv <= vie:
+                    ev.append(f"vencimiento del VIX ({vv.day}/{vv.month})")
+            tom = False
+            for d in dias:
+                fin_mes = (pd.Timestamp(d) + pd.offsets.MonthEnd(0)).date()
+                ses_m = _nyse_bdays(d.replace(day=1), fin_mes)
+                ses_m = [pd.Timestamp(x).date() for x in ses_m]
+                if ses_m and (d == ses_m[-1] or d in ses_m[:3]):
+                    tom = True
+            if tom:
+                ev.append("cambio de mes (suele ser buena zona)")
+            if santa and (lun <= santa[2] and vie >= santa[1]):
+                ev.append("rally de Santa Claus")
+            win = set(_estc_tau_win(lun.year, lun.month)) | set(_estc_tau_win(vie.year, vie.month))
+            if any(d in win for d in dias):
+                ev.append("ventana τ (venta de los perdedores de fin de mes)")
+            nses = len(_nyse_bdays(lun, vie))
+            if nses < 5:
+                ev.append(f"festivo: {nses} sesiones")
+            pt = 0
+            if st:
+                pt += 1 if st["pos"] >= 60 else (-1 if st["pos"] <= 45 else 0)
+            pt += 1 if fase == "A TODO GAS" else (-1 if fase == "BLACKOUT" else 0)
+            pt += 1 if (tom or (santa and lun <= santa[2] and vie >= santa[1])) else 0
+            viento = ("A FAVOR", "#2FD08A") if pt >= 2 else (("EN CONTRA", "#F4607A") if pt <= -1 else ("NEUTRO", "#F4B740"))
+            out.append({"lun": lun, "vie": vie, "st": st, "mid": sm, "rec": p, "fase": fase, "fcol": col,
+                        "res": estc_resultados(mie)["fase"], "ev": ev, "viento": viento[0], "vcol": viento[1], "pt": pt})
+        return out
+    except Exception as _dege:
+        _deg("estc:semanas", _dege)
+        return None
+
+
+def estacionalidad_estudio(sp, otros=None, vix=None, hoy=None, corte=None):
+    """Todo el estudio de la pestaña. sp = S&P 500 largo (^GSPC)."""
+    out = {}
+    try:
+        hoy = _estc_fecha(hoy or dt.date.today())
+        if sp is not None and corte is not None:
+            sp = sp[sp.index <= pd.Timestamp(corte)]
+        out["hoy"] = hoy
+        out["rec"] = recompras_estado(hoy)
+        out["res"] = estc_resultados(hoy)
+        if sp is not None and len(sp.dropna()) > 252 * 10:
+            sp = sp.dropna().astype(float)
+            out["rec_bt"] = recompras_backtest(sp)
+            ser = {"S&P 500": sp}
+            for k, s in (otros or {}).items():
+                if s is not None:
+                    s = s.dropna()
+                    if corte is not None:
+                        s = s[s.index <= pd.Timestamp(corte)]
+                    ser[k] = s
+            out["mensual"] = estc_mensual(ser)
+            out["ciclo"] = estc_ciclo(sp, hoy)
+            out["hall"] = estc_halloween(sp, hoy)
+            out["santa"] = estc_santa(sp, hoy)
+            out["tom"] = estc_cambio_mes(sp, hoy)
+            out["vent"] = estc_ventanas(sp, hoy)
+            out["tray"] = _estc_tray(sp, ESTC_DESDE)
+            out["tray_mid"] = _estc_tray(sp, ESTC_DESDE, solo=hoy.year % 4)
+            out["merc"] = estc_mercados(sp)
+            out["retro"] = estc_retrocesos(sp, hoy)
+            out["corr"] = estc_correcciones(sp)
+            out["semanas"] = estc_semanas(sp, hoy)
+        out["act"] = estc_activos(vix, corte)
+        r = out.get("rec") or {}
+        v4 = next((v for v in (out.get("vent") or []) if v["dias"] == 28), None)
+        print(f"  📅 Estacionalidad: recompras {r.get('fase')} ({r.get('p')}% en blackout) · {out['res']['fase']}"
+              + (f" · S&P próximas 4 semanas: sube {v4['st']['pos']}% de los años ({v4['st']['media']:+.2f}%)" if v4 and v4.get("st") else "")
+              + f" · activos: {', '.join(out['act'].keys()) or 'ninguno'}")
+    except Exception as _dege:
+        _deg("estacionalidad", _dege)
+        _avisar("estacionalidad", f"estudio de estacionalidad incompleto: {_dege}")
+    return out
+
+
+# ---------------------------------------------------------------- dibujo
+_HI = " class='se-hi'"
+_ESTC_MES_DOY = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+
+
+def _estc_f(d):
+    return f"{_DIAS_ES[d.weekday()]} {d.day}/{d.month}"
+
+
+def _estc_pct(st, col_umbral=True):
+    if not st:
+        return "<td class='r' style='color:#5E708A'>—</td>"
+    col = "#2FD08A" if st["pos"] >= 60 else ("#F4607A" if st["pos"] < 50 else "#F4B740")
+    return (f"<td class='r'><b style='color:{col}'>{st['pos']}%</b> "
+            f"<span style='font-size:10.5px;color:#9FB0C8'>{st['media']:+.2f}%</span></td>")
+
+
+def _estc_svg_anual(lineas, hoy_doy=None, fmt="{:+.1f}%", base=None, alto=210, ylab=""):
+    """Gráfico del año (ene→dic). lineas: [{'nom','col','ys'(366),'w','dash'}]."""
+    vals = [y for ln in lineas for y in (ln.get("ys") or []) if y is not None]
+    if not vals:
+        return ""
+    W, H, L, R, T, B = 660, alto, 48, 12, 12, 24
+    lo, hi = min(vals), max(vals)
+    if base is not None:
+        lo, hi = min(lo, base), max(hi, base)
+    pad = (hi - lo) * 0.08 or 1.0
+    lo, hi = lo - pad, hi + pad
+    X = lambda i: L + (W - L - R) * i / 365.0
+    Y = lambda v: T + (H - T - B) * (1 - (v - lo) / (hi - lo))
+    g = [f"<svg viewBox='0 0 {W} {H}' style='width:100%;height:auto;max-width:820px;display:block' role='img'>"]
+    for k in range(5):
+        v = lo + (hi - lo) * k / 4
+        g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(v):.1f}' y2='{Y(v):.1f}' stroke='#24344F' stroke-width='0.6'/>"
+                 f"<text x='{L - 5}' y='{Y(v) + 3:.1f}' fill='#7F93AE' font-size='10' text-anchor='end'>{fmt.format(v)}</text>")
+    if base is not None:
+        g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(base):.1f}' y2='{Y(base):.1f}' stroke='#5E708A' stroke-width='1'/>")
+    for i, d in enumerate(_ESTC_MES_DOY):
+        g.append(f"<line x1='{X(d):.1f}' x2='{X(d):.1f}' y1='{T}' y2='{H - B}' stroke='#1A2740' stroke-width='0.6'/>"
+                 f"<text x='{X(d + 15):.1f}' y='{H - 8}' fill='#7F93AE' font-size='10' text-anchor='middle'>{ESTC_MES3[i]}</text>")
+    if hoy_doy is not None:
+        g.append(f"<line x1='{X(hoy_doy):.1f}' x2='{X(hoy_doy):.1f}' y1='{T}' y2='{H - B}' stroke='#F4B740' stroke-width='1.2' stroke-dasharray='4 3'/>"
+                 f"<text x='{X(hoy_doy) + 3:.1f}' y='{T + 10}' fill='#F4B740' font-size='10'>hoy</text>")
+    for ln in lineas:
+        ys = ln.get("ys") or []
+        seg, segs = [], []
+        for i in range(0, len(ys), 2):
+            y = ys[i]
+            if y is None:
+                if seg:
+                    segs.append(seg)
+                seg = []
+                continue
+            seg.append(f"{X(i):.1f},{Y(y):.1f}")
+        if seg:
+            segs.append(seg)
+        for s in segs:
+            g.append(f"<polyline points='{' '.join(s)}' fill='none' stroke='{ln['col']}' stroke-width='{ln.get('w', 1.6)}'"
+                     + (f" stroke-dasharray='{ln['dash']}'" if ln.get("dash") else "") + " stroke-linejoin='round'/>")
+    g.append("</svg>")
+    ley = " ".join(f"<span style='white-space:nowrap;margin-right:12px'><span style='display:inline-block;width:14px;height:3px;"
+                   f"background:{ln['col']};vertical-align:middle;margin-right:4px'></span>{ln['nom']}</span>" for ln in lineas)
+    return "".join(g) + f"<div style='font-size:11px;color:#9FB0C8;margin:2px 0 6px'>{ley}</div>"
+
+
+def _estc_svg_rec(curva, hoy=None):
+    if not curva:
+        return ""
+    W, H, L, R, T, B = 660, 170, 40, 12, 12, 24
+    k0, k1 = curva[0][0], curva[-1][0]
+    X = lambda k: L + (W - L - R) * (k - k0) / (k1 - k0)
+    Y = lambda p: T + (H - T - B) * (1 - p / 100.0)
+    g = [f"<svg viewBox='0 0 {W} {H}' style='width:100%;height:auto;max-width:820px;display:block' role='img'>"]
+    g.append(f"<rect x='{L}' y='{Y(100):.1f}' width='{W - L - R}' height='{Y(ESTC_REC_ALTO) - Y(100):.1f}' fill='#F4607A' opacity='0.07'/>"
+             f"<rect x='{L}' y='{Y(ESTC_REC_BAJO):.1f}' width='{W - L - R}' height='{Y(0) - Y(ESTC_REC_BAJO):.1f}' fill='#2FD08A' opacity='0.07'/>")
+    for p in (0, 25, 50, 75, 100):
+        g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(p):.1f}' y2='{Y(p):.1f}' stroke='#24344F' stroke-width='0.6'/>"
+                 f"<text x='{L - 5}' y='{Y(p) + 3:.1f}' fill='#7F93AE' font-size='10' text-anchor='end'>{p}%</text>")
+    pts = " ".join(f"{X(k):.1f},{Y(p):.1f}" for k, p in curva)
+    g.append(f"<polyline points='{pts}' fill='none' stroke='#4CC2E0' stroke-width='2'/>")
+    g.append(f"<line x1='{X(0):.1f}' x2='{X(0):.1f}' y1='{T}' y2='{H - B}' stroke='#F4B740' stroke-width='1.2' stroke-dasharray='4 3'/>"
+             f"<text x='{X(0) + 3:.1f}' y='{T + 10}' fill='#F4B740' font-size='10'>hoy</text>")
+    hoy = hoy or dt.date.today()
+    for k in range(k0, k1 + 1):
+        d = hoy + dt.timedelta(days=k)
+        if d.day == 1:
+            g.append(f"<line x1='{X(k):.1f}' x2='{X(k):.1f}' y1='{T}' y2='{H - B}' stroke='#1A2740' stroke-width='0.6'/>"
+                     f"<text x='{X(k) + 3:.1f}' y='{H - 8}' fill='#7F93AE' font-size='10'>{ESTC_MES3[d.month - 1]}</text>")
+    g.append("</svg>")
+    return "".join(g)
+
+
+def _estc_svg_mercados(m):
+    w = m.get("w") or []
+    if len(w) < 50:
+        return ""
+    W, H, L, R, T, B = 660, 230, 44, 12, 12, 24
+    fx = [pd.Timestamp(d) for d, _ in w]
+    lv = [np.log10(v) for _, v in w]
+    t0, t1 = fx[0], fx[-1]
+    lo, hi = min(lv), max(lv)
+    X = lambda t: L + (W - L - R) * (pd.Timestamp(t) - t0).days / max(1, (t1 - t0).days)
+    Y = lambda v: T + (H - T - B) * (1 - (v - lo) / (hi - lo))
+    g = [f"<svg viewBox='0 0 {W} {H}' style='width:100%;height:auto;max-width:820px;display:block' role='img'>"]
+    for p in m["per"]:
+        if p["tipo"] == "bajista":
+            x0, x1 = X(p["desde"]), X(p["hasta"])
+            g.append(f"<rect x='{x0:.1f}' y='{T}' width='{max(1.5, x1 - x0):.1f}' height='{H - T - B}' fill='#F4607A' opacity='0.28'/>")
+    for e in range(int(np.floor(lo)), int(np.ceil(hi)) + 1):
+        if lo <= e <= hi:
+            g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(e):.1f}' y2='{Y(e):.1f}' stroke='#24344F' stroke-width='0.6'/>"
+                     f"<text x='{L - 5}' y='{Y(e) + 3:.1f}' fill='#7F93AE' font-size='10' text-anchor='end'>{10 ** e:,.0f}</text>".replace(",", "."))
+    for a in range(t0.year - t0.year % 10 + 10, t1.year + 1, 10):
+        g.append(f"<text x='{X(pd.Timestamp(a, 1, 1)):.1f}' y='{H - 8}' fill='#7F93AE' font-size='10' text-anchor='middle'>{a}</text>")
+    pts = " ".join(f"{X(t):.1f},{Y(v):.1f}" for t, v in zip(fx[::2], lv[::2]))
+    g.append(f"<polyline points='{pts}' fill='none' stroke='#4CC2E0' stroke-width='1.4'/></svg>")
+    return "".join(g)
+
+
+def _estc_svg_barras(por, a0, media, col):
+    W, H, L, R, T, B = 330, 90, 22, 6, 6, 16
+    n = len(por)
+    mx = max(max(por), 1)
+    bw = (W - L - R) / n
+    Y = lambda v: T + (H - T - B) * (1 - v / mx)
+    g = [f"<svg viewBox='0 0 {W} {H}' style='width:100%;height:auto;display:block' role='img'>"]
+    for i, v in enumerate(por):
+        if v:
+            g.append(f"<rect x='{L + i * bw:.1f}' y='{Y(v):.1f}' width='{max(0.8, bw - 0.6):.1f}' height='{Y(0) - Y(v):.1f}' fill='{col}'/>")
+    g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(media):.1f}' y2='{Y(media):.1f}' stroke='#4CC2E0' stroke-width='1.2'/>"
+             f"<text x='{L - 3}' y='{Y(mx) + 7:.1f}' fill='#7F93AE' font-size='9' text-anchor='end'>{mx}</text>")
+    for a in range(a0 - a0 % 20 + 20, a0 + n, 20):
+        g.append(f"<text x='{L + (a - a0) * bw:.1f}' y='{H - 4}' fill='#7F93AE' font-size='9' text-anchor='middle'>{a}</text>")
+    g.append("</svg>")
+    return "".join(g)
+
+
+def _estc_svg_scatter(lista):
+    if not lista:
+        return ""
+    W, H, L, R, T, B = 660, 240, 44, 12, 12, 28
+    mxd = max(x["ses"] for x in lista) * 1.05
+    mnd = min(x["dd"] for x in lista) * 1.08
+    X = lambda s: L + (W - L - R) * s / mxd
+    Y = lambda d: T + (H - T - B) * (d / mnd)
+    g = [f"<svg viewBox='0 0 {W} {H}' style='width:100%;height:auto;max-width:820px;display:block' role='img'>"]
+    for d in range(-10, int(mnd) - 1, -10):
+        g.append(f"<line x1='{L}' x2='{W - R}' y1='{Y(d):.1f}' y2='{Y(d):.1f}' stroke='#24344F' stroke-width='0.6'/>"
+                 f"<text x='{L - 5}' y='{Y(d) + 3:.1f}' fill='#7F93AE' font-size='10' text-anchor='end'>{d}%</text>")
+    for s in range(0, int(mxd) + 1, 100):
+        g.append(f"<text x='{X(s):.1f}' y='{H - 12}' fill='#7F93AE' font-size='10' text-anchor='middle'>{s}</text>")
+    g.append(f"<text x='{(W + L) / 2:.0f}' y='{H - 1}' fill='#7F93AE' font-size='10' text-anchor='middle'>sesiones del máximo al suelo</text>")
+    for x in lista:
+        col = "#F4B740" if x["abierto"] else ("#F4607A" if x["rec"] else "#9FB0C8")
+        g.append(f"<circle cx='{X(x['ses']):.1f}' cy='{Y(x['dd']):.1f}' r='{5 if x['abierto'] else 4}' fill='{col}' opacity='0.9'>"
+                 f"<title>{x['pico']} → {x['suelo']}: {x['dd']}% en {x['ses']} sesiones{' (recesión)' if x['rec'] else ''}</title></circle>")
+    g.append("</svg>")
+    return "".join(g)
+
+
+def _estc_opex_html(o):
+    if not o:
+        return ""
+    def fo(nom, st, base):
+        if not st:
+            return ""
+        return (f"<tr><td class='se-l'>{nom}</td><td class='r'>{st['n']}</td>" + _rn_celda(st, base)
+                + f"<td class='r'>{st['media']:+.2f}%</td></tr>")
+    return ("<div class='panel full'><h2>🗓️ Semana de vencimiento de opciones (3er viernes)</h2>"
+            "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P 500</th>"
+            "<th class='r'>veces</th><th class='r'>sube</th><th class='r'>media</th></tr>"
+            + fo("<b>semana del vencimiento</b> (mensual)", o["sem"], o["otras"])
+            + fo("<b>semana siguiente</b> al vencimiento", o["sig"], o["otras"])
+            + fo("&nbsp;&nbsp;solo trimestrales: semana del vencimiento", o["sem_q"], o["otras"])
+            + fo("&nbsp;&nbsp;solo trimestrales: semana siguiente", o["sig_q"], o["otras"])
+            + fo("el propio día del vencimiento", o["dia"], o["cualquier_dia"])
+            + fo("<span style='color:#9FB0C8'>el resto de semanas (referencia)</span>", o["otras"], None)
+            + "</table></div>"
+            f"<div class='note'>Desde {esc(o.get('desde') or '1990')}. Los muros de opciones de hoy están en la pestaña Rachas y niveles.</div></div>")
+
+
+def _estc_semanas_html(sem, corto=False):
+    if not sem:
+        return ""
+    trs = []
+    for s in sem:
+        st, sm = s["st"], s["mid"]
+        ev = "; ".join(esc(e) for e in s["ev"]) or "—"
+        trs.append(f"<tr><td class='se-l'><b>{s['lun'].day}/{s['lun'].month} – {s['vie'].day}/{s['vie'].month}</b></td>"
+                   f"<td class='r' style='color:{s['vcol']};font-weight:800'>{s['viento']}</td>"
+                   + _estc_pct(st) + ("" if corto else _estc_pct(sm))
+                   + f"<td class='r' style='color:{s['fcol']}'>{esc(s['fase'].lower())}<div style='font-size:10.5px;color:#9FB0C8'>{s['rec']:.0f}% en blackout</div></td>"
+                   + ("" if corto else f"<td style='font-size:11.5px;color:#9FB0C8'>{esc(s['res'])}</td>")
+                   + f"<td style='font-size:11.5px;white-space:normal;min-width:160px'>{ev}</td></tr>")
+    return ("<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>semana</th><th class='r'>viento</th>"
+            "<th class='r'>S&amp;P esa semana<div style='font-size:10px;font-weight:400'>% años que sube · media</div></th>"
+            + ("" if corto else "<th class='r'>solo años midterm</th>")
+            + "<th class='r'>recompras</th>" + ("" if corto else "<th>resultados</th>") + "<th>citas</th></tr>"
+            + "".join(trs) + "</table></div>")
+
+
+def _estc_html(e, extra=None):
+    """La pestaña entera. extra: paneles ya hechos (quincenas, τ, opex, calendario)."""
+    if not e:
+        return "<div class='panel full'><h2>📅 Estacionalidad</h2><div class='note'>No se ha podido calcular hoy.</div></div>"
+    extra = extra or {}
+    hoy = e.get("hoy") or dt.date.today()
+    doy = pd.Timestamp(hoy).dayofyear - 1
+    h = []
+    rec, res, ci, ha, sa, tom = e.get("rec"), e.get("res"), e.get("ciclo"), e.get("hall"), e.get("santa"), e.get("tom")
+    v4 = next((v for v in (e.get("vent") or []) if v["dias"] == 28), None)
+    # 1) dónde estamos
+    chips = []
+    if rec:
+        chips.append(f"<b style='color:{rec['col']}'>Recompras: {esc(rec['fase'])}</b> ({rec['p']:.0f}% de empresas sin poder recomprar)")
+    if res:
+        chips.append(f"<b>Resultados:</b> {esc(res['fase'])}")
+    if ci:
+        chips.append(f"<b>Ciclo presidencial:</b> {esc(ESTC_CICLO[ci['hoy']])}")
+    if ha:
+        chips.append("<b>Medio año:</b> " + ("estamos en el bueno (noviembre–abril)" if ha["en_inv"] else
+                                            f"el bueno (noviembre–abril) empieza el {ha['ini_inv'].day}/11" if ha.get("ini_inv") else "mayo–octubre"))
+    if v4 and v4.get("st"):
+        chips.append(f"<b>Próximas 4 semanas:</b> el S&amp;P subió el {v4['st']['pos']}% de los años ({v4['st']['media']:+.2f}% de media)")
+    if sa and sa.get("fechas"):
+        f = sa["fechas"]
+        chips.append(f"<b>Rally de Santa Claus:</b> del {f[1].day}/{f[1].month} al {f[2].day}/{f[2].month}")
+    h.append("<div class='panel full' style='border-color:#4CC2E066'><h2>📅 Estacionalidad: en qué punto del calendario estamos</h2>"
+             "<div style='font-size:13px;line-height:1.9'>" + "<br>".join(chips) + "</div>"
+             "<div class='note' style='margin-top:6px'>La estacionalidad es <b>viento de fondo</b>: inclina las probabilidades unos puntos, "
+             "no decide. Manda el semáforo (CENTINELA) y el cierre del viernes. Todo está calculado con el histórico real del S&amp;P "
+             "(desde 1950 salvo que se diga otra cosa). No es asesoramiento.</div></div>")
+    # 2) próximas semanas
+    if e.get("semanas"):
+        h.append("<div class='panel full'><h2>🗓️ Las próximas semanas, una a una</h2>"
+                 + _estc_semanas_html(e["semanas"])
+                 + "<div class='note' style='margin-top:6px'><b>Viento</b>: suma +1 si esa semana el S&amp;P subió el 60% o más de los años "
+                 "(−1 si el 45% o menos), +1 si las recompras van a todo gas (−1 en blackout) y +1 si cae el cambio de mes o el rally de "
+                 "Santa Claus. «A favor» = 2 o más; «en contra» = −1 o menos. Con ~75 años por semana, una diferencia de menos de 10 puntos "
+                 "es ruido.</div></div>")
+    # 3) recompras
+    if rec:
+        cam = " → ".join(f"<b style='color:{c['col']}'>{esc(c['fase'].lower())}</b> desde el {_estc_f(c['fecha'])}" for c in rec["cambios"][:4])
+        bt = (e.get("rec_bt") or {}).get("g") or {}
+        filas = "".join(f"<tr><td class='se-l'>{k.lower()}</td><td class='r'>{v['n']}</td><td class='r' style='font-weight:700'>{v['anual']:+.1f}%</td>"
+                        f"<td class='r'>{v['pos']}%</td><td class='r'>{v['vol']:.1f}%</td></tr>" for k, v in bt.items())
+        h.append("<div class='panel full'><h2>🏦 Recompras de acciones: blackout o a todo gas</h2>"
+                 f"<div style='font-size:15px;margin-bottom:4px'><b style='color:{rec['col']}'>{esc(rec['fase'])}</b> · hoy ~{rec['p']:.0f}% de las "
+                 "empresas del S&amp;P no pueden recomprar sus acciones</div>"
+                 f"<div style='font-size:12.5px;line-height:1.7'>Lo que viene: {cam}</div>"
+                 + _estc_svg_rec(rec.get("curva"), rec.get("hoy"))
+                 + "<div class='note'>Las empresas no recompran desde unas 4–5 semanas antes de publicar resultados hasta ~2 días después "
+                 "(el «blackout»). Con la temporada de resultados, en el pico más del 80% del S&amp;P está fuera; cuando publican, la "
+                 "ventana se abre y las recompras vuelven «a todo gas» (noviembre y diciembre suelen ser fuertes). Las empresas son el mayor "
+                 "comprador neto de acciones de EE. UU., por eso se vigila. <b>Esto es una estimación por reglas</b> (fechas típicas de "
+                 "publicación), no el dato de cada empresa.</div>"
+                 + (f"<div style='font-weight:700;margin-top:10px'>¿Se nota en el S&amp;P? (desde {esc(e['rec_bt']['desde'])})</div>"
+                    "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>días en…</th>"
+                    "<th class='r'>sesiones</th><th class='r'>rentabilidad anualizada</th><th class='r'>días que sube</th><th class='r'>volatilidad</th></tr>"
+                    + filas + "</table></div>"
+                    "<div class='note'>Si los días de blackout no salen peores, es que el efecto es más pequeño de lo que se cuenta: "
+                    "úsalo como contexto, no como señal.</div>" if filas else "")
+                 + "</div>")
+    # 4) ventanas desde hoy + camino del año
+    if e.get("vent"):
+        fil = "".join(f"<tr><td class='se-l'>{v['nom']}</td>" + _estc_pct(v["st"]) + _estc_pct(v["mid"]) + _estc_pct(v["base"]) + "</tr>"
+                      for v in e["vent"])
+        lin = []
+        if e.get("tray"):
+            lin.append({"nom": f"media de todos los años ({e['tray']['desde']}–{e['tray']['hasta']})", "col": "#9FB0C8", "ys": e["tray"]["media"]})
+        if e.get("tray_mid"):
+            lin.append({"nom": f"media de los años de mitad de mandato ({e['tray_mid']['n']} años)", "col": "#4CC2E0", "ys": e["tray_mid"]["media"], "w": 2})
+        if e.get("tray") and e["tray"].get("actual"):
+            lin.append({"nom": f"{hoy.year} (real)", "col": "#F4B740", "ys": e["tray"]["actual"], "w": 2.2})
+        h.append("<div class='panel full'><h2>📈 El S&amp;P desde la fecha de hoy y el camino medio del año</h2>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>desde el "
+                 f"{hoy.day} de {ESTC_MESES[hoy.month - 1]}…</th><th class='r'>todos los años</th><th class='r'>años midterm</th>"
+                 "<th class='r'>un momento cualquiera</th></tr>" + fil + "</table></div>"
+                 + _estc_svg_anual(lin, doy, base=0.0)
+                 + "<div class='note'>% acumulado desde el 1 de enero. «Un momento cualquiera» es la referencia: si la fecha de hoy no "
+                 "mejora claramente esa columna, el calendario no aporta.</div></div>")
+    # 5) ciclo presidencial
+    if ci:
+        fil = "".join(f"<tr{_HI if k == ci['hoy'] else ''}><td class='se-l'>{esc(ESTC_CICLO[k])}"
+                      + (" <span class='se-now'>ahora</span>" if k == ci["hoy"] else "") + "</td>" + _estc_pct(ci["st"][k]) + "</tr>"
+                      for k in (1, 2, 3, 0) if ci["st"].get(k))
+        m12, o12 = ci.get("mid12"), ci.get("otros12")
+        h.append("<div class='panel full'><h2>🏛️ Ciclo presidencial de EE. UU.</h2>"
+                 "<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'>S&amp;P en el año…</th>"
+                 "<th class='r'>sube · media</th></tr>" + fil + "</table></div>"
+                 + (f"<div style='font-size:12.5px;margin-top:6px;line-height:1.6'><b>Del 30 de septiembre del año midterm a 12 meses después:</b> "
+                    f"sube el <b>{m12['pos']}%</b> de las veces, {m12['media']:+.1f}% de media (peor {m12['peor']:+.1f}%, {m12['n']} casos). "
+                    + (f"El resto de años, mismo tramo: sube el {o12['pos']}%, {o12['media']:+.1f}% de media. " if o12 else "")
+                    + (f"A 6 meses (hasta marzo): sube el {ci['mid6']['pos']}%, {ci['mid6']['media']:+.1f}%. " if ci.get("mid6") else "")
+                    + "</div>" if m12 else "")
+                 + (f"<div style='font-size:12.5px;line-height:1.6'>La peor caída dentro del año (mediana): <b>{ci['dd_mid']}%</b> en años midterm "
+                    f"frente a {ci['dd_otros']}% en el resto. El año de mitad de mandato suele traer la caída del año y dejar el suelo hacia "
+                    "otoño; el preelectoral es el mejor del ciclo.</div>" if ci.get("dd_mid") is not None else "")
+                 + f"<div class='note'>Pocos casos ({(ci['st'].get(2) or {}).get('n', '?')} años de mitad de mandato desde 1950): es una tendencia histórica, no una ley.</div></div>")
+    # 6) mensual
+    men = e.get("mensual") or {}
+    if men:
+        noms = list(men.keys())
+        cab = "".join(f"<th class='r'>{esc(n)}<div style='font-size:10px;font-weight:400'>desde {men[n]['desde']}</div></th>" for n in noms)
+        fl = {2: ("fuerte", "#2FD08A"), 1: ("media", "#9FB0C8"), 0: ("casi nada", "#F4B740"), -1: ("salidas", "#F4607A")}
+        trs = []
+        for k in range(1, 13):
+            tag = " <span class='se-now'>ahora</span>" if k == hoy.month else (" <span class='se-next'>próximo</span>" if k == hoy.month % 12 + 1 else "")
+            ff = fl[ESTC_FLUJOS_FONDOS[k]]
+            trs.append(f"<tr{_HI if k in (hoy.month, hoy.month % 12 + 1) else ''}><td class='se-l'>{ESTC_MESES[k - 1]}{tag}</td>"
+                       + "".join(_estc_pct(men[n]["st"].get(k)) for n in noms)
+                       + f"<td class='r' style='color:{ff[1]}'>{ff[0]}</td></tr>")
+        h.append("<div class='panel full'><h2>📆 Mes a mes: índices y dinero que entra en fondos</h2>"
+                 f"<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'></th>{cab}"
+                 "<th class='r'>entrada en fondos y ETF<div style='font-size:10px;font-weight:400'>mediana 1996–2022</div></th></tr>"
+                 + "".join(trs) + "</table></div>"
+                 "<div class='note'>% de años que el mes cerró en positivo y su media. La última columna es del gráfico que me pasaste "
+                 "(flujo mediano a fondos y ETF de bolsa en % del patrimonio, 1996–2022): enero, febrero, abril y noviembre son los meses "
+                 "en que más dinero nuevo entra; junio, agosto y octubre, los de salidas. Encaja con el calendario de bolsa: el dinero "
+                 "nuevo de principio de año y de noviembre empuja.</div></div>")
+    # 7) efectos clásicos
+    cl = []
+    if ha and ha.get("inv"):
+        cl.append(f"<b>«Sell in May» (de noviembre a abril frente a mayo–octubre):</b> noviembre–abril sube el {ha['inv']['pos']}% de los años "
+                  f"({ha['inv']['media']:+.1f}% de media); mayo–octubre el {ha['ver']['pos']}% ({ha['ver']['media']:+.1f}%). El medio año bueno "
+                  f"gana al malo el {ha['gana']}% de las veces. " + ("<b style='color:#2FD08A'>Estamos dentro del bueno.</b>" if ha["en_inv"] else
+                                                                    (f"<b style='color:#2FD08A'>El bueno empieza el 1 de noviembre.</b>" if ha.get("ini_inv") else "")))
+    if sa and sa.get("st"):
+        f = sa.get("fechas")
+        cl.append(f"<b>Rally de Santa Claus</b> (5 últimas sesiones del año y 2 primeras de enero"
+                  + (f": del {f[1].day}/{f[1].month} al {f[2].day}/{f[2].month}" if f else "") + f"): sube el {sa['st']['pos']}% de los años, "
+                  f"{sa['st']['media']:+.2f}% de media (cualquier tramo de 7 sesiones: {sa['base']['pos']}%, {sa['base']['media']:+.2f}%)."
+                  + (f" Cuando no aparece, el año siguiente ha subido el {sa['no']['pos']}% de las veces ({sa['no']['media']:+.1f}%); cuando "
+                     f"aparece, el {sa['si']['pos']}% ({sa['si']['media']:+.1f}%)." if sa.get("no") and sa.get("si") else ""))
+    if tom:
+        cl.append(f"<b>Cambio de mes</b> (último día del mes y 3 primeros del siguiente): son el {tom['pct_dias']}% de las sesiones"
+                  + (f" y han hecho el {tom['parte']}% de la subida del S&amp;P desde {tom['desde']}" if (tom.get('parte') or 0) > 0 else "")
+                  + f" ({tom['tom']:+.3f}% por día frente a {tom['resto']:+.3f}% el resto; sube el {tom['pos_tom']}% de esos días frente al {tom['pos_resto']}%)." + (f" Próximo: del {_estc_f(tom['ini'])} al {_estc_f(tom['fin'])}." if tom.get("ini") else ""))
+    if cl:
+        h.append("<div class='panel full'><h2>🎄 Los efectos de calendario clásicos, medidos</h2><div style='font-size:12.5px;line-height:1.7'>"
+                 + "<br><br>".join(cl) + "</div></div>")
+    # 8) quincenas (lo que ya había)
+    if extra.get("season"):
+        h.append(extra["season"])
+    # 9) VIX, dólar, petróleo, bono
+    act = e.get("act") or {}
+    if act.get("vix"):
+        v = act["vix"]
+        lin = [{"nom": f"media {v['desde']}–{v['hasta']}", "col": "#9FB0C8", "ys": v["media"], "w": 2}]
+        if v.get("sin"):
+            lin.append({"nom": "sin 2008 ni 2020", "col": "#5E708A", "ys": v["sin"]})
+        if v.get("actual"):
+            lin.append({"nom": f"{hoy.year}", "col": "#F4607A", "ys": v["actual"], "w": 2})
+        h.append("<div class='panel full'><h2>😨 Estacionalidad del VIX (nivel medio de cada día del año)</h2>"
+                 + _estc_svg_anual(lin, doy, fmt="{:.0f}")
+                 + f"<div class='note'>El miedo suele tocar fondo en julio y subir hasta octubre; luego baja hacia fin de año. Hoy el VIX "
+                 f"está en <b>{v.get('ult')}</b>; la media histórica para esta fecha es {v['media'][doy]:.1f}. Quitando 2008 y 2020 (las dos "
+                 "crisis) la forma es la misma, con menos pico.</div></div>")
+    graf = []
+    for k, col in (("dolar", "#4CC2E0"), ("petroleo", "#F4B740"), ("bono", "#2FD08A")):
+        t = act.get(k)
+        if not t:
+            continue
+        lin = [{"nom": f"media {t['desde']}–{t['hasta']}", "col": col, "ys": t["media"], "w": 2}]
+        if t.get("actual"):
+            lin.append({"nom": f"{hoy.year}", "col": "#E6EDF6", "ys": t["actual"], "w": 1.4, "dash": "3 2"})
+        graf.append(f"<div style='font-weight:700;margin-top:8px'>{esc(t['nom'])} <span style='font-weight:400;font-size:11px;color:#9FB0C8'>"
+                    f"({esc(t['src'])}, % desde el 1 de enero)</span></div>" + _estc_svg_anual(lin, doy, base=0.0, alto=170))
+    if graf:
+        h.append("<div class='panel full'><h2>💵 Dólar, petróleo y bono a 30 años a lo largo del año</h2>" + "".join(graf)
+                 + "<div class='note'>El patrón que me pasaste: el dólar suele subir en el primer trimestre y tocar fondo hacia septiembre–octubre; "
+                 "el petróleo sube de febrero a la primavera y tiende a caer en otoño; el bono largo sube (bajan los tipos) en verano y "
+                 "vuelve a subir en noviembre–diciembre. Un dólar flojo y tipos bajando ayudan a la bolsa; lo contrario resta.</div></div>")
+    # 10) alcistas y bajistas
+    m = e.get("merc")
+    if m:
+        a = m["act"]
+        filas = "".join(f"<tr><td class='se-l' style='color:{'#2FD08A' if p['tipo'] == 'alcista' else '#F4607A'}'>{p['tipo']}"
+                        + (" (en curso)" if p["abierto"] else "") + f"</td><td class='r'>{esc(p['desde'])}</td><td class='r'>{esc(p['hasta'])}</td>"
+                        f"<td class='r'>{p['anios']:g} años</td><td class='r' style='font-weight:700'>{p['ret']:+.1f}%</td></tr>"
+                        for p in reversed(m["per"]))
+        h.append(f"<div class='panel full'><h2>🐂🐻 Mercados alcistas y bajistas del S&amp;P desde {m.get('desde', 1942)}</h2>"
+                 + _estc_svg_mercados(m)
+                 + f"<div style='font-size:13px;line-height:1.7;margin:4px 0'>Alcista medio: <b>{m['alc']['anios']} años</b> y "
+                 f"<b>{m['alc']['ret']:+.0f}%</b> (mediana {m['alc']['anios_med']} años, {m['alc']['ret_med']:+.0f}%). "
+                 f"Bajista medio: <b>{m['baj']['anios']} años</b> y <b>{m['baj']['ret']:+.0f}%</b>.<br>"
+                 f"<b>Ahora:</b> {'alcista' if a['tipo'] == 'alcista' else 'bajista'} desde el {esc(a['desde'])}: {a['anios']:g} años y "
+                 f"{a['ret']:+.0f}%. Solo {m['mas_largos']} de los {m['alc' if a['tipo'] == 'alcista' else 'baj']['n']} anteriores duraron más.</div>"
+                 f"<details><summary style='cursor:pointer;font-size:12px;color:#8FA3C0'>todos los tramos</summary>"
+                 f"<div class='scrollx'><table class='se' style='white-space:nowrap;font-size:12px'><tr><th class='se-l'></th><th class='r'>desde</th>"
+                 f"<th class='r'>hasta</th><th class='r'>duración</th><th class='r'>S&amp;P</th></tr>{filas}</table></div></details>"
+                 "<div class='note'>Bajista = cae un 20% desde el máximo (en cierres); termina en el mínimo cuando rebota un 20%. Solo precio, "
+                 "sin dividendos (el gráfico que me pasaste usa rentabilidad total, por eso sus % son algo mayores). En rojo, los bajistas. "
+                 "Los alcistas duran unas cuatro veces más que los bajistas y ganan mucho más de lo que estos quitan.</div></div>")
+    # 11) retrocesos
+    r = e.get("retro")
+    if r:
+        cajas = []
+        for x in r["x"]:
+            u = x.get("ult") or {}
+            cajas.append(f"<div style='flex:1 1 280px;min-width:240px'><div style='font-weight:700'>Caídas de {x['x']}% o más</div>"
+                         f"<div style='font-size:12px;color:#9FB0C8'>media <b style='color:#E6EDF6'>{x['media']:g} al año</b> · "
+                         f"{x['sin']}% de los años sin ninguna · este año: <b style='color:#F4B740'>{x['este']}</b></div>"
+                         + _estc_svg_barras(x["por"], r["desde"], x["media"], "#5B8CFF")
+                         + (f"<div style='font-size:11px;color:#9FB0C8'>última: {esc(u['pico'])} → {esc(u['suelo'])}, {u['dd']}%"
+                            + (" <b style='color:#F4B740'>(en curso)</b>" if u.get("abierto") else "") + "</div>" if u else "") + "</div>")
+        h.append(f"<div class='panel full'><h2>📉 Cada cuánto cae el S&amp;P ({r['desde']}–{r['hasta']})</h2>"
+                 "<div style='display:flex;flex-wrap:wrap;gap:14px'>" + "".join(cajas) + "</div>"
+                 f"<div class='note'>Hoy el S&amp;P está a un {r['dd_hoy']}% de su máximo histórico. Una caída cuenta una vez y termina cuando "
+                 "rebota lo mismo que cayó. Bank of America (el gráfico que me pasaste, desde 1930) dice 3,3 caídas del 5% al año, 1,1 del 10%, "
+                 "0,5 del 15% y 0,3 del 20%; aquí, con estos datos: " + ", ".join(f"{x['media']:g} del {x['x']}%" for x in r["x"])
+                 + ". <b>Caer un 5–10% es lo normal</b>, no una señal de crisis.</div></div>")
+    # 12) correcciones
+    co = e.get("corr")
+    if co and co.get("todas"):
+        t, s, c = co["todas"], co.get("sin"), co.get("con")
+        ab = co.get("abierta")
+        h.append("<div class='panel full'><h2>🩺 Correcciones del S&amp;P desde 1965: con y sin recesión</h2>"
+                 + _estc_svg_scatter(co["lista"])
+                 + "<div style='font-size:11px;color:#9FB0C8'><span style='color:#9FB0C8'>●</span> sin recesión · "
+                 "<span style='color:#F4607A'>●</span> con recesión · <span style='color:#F4B740'>●</span> en curso</div>"
+                 f"<div style='font-size:13px;line-height:1.7;margin-top:6px'>{t['n']} correcciones de 10% o más: media <b>{t['dd']}%</b>. "
+                 + (f"Sin recesión: <b>{s['dd']}%</b> y unas {s['ses']} sesiones hasta el suelo ({s['n']} casos). " if s else "")
+                 + (f"Con recesión: <b style='color:#F4607A'>{c['dd']}%</b> y unas {c['ses']} sesiones ({c['n']} casos)." if c else "")
+                 + (f"<br><b style='color:#F4B740'>En curso:</b> desde el {esc(ab['pico'])}, {ab['dd']}% y {ab['ses']} sesiones." if ab else "")
+                 + "</div><div class='note'>Como en el gráfico de Oxford Economics que me pasaste (−15,4% de media sin recesión, −36% con ella): "
+                 "lo que separa una corrección normal de una grande es <b>si llega la recesión</b>. Por eso el terminal mira crédito, empleo "
+                 "y curva de tipos: sin recesión, las correcciones se han quedado casi siempre en la zona de −10/−20%. Una corrección "
+                 "cuenta desde el máximo hasta el mínimo y termina al recuperar el máximo o rebotar un 25%.</div></div>")
+    # 13) lo que ya había: τ, vencimientos, calendario
+    for k in ("tau", "opex", "cal2"):
+        if extra.get(k):
+            h.append(extra[k])
+    h.append("<div class='panel full'><div class='note'><b>Fuentes de las reglas:</b> blackout de recompras — Real Investment Advice, "
+             "ETF Trends/Value Walk, Deutsche Bank vía Bloomberg; calendario de la Fed — federalreserve.gov; recesiones — NBER. "
+             "Los gráficos que me pasaste (Topdown Charts, EquityClock, BofA, Oxford Economics, First Trust) están recalculados aquí con "
+             "datos, no copiados.</div></div>")
+    return "".join(h)
+
+
+def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=None):
+    """Primera pestaña, arriba del todo: cómo estamos hoy y qué viene las próximas semanas, en castellano llano."""
+    try:
+        e, op, ce = estc or {}, operativa or {}, centinela or {}
+        hoy_l, vie_l = [], []
+        est = ce.get("estado")
+        if est:
+            hoy_l.append(f"<b>Semáforo (CENTINELA): <span style='color:{ce.get('col', '#E6EDF6')}'>{esc(est)}</span></b>"
+                         + (f" — {esc(ce['que'])}" if ce.get("que") else ""))
+        orden = [r for r in (op.get("orden") or []) if r.get("ver") != "SIN DATOS"]
+        if orden:
+            hoy_l.append("<b>Índices (nota de 10):</b> " + " · ".join(
+                f"<b>{esc(r['sym'])}</b> <span style='color:{r.get('vcol', '#E6EDF6')}'>{r['score']}</span>" for r in orden))
+        sect = op.get("sect") or []
+        if sect:
+            entra = [f for f in sect if f.get("signo") == 1]
+            entra.sort(key=lambda f: -(f.get("cmf") or 0))
+            sale = [f for f in sect if f.get("signo") == -1 and not f.get("sube3")]
+            sale.sort(key=lambda f: (f.get("cmf") or 0))
+            hoy_l.append(f"<b>Dinero en sectores:</b> entra en {len(entra)} ("
+                         + (", ".join(esc(f['sym']) for f in entra[:6]) or "ninguno") + f") y sale de {len(sale)} ("
+                         + (", ".join(esc(f['sym']) for f in sale[:6]) or "ninguno") + ")")
+        pares = ((op.get("estilos") or {}).get("pares")) or []
+        est_t = []
+        for x in pares:
+            p = x.get("p")
+            if not p or x["a"] not in ("VUG", "RSP", "MAGS", "SCHD"):
+                continue
+            g = x["ga"] if p.get("dire") == 1 else (x["gb"] if p.get("dire") == -1 else None)
+            est_t.append(f"{esc(x['ga'])} vs {esc(x['gb'])}: " + (f"gana <b>{esc(g)}</b>" if g else "empate"))
+        if est_t:
+            hoy_l.append("<b>Estilos (3 meses):</b> " + " · ".join(est_t))
+        amp = op.get("amp") or {}
+        a_t = []
+        if (amp.get("mcc") or {}).get("v") is not None:
+            a_t.append(f"McClellan {amp['mcc']['v']:+.0f}")
+        if amp.get("p50") is not None:
+            a_t.append(f"{amp['p50']:.0f}% de acciones sobre su media de 50")
+        if amp.get("p200") is not None:
+            a_t.append(f"{amp['p200']:.0f}% sobre la de 200")
+        if a_t:
+            hoy_l.append("<b>Amplitud:</b> " + " · ".join(a_t))
+        o_t = []
+        if dix and dix.get("last") is not None:
+            o_t.append(f"DIX {dix['last']}%" + (f" (percentil {dix['pct']})" if dix.get("pct") is not None else ""))
+        dg = (((rachas or {}).get("cal") or {}).get("dixgex") or {}).get("hoy") or {}
+        if dg.get("gex_pct") is not None:
+            o_t.append(f"GEX en el percentil {dg['gex_pct']}")
+        sk = ((((rachas or {}).get("cal") or {}).get("cob")) or {}).get("skew")
+        if sk is not None:
+            o_t.append(f"SKEW {sk} ({'protección barata' if sk < CAL2_SKEW_BARATO else 'protección cara'})")
+        vx = ((e.get("act") or {}).get("vix") or {})
+        if vx.get("ult") is not None and 5 <= vx["ult"] <= 150:
+            try:
+                o_t.append(f"VIX {vx['ult']} (lo normal en esta fecha: {vx['media'][pd.Timestamp(e['hoy']).dayofyear - 1]:.0f})")
+            except Exception:
+                o_t.append(f"VIX {vx['ult']}")
+        if o_t:
+            hoy_l.append("<b>Opciones y miedo:</b> " + " · ".join(o_t))
+        # lo que viene
+        rec = e.get("rec")
+        if rec:
+            c1 = rec["cambios"][0] if rec.get("cambios") else None
+            vie_l.append(f"<b>Recompras:</b> <span style='color:{rec['col']}'>{esc(rec['fase'].lower())}</span> (~{rec['p']:.0f}% de empresas sin poder recomprar)"
+                         + (f"; pasa a <b style='color:{c1['col']}'>{esc(c1['fase'].lower())}</b> hacia el {_estc_f(c1['fecha'])}" if c1 else "")
+                         + (f" y a <b style='color:{rec['cambios'][1]['col']}'>{esc(rec['cambios'][1]['fase'].lower())}</b> hacia el {_estc_f(rec['cambios'][1]['fecha'])}"
+                            if len(rec.get("cambios") or []) > 1 else "") + ".")
+        if e.get("res"):
+            vie_l.append(f"<b>Resultados:</b> {esc(e['res']['fase'])}.")
+        v4 = next((v for v in (e.get("vent") or []) if v["dias"] == 28), None)
+        v8 = next((v for v in (e.get("vent") or []) if v["dias"] == 56), None)
+        if v4 and v4.get("st"):
+            vie_l.append(f"<b>Estacionalidad:</b> desde esta fecha, a 4 semanas el S&amp;P subió el {v4['st']['pos']}% de los años "
+                         f"({v4['st']['media']:+.2f}%)" + (f" y a 8 semanas el {v8['st']['pos']}% ({v8['st']['media']:+.2f}%)" if v8 and v8.get("st") else "")
+                         + (f"; en un momento cualquiera, a 4 semanas, el {v4['base']['pos']}%." if v4.get("base") else "."))
+        ci, ha, sa = e.get("ciclo"), e.get("hall"), e.get("santa")
+        x_t = []
+        if ci and ci.get("mid12") and ci["hoy"] == 2:
+            x_t.append(f"año de mitad de mandato: del final de septiembre a un año vista el S&amp;P subió el {ci['mid12']['pos']}% de las veces "
+                       f"({ci['mid12']['media']:+.0f}%)")
+        if ha and ha.get("ini_inv"):
+            x_t.append(f"el medio año bueno (noviembre–abril) empieza el 1/11")
+        elif ha and ha.get("en_inv"):
+            x_t.append("estamos en el medio año bueno (noviembre–abril)")
+        if sa and sa.get("fechas"):
+            x_t.append(f"rally de Santa Claus del {sa['fechas'][1].day}/{sa['fechas'][1].month} al {sa['fechas'][2].day}/{sa['fechas'][2].month}")
+        if x_t:
+            vie_l.append("<b>Calendario de fondo:</b> " + "; ".join(x_t) + ".")
+        prox = [f for f in ESTC_FOMC if dt.date.fromisoformat(f) >= (e.get("hoy") or dt.date.today())][:1]
+        ev_t = [f"Fed el {_estc_f(dt.date.fromisoformat(prox[0]))}"] if prox else []
+        ev_t += [f"{t} el {_estc_f(dt.date.fromisoformat(f))}" for f, t in ESTC_EVENTOS
+                 if 0 <= (dt.date.fromisoformat(f) - (e.get("hoy") or dt.date.today())).days <= 45]
+        if ev_t:
+            vie_l.append("<b>Citas gordas:</b> " + " · ".join(esc(x) for x in ev_t) + ".")
+        # en una frase
+        sem = e.get("semanas") or []
+        fav = [s for s in sem if s["viento"] == "A FAVOR"]
+        primera_fav = fav[0]["lun"] if fav else None
+        cal_txt = (f"el calendario sopla a favor a partir de la semana del {primera_fav.day}/{primera_fav.month}" if primera_fav
+                   else "el calendario no ayuda mucho en las próximas semanas")
+        mejor = max((r["score"] for r in orden), default=None)
+        notas = ("" if mejor is None else (f" Ojo: las notas de los índices son flojas (la mejor, {mejor}/10), así que poco tamaño." if mejor <= 4
+                                           else f" La mejor nota de índice es {mejor}/10."))
+        if est in ("RISK-ON", "REENTRADA"):
+            frase = f"Semáforo en verde y {cal_txt}: se puede estar invertido según la nota de cada índice; el calendario solo suma.{notas}"
+        elif est == "TRANSICION":
+            frase = f"Semáforo en transición y {cal_txt}. Sin prisas: decide el cierre del viernes.{notas}"
+        elif est:
+            frase = (f"Semáforo en {esc(est)} y {cal_txt}. <b>Manda el semáforo</b>: si el viernes sigue así, el satélite a liquidez; "
+                     "el calendario favorable solo significa que, cuando el semáforo se ponga verde, el viento acompañará. No es motivo "
+                     "para adelantarse.")
+        else:
+            frase = f"Sin semáforo hoy; {cal_txt}."
+        h = ["<div class='panel full' style='border-color:#4CC2E088;background:linear-gradient(180deg,rgba(76,194,224,.07),transparent)'>"
+             "<h2>📌 Resumen: cómo estamos y qué viene</h2>"
+             f"<div style='font-size:14px;line-height:1.6;margin-bottom:8px;padding:8px 12px;border-left:3px solid #4CC2E0;background:rgba(76,194,224,.06)'>{frase}</div>"]
+        if hoy_l:
+            h.append("<div style='font-weight:700;color:#4CC2E0;margin-top:4px'>Hoy</div><div style='font-size:12.5px;line-height:1.75'>"
+                     + "<br>".join(hoy_l) + "</div>")
+        if vie_l:
+            h.append("<div style='font-weight:700;color:#4CC2E0;margin-top:8px'>Las próximas semanas</div><div style='font-size:12.5px;line-height:1.75'>"
+                     + "<br>".join(vie_l) + "</div>")
+        if sem:
+            h.append("<div style='margin-top:6px'>" + _estc_semanas_html(sem[:5], corto=True) + "</div>")
+        h.append("<div class='note' style='margin-top:6px'>Todo el detalle del calendario en la pestaña <b>📅 Estacionalidad</b>. "
+                 "De lunes a jueves es para observar; decide el cierre del viernes. No es asesoramiento.</div></div>")
+        return "".join(h)
+    except Exception as _dege:
+        _deg("resumen:html", _dege)
+        return ""
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -22506,7 +24297,7 @@ def main():
     _comp_res = None
     _pesos_ix = None
     try:
-        _pesos_ix = cargar_pesos_indices()
+        _pesos_ix = _pesos_con_mags(cargar_pesos_indices())
         _comp_res = componer_indices(_pesos_ix, flow, rrg, daily, spy_flow, _peq_res,
                                      corte=(df.index[-1] if VIAJE_A else None))
         for _cp_dc in (_comp_res or []):
@@ -22736,7 +24527,7 @@ def main():
     # v7.8 — ¿se igualan los indices? backtest de rotar al que ha caido (solo informa)
     _conv = None
     try:
-        _conv = backtest_convergencia(corte=(df.index[-1] if VIAJE_A else None))
+        _conv = backtest_convergencia(corte=(df.index[-1] if VIAJE_A else None)) if BT_PESADOS_ON else None
     except Exception as _e_cv:
         _avisar("convergencia", f"backtest de convergencia no calculado: {_e_cv}")
         _conv = None
@@ -22750,18 +24541,27 @@ def main():
             _oper["dd4"] = _dd4
             # v7.9 — sectores: la estrategia del −9% y su backtest (solo informa)
             try:
-                _oper["sect_bt"] = backtest_sectores(spy=None,
-                                                     corte=(df.index[-1] if VIAJE_A else None))
+                _oper["sect_bt"] = (backtest_sectores(spy=None, corte=(df.index[-1] if VIAJE_A else None))
+                                    if BT_PESADOS_ON else None)
             except Exception as _e_sb:
                 _avisar("sectores", f"backtest de sectores no calculado: {_e_sb}")
                 _oper["sect_bt"] = None
             _oper["sect"] = tabla_sectores(daily, flow, _oper.get("sect_bt"))
             try:
-                _oper["sect_lab"] = lab_sectores()
-                _oper["sect_prop"] = lab_caidas_propias()
-                _oper["idxc"] = lab_indices_caida(corte=(df.index[-1] if VIAJE_A else None))
+                if BT_PESADOS_ON:
+                    _oper["sect_lab"] = lab_sectores()
+                    _oper["sect_prop"] = lab_caidas_propias()
+                    _oper["idxc"] = lab_indices_caida(corte=(df.index[-1] if VIAJE_A else None))
             except Exception as _e_lab:
                 _avisar("sectores", f"laboratorio de sectores no calculado: {_e_lab}")
+            try:
+                _oper["estilos"] = estilos_dinero(corte=(df.index[-1] if VIAJE_A else None))
+            except Exception as _e_es:
+                _avisar("estilos", f"panel de estilos no calculado: {_e_es}")
+            try:
+                _oper["fe"] = flujo_entrada_estudio(corte=(df.index[-1] if VIAJE_A else None))
+            except Exception as _e_fe:
+                _avisar("flujo", f"estudio caída + flujo no calculado: {_e_fe}")
             _cands = [f["sym"] for f in _oper["sect"] if f["senal"] == "CANDIDATO"]
             print(f"  🎯 Sectores −{SECT_CAIDA:g}%: {len(_oper['sect'])} vigilados · candidatos: {', '.join(_cands) or 'ninguno'}")
             print("  🧭 Operativa índices: " + " · ".join(f"{r['sym']} {r['score']}/10 {r['ver']}" for r in _oper["orden"]))
@@ -22789,8 +24589,16 @@ def main():
             _avisar("calidad", f"lista de caídas con caja no calculada: {_e_cc}")
     except Exception as _e_rn:
         _avisar("rachas", f"pestaña Rachas y niveles no calculada: {_e_rn}")
+    # v8.2 — Estacionalidad (pestaña propia) y el resumen de la primera pestaña
+    _estc = None
+    try:
+        _estc = estacionalidad_estudio(long_close, {"Nasdaq 100": nq_close, "Russell 2000": rut_close, "Dow Jones": dji_close},
+                                       locals().get("vix_close"), pd.Timestamp(_cierre_real(daily, df)).date(),
+                                       corte=(df.index[-1] if VIAJE_A else None))
+    except Exception as _e_estc:
+        _avisar("estacionalidad", f"pestaña Estacionalidad no calculada: {_e_estc}")
     html = build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred, flow=flow, bt=bt,
-                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res, operativa=_oper, rachas=_rn)
+                      dd=dd, dd_meta=dd_meta, plan=plan, fx=fx, long_src=long_src, ai_text=ai_text, leaders=leaders, leaders_n=leaders_n, bt2=bt2, heatmap=heatmap, scores=scores, probs=probs, season=season, early=early, sector_breadth=sector_breadth, meanrev=meanrev, nq_close=nq_close, fg_idx=fg_idx, spy_flow=spy_flow, watch=watch, giro=_giro, desks=_desks, dix=_dix, suelo_pre=_suelo, centinela=_centinela, graduados=_graduados, daily=daily, ia_auto=ia_auto, tau=tau, analogos=analogos, es_fut=es_fut, options=options, despertares=_despertares, cascada=_cascada, momento=_momento, cobertura=_cobertura, mcc=_mcc, stk_univ=_stk_univ, amplitud=_amp, zweig=_zweig, estres=_estres, presion=_presion, composicion=_comp_res, pequenas=_peq_res, operativa=_oper, rachas=_rn, estc=_estc)
     os.makedirs(SITE_DIR, exist_ok=True)
     # copiar archivos estaticos (iconos, manifest, service worker) al sitio
     if os.path.isdir(STATIC_DIR):

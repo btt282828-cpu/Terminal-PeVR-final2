@@ -4799,5 +4799,53 @@
 "deuda": 16358486016.0,
 "caja": 495528000.0,
 "ebitda": 1617154048.0
+},
+"GE": {
+"fecha": "2026-10-20",
+"nom": "GE Aerospace",
+"sector": "Industrials",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 311133863936.0,
+"fcf": 6594625024.0,
+"per": 35.36203,
+"per_f": 32.803833,
+"margen": 0.17716,
+"deuda": 20230000640.0,
+"caja": 9944999936.0,
+"ebitda": 11482999808.0
+},
+"ATI": {
+"fecha": "2026-10-20",
+"nom": "ATI Inc.",
+"sector": "Industrials",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 24928712704.0,
+"fcf": 346687488.0,
+"per": 53.68622,
+"per_f": 28.666681,
+"margen": 0.10090999,
+"deuda": 2192000000.0,
+"caja": 783000000.0,
+"ebitda": 916800000.0
+},
+"SSRM": {
+"fecha": "2026-10-20",
+"nom": "SSR Mining Inc.",
+"sector": "Basic Materials",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 6488245760.0,
+"fcf": 450823744.0,
+"per": 10.493289,
+"per_f": 8.7093115,
+"margen": 0.122980006,
+"deuda": 2300000.0,
+"caja": 1833964032.0,
+"ebitda": 863728000.0
 }
 }

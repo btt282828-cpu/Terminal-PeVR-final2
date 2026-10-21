@@ -293,6 +293,28 @@
 "r",
 "r"
 ]
+},
+"RSP": {
+"score": 6,
+"ver": "ESPERAR",
+"p": [
+"v",
+"v",
+"a",
+"r",
+"a"
+]
+},
+"MAGS": {
+"score": 6,
+"ver": "ESPERAR",
+"p": [
+"a",
+"a",
+"r",
+"v",
+"v"
+]
 }
 },
 "sat": "SPY"

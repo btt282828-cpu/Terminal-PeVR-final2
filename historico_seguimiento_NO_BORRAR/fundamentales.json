@@ -4847,5 +4847,53 @@
 "deuda": 2300000.0,
 "caja": 1833964032.0,
 "ebitda": 863728000.0
+},
+"T": {
+"fecha": "2026-10-22",
+"nom": "AT&T Inc.",
+"sector": "Communication Services",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 150135767040.0,
+"fcf": 10142000128.0,
+"per": 7.2310233,
+"per_f": 8.514326,
+"margen": 0.16943,
+"deuda": 165755994112.0,
+"caja": 17570000896.0,
+"ebitda": 44939001856.0
+},
+"SBAC": {
+"fecha": "2026-10-22",
+"nom": "SBA Communications Corporation",
+"sector": "Real Estate",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 18396739584.0,
+"fcf": 752056384.0,
+"per": 18.70658,
+"per_f": 21.501284,
+"margen": 0.34512,
+"deuda": 15209066496.0,
+"caja": 327051008.0,
+"ebitda": 1833553024.0
+},
+"ABT": {
+"fecha": "2026-10-22",
+"nom": "Abbott Laboratories",
+"sector": "Healthcare",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 173920829440.0,
+"fcf": 7209124864.0,
+"per": 32.42258,
+"per_f": 16.702673,
+"margen": 0.116450004,
+"deuda": 32719998976.0,
+"caja": 5602999808.0,
+"ebitda": 11681000448.0
 }
 }

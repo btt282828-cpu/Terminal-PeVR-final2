@@ -318,5 +318,77 @@
 }
 },
 "sat": "SPY"
+},
+{
+"date": "2026-10-21",
+"idx": {
+"SPY": {
+"score": 7,
+"ver": "ESPERAR",
+"p": [
+"v",
+"a",
+"a",
+"v",
+"a"
+]
+},
+"QQQ": {
+"score": 5,
+"ver": "ESPERAR",
+"p": [
+"a",
+"a",
+"a",
+"a",
+"a"
+]
+},
+"DIA": {
+"score": 7,
+"ver": "ESPERAR",
+"p": [
+"v",
+"v",
+"a",
+"r",
+"v"
+]
+},
+"IWM": {
+"score": 1,
+"ver": "NO TOCAR",
+"p": [
+"r",
+"a",
+"r",
+"r",
+"r"
+]
+},
+"RSP": {
+"score": 6,
+"ver": "ESPERAR",
+"p": [
+"v",
+"v",
+"a",
+"r",
+"a"
+]
+},
+"MAGS": {
+"score": 9,
+"ver": "ESPERAR",
+"p": [
+"v",
+"v",
+"a",
+"v",
+"v"
+]
+}
+},
+"sat": "SPY"
 }
 ]

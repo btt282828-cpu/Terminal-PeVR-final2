@@ -518,5 +518,34 @@
 "eslabon": "C0-HIPER",
 "cascada": "sin sentido claro"
 }
+},
+{
+"date": "2026-10-21",
+"sym": "IWM",
+"fase": "DESPERTANDO",
+"pts": 6,
+"pre": 1,
+"caida": -9.2,
+"cmf": -0.036,
+"sil": 1,
+"vr": 0.99,
+"huellas": [
+"volumen 0.99×",
+"impulso girando (+2.8 en 3s)",
+"precio aún quieto (-2.0% en 4s): anticipación",
+"CMF plano: dejó de salir"
+],
+"px0": 276.45,
+"inval": 262.33,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 97.9,
+"usd_cmf": -0.176,
+"china": "floja",
+"china_cmf": 0.0,
+"eslabon": "C0-HIPER",
+"cascada": "sin sentido claro"
+}
 }
 ]

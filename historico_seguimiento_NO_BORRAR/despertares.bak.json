@@ -663,5 +663,34 @@
 "eslabon": "C0-HIPER",
 "cascada": "el dinero BAJA por la cadena (rota hacia energía y materia prima)"
 }
+},
+{
+"date": "2026-10-23",
+"sym": "DIA",
+"fase": "DESPERTANDO",
+"pts": 8,
+"pre": 1,
+"caida": -3.1,
+"cmf": 0.165,
+"sil": 2,
+"vr": 0.86,
+"huellas": [
+"volumen 0.86× (poca atención)",
+"GIRO VERTICAL 2.6× (impulso +1.6 en 3s)",
+"precio aún quieto (+0.8% en 4s): anticipación",
+"CMF>+0.05: el dinero ya ENTRA"
+],
+"px0": 521.37,
+"inval": 493.19,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 98.3,
+"usd_cmf": -0.156,
+"china": "floja",
+"china_cmf": 0.039,
+"eslabon": "C0-HIPER",
+"cascada": "sin sentido claro"
+}
 }
 ]

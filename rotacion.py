@@ -12126,7 +12126,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _res = _resumen_html(estc, operativa, centinela, dix, rachas)
         except Exception as _dege:
             _deg("resumen:html0", _dege)
-        html.append("<div id='vista-idx' style='display:contents'>" + _res + _ag + _op_html(operativa) + _idx_extra + "</div>")
+        html.append("<div id='vista-idx' style='display:contents'>" + _res + _ag + _op_html(operativa) + _op_hist_html(operativa) + _idx_extra + "</div>")
     except Exception as _dege:
         _deg("operativa:html", _dege)
         html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
@@ -18679,7 +18679,8 @@ def _op_memoria(fecha, res, guardar=True, extra=None):
         recs = []
     hoy = {"date": str(fecha), "idx": {}}
     for i in res:
-        hoy["idx"][i["sym"]] = {"score": i["score"], "ver": i["ver"], "p": [p["c"] for p in i["puntos"]]}
+        hoy["idx"][i["sym"]] = {"score": i["score"], "ver": i["ver"], "p": [p["c"] for p in i["puntos"]],
+                                "px": (round(float(i["px"]), 4) if i.get("px") is not None else None)}
     if extra:
         hoy.update(extra)
     prev = None
@@ -18687,7 +18688,7 @@ def _op_memoria(fecha, res, guardar=True, extra=None):
     if _ant:
         prev = sorted(_ant, key=lambda r: r["date"])[-1]
     recs = [r for r in recs if r.get("date") != str(fecha)] + [hoy]
-    recs = sorted(recs, key=lambda r: r["date"])[-400:]
+    recs = sorted(recs, key=lambda r: r["date"])           # v8.3: sin límite (el historial de notas crece cada noche)
     if guardar:
         try:
             guardar_json_seguro(OPER_FILE, recs, indent=0)
@@ -18836,7 +18837,7 @@ def operativa_indices(df, rrg, flow, daily, spy_flow, composicion, pequenas, pes
         except Exception as _dege:
             _deg("operativa:amplitud_ctx", _dege)
         return {"res": res, "orden": orden, "cambios": cambios, "prev": (prev or {}).get("date"), "mot": mot, "ns": ns,
-                "memoria": recs[-10:], "ctx": ctx, "amp": amp_ctx,
+                "memoria": recs[-10:], "ctx": ctx, "amp": amp_ctx, "hist": _oph_datos(recs, daily),
                 "sectores": _op_sectores(flow, rrg, daily, pesos)}
     except Exception as _dege:
         _deg("operativa_indices", _dege)
@@ -23986,6 +23987,352 @@ def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=No
         return ""
 
 
+# ======================================================================
+# v8.3 — RECONSTRUCCIÓN DE LA NOTA DE LOS ÍNDICES HACIA ATRÁS
+#   Cada noche, hasta terminar, dedica como mucho RECONS_MINUTOS a recalcular la nota (0-10) de SPY, QQQ,
+#   DIA, IWM, RSP y MAGS en días pasados con los MISMOS 5 puntos de la operativa, cortando los datos en cada
+#   fecha. Se guarda aparte (operativa_reconstruida.json) y nunca pisa la nota real de cada noche.
+#   Exactos: tendencia, dinero en el ETF y fuerza. Aproximados: composición y amplitud (pesos y acciones
+#   de HOY aplicados al pasado: no hay carteras históricas gratis).
+# ======================================================================
+RECONS_ON = True
+RECONS_DIAS = 3 * 365          # hasta dónde se reconstruye
+RECONS_MINUTOS = 30            # tiempo máximo de cálculo por ejecución (se continúa la noche siguiente)
+RECONS_MIN_DESCARGA = 15       # tope aparte para bajar las acciones con histórico largo
+RECONS_FILE = os.path.join(SEGUIMIENTO_DIR, "operativa_reconstruida.json")
+
+
+def _recons_leer():
+    try:
+        if os.path.exists(RECONS_FILE):
+            with open(RECONS_FILE, encoding="utf-8") as fh:
+                x = json.load(fh) or {}
+            if isinstance(x, dict):
+                return x.get("meta") or {}, x.get("recs") or []
+    except Exception as _dege:
+        _deg("recons:leer", _dege)
+    return {}, []
+
+
+def _recons_validar(recs):
+    """Compara la nota reconstruida con la real de las noches en que hay las dos."""
+    try:
+        reales = {}
+        if os.path.exists(OPER_FILE):
+            with open(OPER_FILE, encoding="utf-8") as fh:
+                for r in json.load(fh) or []:
+                    reales[r.get("date")] = r.get("idx") or {}
+        n = ig = 0
+        dif = []
+        for r in recs:
+            re_ = reales.get(r.get("date"))
+            if not re_:
+                continue
+            for s, e in (r.get("idx") or {}).items():
+                a = (re_.get(s) or {}).get("score")
+                if a is None or e.get("score") is None:
+                    continue
+                n += 1
+                ig += int(a == e["score"])
+                dif.append(abs(a - e["score"]))
+        if not n:
+            return None
+        return {"n": n, "iguales": round(100 * ig / n), "dif_media": round(float(np.mean(dif)), 2),
+                "a1": round(100 * sum(1 for x in dif if x <= 1) / n)}
+    except Exception as _dege:
+        _deg("recons:validar", _dege)
+        return None
+
+
+def _recons_dia(T, L, S, pesos, largo, mapa, n_sem):
+    """Nota de cada índice el día T con los datos cortados en T."""
+    cut = lambda x: x[x.index <= T] if x is not None else None
+    ini_d = T - pd.Timedelta(days=int(WEEKS * 7 * 1.6) + 60)
+    Lt = {k: v[(v.index <= T) & (v.index >= ini_d)] for k, v in L.items() if v is not None}
+    Lt = {k: v for k, v in Lt.items() if len(v) >= 30}
+    flow_t = {}
+    for k, v in Lt.items():
+        try:
+            flow_t[k] = compute_volume_flow({k: v}, only=k).get(k)
+        except Exception:
+            flow_t[k] = None
+    sem = {k: to_weekly_close(v["Close"]) for k, v in Lt.items()}
+    df_t = pd.DataFrame(sem).sort_index().dropna().iloc[-n_sem:]
+    rrg_t = compute_rrg(df_t) if BENCH in df_t.columns and len(df_t) >= 20 else {}
+    # acciones cortadas en T (las mismas 140 sesiones que guarda el terminal)
+    STK_OHLCV.clear()
+    stk_t = {}
+    for t, d in S.items():
+        x = cut(d)
+        if x is not None and len(x) >= 30:
+            STK_OHLCV[t] = x.iloc[-STK_OHLCV_SES:]
+            stk_t[t] = x["Close"]
+    largo_t = {k: cut(v) for k, v in (largo or {}).items()} if largo else {}
+    comp = {}
+    for idx in ("QQQ", "SPY", "DIA", "RSP", "MAGS"):
+        p = (pesos or {}).get(idx) or {}
+        dc = None
+        try:
+            if p.get("filas"):
+                dc = composicion_acciones(idx, p, mapa, flow_t, rrg_t, propio=flow_t.get(idx))
+                if isinstance(dc, dict) and dc.get("cobertura_baja") is not None:
+                    dc = None
+            if dc is None:
+                sect = p.get("sectores") or (_sectores_de_filas(p["filas"], mapa) if p.get("filas") else PESOS_SECTOR_MANO.get(idx, ("", {}))[1])
+                dc = composicion_sectores(idx, sect, flow_t, rrg_t, Lt, p, "", propio=flow_t.get(idx))
+        except Exception as _dege:
+            dc = None
+        if dc:
+            comp[idx] = dc
+    try:
+        if largo_t:
+            dfp = df_t.copy()
+            fp = pequenas_flujo(largo_t, flow_t, df_t.index[0])
+            rp = pequenas_rrg(dfp, largo_t)
+            _dd = dict(Lt); _dd.update(largo_t)
+            dc = composicion_pequenas((pesos or {}).get("IWM") or {}, fp or {}, rp or {}, flow_t, rrg_t, _dd, propio=flow_t.get("IWM"))
+            if dc:
+                comp["IWM"] = dc
+    except Exception:
+        pass
+    out = {"date": str(T.date()), "idx": {}}
+    for sym, _nom in OPER_IDX:
+        ohlcv = Lt.get(sym)
+        c = _op_close(ohlcv)
+        if c is None or len(c) < 60:
+            continue
+        p1 = _op_tendencia(c)
+        p2 = _op_flujo(flow_t.get(sym), ohlcv)
+        p3 = _op_composicion(comp.get(sym))
+        p4 = _op_fuerza(sym, rrg_t.get(sym), c)
+        p5 = _op_amplitud(sym, pesos, stk_t, largo_t)
+        sc, ver, _vc, _nt = _op_veredicto([p1, p2, p3, p4, p5], None)
+        out["idx"][sym] = {"score": int(sc), "p": [p["c"] for p in (p1, p2, p3, p4, p5)], "px": round(float(c.iloc[-1]), 4)}
+    return out
+
+
+def reconstruir_notas(pesos, largo, n_sem):
+    """Rellena hacia atrás la nota de los índices, por tandas, sin pasar de RECONS_MINUTOS."""
+    if not RECONS_ON or VIAJE_A or not pesos:
+        return None
+    meta, recs = _recons_leer()
+    hechos = {r.get("date") for r in recs}
+    hoy = dt.date.today()
+    desde = pd.Timestamp(hoy - dt.timedelta(days=RECONS_DIAS))
+    if meta.get("completa_desde") and meta.get("completa_desde") <= str(desde.date()) and meta.get("hasta") == str(hoy):
+        return meta
+    t0 = time.time()
+    ini = hoy - dt.timedelta(days=RECONS_DIAS + int(WEEKS * 7 * 1.6) + 120)
+    print(f"  🕰️ Reconstrucción de notas: {len(recs)} días hechos; descargando histórico largo...")
+    L = {}
+    for s in ("SPY", "QQQ", "DIA", "IWM", "RSP", "MAGS") + tuple(SECTORS) + tuple(SATELLITES):
+        if s in L:
+            continue
+        try:
+            d, _src = get_ohlcv(s, ini, hoy)
+            if d is not None and len(d) >= 60:
+                L[s] = d
+        except Exception as _dege:
+            _deg(f"recons:{s}", _dege)
+        time.sleep(0.15)
+    if "SPY" not in L:
+        return None
+    fechas = [d for d in L["SPY"].index if d >= desde]
+    pendientes = [d for d in reversed(fechas) if str(d.date()) not in hechos]
+    if not pendientes:
+        meta.update({"completa_desde": str(fechas[0].date()) if fechas else None, "hasta": str(hoy)})
+        guardar_json_seguro(RECONS_FILE, {"meta": meta, "recs": recs}, indent=0)
+        return meta
+    tick = set()
+    for idx in ("SPY", "QQQ", "DIA", "RSP", "MAGS"):
+        for t, w, _sec in ((pesos or {}).get(idx) or {}).get("filas") or []:
+            if t and len(t) <= 8 and float(w or 0) > 0:
+                tick.add(t)
+    S = {}
+    print(f"  🕰️ Reconstrucción: bajando {len(tick)} acciones con histórico largo...")
+    for t in sorted(tick):
+        if time.time() - t0 > RECONS_MIN_DESCARGA * 60:
+            break
+        try:
+            d, _src = get_ohlcv(t, ini, hoy)
+            if d is not None and {"High", "Low", "Close", "Volume"}.issubset(d.columns):
+                S[t] = d[["High", "Low", "Close", "Volume"]].dropna().astype(float)
+        except Exception:
+            pass
+        time.sleep(0.05)
+    mapa = _mapa_sectores(pesos)
+    guard = dict(STK_OHLCV)
+    g_avisar, g_deg = globals()["_avisar"], globals()["_deg"]
+    hechos_hoy = 0
+    t0 = time.time()
+    try:
+        globals()["_avisar"] = lambda *a, **k: None
+        globals()["_deg"] = lambda *a, **k: None
+        for T in pendientes:
+            if time.time() - t0 > RECONS_MINUTOS * 60:
+                break
+            try:
+                import contextlib as _cl, io as _io
+                with _cl.redirect_stdout(_io.StringIO()):
+                    r = _recons_dia(T, L, S, pesos, largo, mapa, n_sem)
+                if r["idx"]:
+                    recs.append(r)
+                    hechos_hoy += 1
+            except Exception:
+                continue
+            if hechos_hoy % 25 == 0:
+                guardar_json_seguro(RECONS_FILE, {"meta": meta, "recs": sorted(recs, key=lambda x: x["date"])}, indent=0)
+    finally:
+        globals()["_avisar"], globals()["_deg"] = g_avisar, g_deg
+        STK_OHLCV.clear(); STK_OHLCV.update(guard)
+    recs = sorted({r["date"]: r for r in recs}.values(), key=lambda x: x["date"])
+    falta = len(pendientes) - hechos_hoy
+    meta.update({"actualizado": str(hoy), "dias": len(recs), "faltan": falta,
+                 "desde": (recs[0]["date"] if recs else None), "validacion": _recons_validar(recs),
+                 "acciones": len(S), "nota": "composición y amplitud con los pesos y las acciones de hoy"})
+    if falta <= 0:
+        meta.update({"completa_desde": str(fechas[0].date()), "hasta": str(hoy)})
+    guardar_json_seguro(RECONS_FILE, {"meta": meta, "recs": recs}, indent=0)
+    v = meta.get("validacion") or {}
+    print(f"  🕰️ Reconstrucción: +{hechos_hoy} días ({len(recs)} en total, faltan {max(falta, 0)}) en {int(time.time() - t0)} s"
+          + (f" · coincide con la nota real en el {v['iguales']}% de {v['n']} casos (±1 punto: {v['a1']}%)" if v else ""))
+    return meta
+
+
+# ======================================================================
+# v8.3 — HISTORIAL DE LA NOTA DE CADA ÍNDICE (se guarda todos los días, sin límite)
+#   Gráfico de la nota (0-10) de SPY, QQQ, DIA, IWM, RSP y MAGS con media configurable y el precio del
+#   índice debajo, y la tabla «qué hizo el índice después» según la nota y según los giros de la nota.
+#   Todo se calcula en el navegador con la memoria de operativa_indices.json: crece cada noche.
+# ======================================================================
+OPH_SYMS = ("SPY", "QQQ", "DIA", "IWM", "RSP", "MAGS")
+
+
+def _oph_datos(recs, daily=None):
+    """{sym: {"d": [fechas], "s": [notas], "p": [precios], "r": [1 si es reconstruido]}}. La nota real gana a la
+       reconstruida; el precio, el guardado o, si falta, el cierre diario."""
+    out = {}
+    try:
+        _m, _rc = _recons_leer()
+        reales = {r.get("date") for r in (recs or [])}
+        recs = [dict(r, _rc=1) for r in _rc if r.get("date") not in reales] + list(recs or [])
+        cierres = {}
+        for s in OPH_SYMS:
+            d = (daily or {}).get(s)
+            if d is None and s == "QQQ" and OPER_QQQ:
+                d = OPER_QQQ.get("d")
+            c = _op_close(d)
+            if c is not None and len(c):
+                c = c.copy(); c.index = pd.to_datetime(c.index).normalize()
+                cierres[s] = c
+        for s in OPH_SYMS:
+            fd, sc, px, rr = [], [], [], []
+            for r in sorted(recs or [], key=lambda r: r.get("date", "")):
+                e = (r.get("idx") or {}).get(s)
+                if not e or e.get("score") is None:
+                    continue
+                p = e.get("px")
+                if p is None and s in cierres:
+                    c = cierres[s]
+                    k = c.index.searchsorted(pd.Timestamp(r["date"]), side="right") - 1
+                    if k >= 0 and (pd.Timestamp(r["date"]) - c.index[k]).days <= 4:
+                        p = float(c.iloc[k])
+                fd.append(r["date"]); sc.append(int(e["score"])); px.append(round(float(p), 4) if p is not None else None)
+                rr.append(1 if r.get("_rc") else 0)
+            if fd:
+                out[s] = {"d": fd, "s": sc, "p": px, "r": rr}
+        if _m:
+            out["_meta"] = _m
+    except Exception as _dege:
+        _deg("oph:datos", _dege)
+    return out
+
+
+def _op_hist_html(op):
+    try:
+        datos = (op or {}).get("hist")
+        if not datos:
+            return ""
+        meta = datos.get("_meta") or {}
+        datos = {k: v for k, v in datos.items() if not k.startswith("_")}
+        if not datos:
+            return ""
+        n = max(len(v["d"]) for v in datos.values())
+        nr = max(sum(v.get("r") or []) for v in datos.values())
+        val = meta.get("validacion") or {}
+        txt_rc = ""
+        if nr:
+            txt_rc = (f" De ellos, <b>{nr}</b> son <b>reconstruidos</b> (barras más claras): la nota recalculada hacia atrás con "
+                      "los mismos 5 puntos; tendencia, dinero y fuerza son exactos, y composición y amplitud usan los pesos y "
+                      "las acciones de hoy."
+                      + (f" Comprobación: en los {val['n']} casos en que hay nota real y reconstruida, coinciden exactas el "
+                         f"{val['iguales']}% y a ±1 punto el {val['a1']}%." if val else "")
+                      + (f" Faltan {meta['faltan']} días por reconstruir: se completan solos en las próximas noches." if meta.get("faltan") else ""))
+        js = json.dumps(datos, separators=(",", ":")).replace("</", "<\\/")
+        opts = "".join(f"<option value='{s}'>{s}</option>" for s in OPH_SYMS if s in datos)
+        return (
+            "<div class='panel full' id='oph'><h2>📈 La nota de cada índice, día a día</h2>"
+            "<div class='note'>La nota de 0 a 10 de la operativa se guarda cada noche y ya no se borra. Aquí se ve cómo "
+            "se mueve y qué hizo el índice después. Sirve para comprobar con el tiempo si una nota de 0–1 es buena entrada "
+            f"o si una caída desde 8 avisa de salida. Hay <b>{n}</b> días.{txt_rc} Con menos de unos 60–100 días las "
+            "tablas de abajo son anecdóticas.</div>"
+            "<div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:12.5px'>"
+            f"<label>Índice <select id='oph_s' style='background:#0E1626;color:#E6EDF6;border:1px solid #24344F;border-radius:6px;padding:3px 6px'>{opts}</select></label>"
+            "<label>Media de <input id='oph_m' type='number' min='1' max='60' value='5' style='width:52px;background:#0E1626;color:#E6EDF6;border:1px solid #24344F;border-radius:6px;padding:3px 6px'> días</label>"
+            "<label>Mirar <input id='oph_h' type='number' min='1' max='60' value='10' style='width:52px;background:#0E1626;color:#E6EDF6;border:1px solid #24344F;border-radius:6px;padding:3px 6px'> sesiones después</label>"
+            "<label><input id='oph_t' type='checkbox'> los 6 juntos en la tabla</label>"
+            "<label><input id='oph_r' type='checkbox' checked> incluir los días reconstruidos</label></div>"
+            "<div id='oph_g'></div><div id='oph_tab' style='margin-top:6px'></div>"
+            "<div class='note' style='margin-top:6px'>Barras: la nota de cada día (verde 8–10, ámbar 4–7, rojo 0–3). Línea "
+            "blanca: su media. Abajo, el precio del índice. La tabla mide, desde el cierre de cada día con esa nota, cuánto "
+            "subió o bajó el índice N sesiones después, frente a cualquier día. No es asesoramiento.</div>"
+            f"<script>var OPH={js};"
+            r"""
+(function(){
+function med(a,m){var o=[];for(var i=0;i<a.length;i++){var s=0,c=0;for(var j=Math.max(0,i-m+1);j<=i;j++){s+=a[j];c++;}o.push(s/c);}return o;}
+function col(v){return v>=8?'#2FD08A':(v>=4?'#F4B740':'#F4607A');}
+function dibuja(){
+ var s=document.getElementById('oph_s').value, m=Math.max(1,parseInt(document.getElementById('oph_m').value)||5);
+ var D=OPH[s]; if(!D) return; var n=D.d.length, W=760, H=230, L=34, R=10, T=8, G=150, P=H-G-26;
+ var X=function(i){return L+(W-L-R)*(n<=1?0.5:i/(n-1));}, Y=function(v){return T+(G-T)*(1-v/10);};
+ var bw=Math.min(14,Math.max(1.5,(W-L-R)/Math.max(n,1)*0.7)), g=['<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;max-width:900px;display:block">'];
+ [0,2,4,6,8,10].forEach(function(v){g.push('<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#1A2740"/><text x="'+(L-4)+'" y="'+(Y(v)+3)+'" fill="#7F93AE" font-size="10" text-anchor="end">'+v+'</text>');});
+ for(var i=0;i<n;i++){var v=D.s[i];var rc=D.r&&D.r[i];g.push('<rect x="'+(X(i)-bw/2)+'" y="'+Y(v)+'" width="'+bw+'" height="'+(Y(0)-Y(v)+0.5)+'" fill="'+col(v)+'" opacity="'+(rc?0.35:0.85)+'"><title>'+D.d[i]+': '+v+'/10'+(rc?' (reconstruida)':'')+'</title></rect>');}
+ var mm=med(D.s,m), pts=[];for(i=0;i<n;i++)pts.push(X(i)+','+Y(mm[i]));
+ g.push('<polyline points="'+pts.join(' ')+'" fill="none" stroke="#E6EDF6" stroke-width="1.8"/>');
+ var pp=D.p.filter(function(x){return x!==null;});
+ if(pp.length>1){var lo=Math.min.apply(null,pp),hi=Math.max.apply(null,pp),y0=G+18,Yp=function(v){return y0+P*(1-(v-lo)/((hi-lo)||1));},q=[];
+  for(i=0;i<n;i++)if(D.p[i]!==null)q.push(X(i)+','+Yp(D.p[i]));
+  g.push('<polyline points="'+q.join(' ')+'" fill="none" stroke="#4CC2E0" stroke-width="1.6"/>');
+  g.push('<text x="'+(L-4)+'" y="'+(y0+8)+'" fill="#4CC2E0" font-size="10" text-anchor="end">'+hi.toFixed(0)+'</text><text x="'+(L-4)+'" y="'+(y0+P)+'" fill="#4CC2E0" font-size="10" text-anchor="end">'+lo.toFixed(0)+'</text>');}
+ var et=n>2?[[0,'start'],[Math.floor((n-1)/2),'middle'],[n-1,'end']]:(n==2?[[0,'start'],[1,'end']]:[[0,'middle']]);et.forEach(function(e){if(n)g.push('<text x="'+X(e[0])+'" y="'+(H-2)+'" fill="#7F93AE" font-size="10" text-anchor="'+e[1]+'">'+D.d[e[0]]+'</text>');});
+ g.push('</svg>');document.getElementById('oph_g').innerHTML=g.join('');
+ tabla();}
+function filas(syms,h){var inc=document.getElementById('oph_r').checked;var o={b:{},ev:{baja:[],sube:[]},todo:[]},B=[['0–1',0,1],['2–3',2,3],['4–5',4,5],['6–7',6,7],['8–10',8,10]];
+ B.forEach(function(b){o.b[b[0]]=[];});
+ syms.forEach(function(s){var D=OPH[s];if(!D)return;for(var i=0;i<D.d.length-h;i++){if(!inc&&D.r&&D.r[i])continue;var a=D.p[i],z=D.p[i+h];if(a===null||z===null)continue;var r=z/a-1,v=D.s[i];o.todo.push(r);
+  B.forEach(function(b){if(v>=b[1]&&v<=b[2])o.b[b[0]].push(r);});
+  var ant=Math.max.apply(null,D.s.slice(Math.max(0,i-3),i+1));if(ant>=7&&ant-v>=3)o.ev.baja.push(r);
+  var mn=Math.min.apply(null,D.s.slice(Math.max(0,i-3),i+1));if(i>0&&D.s[i-1]<=1&&v-mn>=2)o.ev.sube.push(r);}});
+ return o;}
+function est(a){if(!a.length)return'<td class="r" style="color:#5E708A">—</td><td class="r" style="color:#5E708A">0</td><td class="r"></td>';var s=0,p=0;a.forEach(function(x){s+=x;if(x>0)p++;});
+ var mu=100*s/a.length;return'<td class="r" style="color:'+(mu>=0?'#2FD08A':'#F4607A')+';font-weight:700">'+(mu>=0?'+':'')+mu.toFixed(2)+' %</td><td class="r">'+a.length+'</td><td class="r">'+Math.round(100*p/a.length)+' %</td>';}
+function tabla(){var s=document.getElementById('oph_s').value,h=Math.max(1,parseInt(document.getElementById('oph_h').value)||10),todos=document.getElementById('oph_t').checked;
+ var o=filas(todos?Object.keys(OPH):[s],h),t=['<div class="scrollx"><table class="se" style="font-size:12px;white-space:nowrap"><tr><th class="se-l">'+(todos?'los 6 índices':s)+': el día que la nota está en…</th><th class="r">índice '+h+' sesiones después</th><th class="r">veces</th><th class="r">sube</th></tr>'];
+ Object.keys(o.b).forEach(function(k){t.push('<tr><td class="se-l">nota '+k+'</td>'+est(o.b[k])+'</tr>');});
+ t.push('<tr><td class="se-l"><b>la nota cae 3+ puntos en ≤3 días desde 7 o más</b> (calentamiento que se enfría)</td>'+est(o.ev.baja)+'</tr>');
+ t.push('<tr><td class="se-l"><b>la nota sale de 0–1 y sube 2+ puntos</b></td>'+est(o.ev.sube)+'</tr>');
+ t.push('<tr><td class="se-l" style="color:#9FB0C8">un día cualquiera (referencia)</td>'+est(o.todo)+'</tr></table></div>');
+ document.getElementById('oph_tab').innerHTML=t.join('');}
+['oph_s','oph_m','oph_h','oph_t','oph_r'].forEach(function(id){var e=document.getElementById(id);if(e){e.addEventListener('change',dibuja);e.addEventListener('input',dibuja);}});
+try{var g0=localStorage.getItem('oph_m');if(g0)document.getElementById('oph_m').value=g0;document.getElementById('oph_m').addEventListener('change',function(){try{localStorage.setItem('oph_m',this.value);}catch(e){}});}catch(e){}
+dibuja();})();
+</script></div>""")
+    except Exception as _dege:
+        _deg("oph:html", _dege)
+        return ""
+
+
 def main():
     print("=" * 56)
     print(" ROTACION - Smart-Money Flow Terminal (escritorio)")
@@ -24307,6 +24654,12 @@ def main():
     except Exception as _comp_e:
         _avisar("composicion", f"composición de los índices no calculada: {_comp_e}")
         _comp_res = None
+    # v8.3 — reconstrucción hacia atrás de la nota de los índices (por tandas, hasta completar)
+    try:
+        if RECONS_ON and not VIAJE_A and _pesos_ix:
+            reconstruir_notas(_pesos_ix, (_peq_res or {}).get("largo"), len(df))
+    except Exception as _e_rc:
+        _avisar("reconstruccion", f"reconstrucción de notas no completada: {_e_rc}", nivel="info")
     print("  Vigilancia: descargando acciones de la watchlist...")
     watch = compute_watchlist(WATCHLIST)
     # --- CENTINELA y compañía ANTES del snapshot: así la IA automática conoce el régimen ---

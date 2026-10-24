@@ -23865,6 +23865,12 @@ def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=No
             hoy_l.append(f"<b>Semáforo (CENTINELA): <span style='color:{ce.get('col', '#E6EDF6')}'>{esc(est)}</span></b>"
                          + (f" — {esc(ce['que'])}" if ce.get("que") else ""))
         orden = [r for r in (op.get("orden") or []) if r.get("ver") != "SIN DATOS"]
+        try:
+            _c0 = _oph_cero({k: v for k, v in (op.get("hist") or {}).items() if not k.startswith("_")})
+            if _c0:
+                hoy_l.append(_oph_cero_html(_c0, corto=True))
+        except Exception:
+            pass
         if orden:
             hoy_l.append("<b>Índices (nota de 10):</b> " + " · ".join(
                 f"<b>{esc(r['sym'])}</b> <span style='color:{r.get('vcol', '#E6EDF6')}'>{r['score']}</span>" for r in orden))
@@ -23996,7 +24002,7 @@ def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=No
 #   de HOY aplicados al pasado: no hay carteras históricas gratis).
 # ======================================================================
 RECONS_ON = True
-RECONS_DIAS = 3 * 365          # hasta dónde se reconstruye
+RECONS_DIAS = 5 * 365 + 90     # hasta dónde se reconstruye (v8.3.1: hasta mediados de 2021, para coger el bajista de 2022)
 RECONS_MINUTOS = 30            # tiempo máximo de cálculo por ejecución (se continúa la noche siguiente)
 RECONS_MIN_DESCARGA = 15       # tope aparte para bajar las acciones con histórico largo
 RECONS_FILE = os.path.join(SEGUIMIENTO_DIR, "operativa_reconstruida.json")
@@ -24248,6 +24254,73 @@ def _oph_datos(recs, daily=None):
     return out
 
 
+OPH_CERO = 1          # nota a partir de la que se avisa (0-1)
+
+
+def _oph_cero(datos, umbral=OPH_CERO):
+    """Índices con la nota de HOY en 0-1 y lo que hizo ese índice después de sus notas 0-1 anteriores."""
+    out = []
+    try:
+        for s in OPH_SYMS:
+            D = (datos or {}).get(s)
+            if not D or not D.get("s"):
+                continue
+            if D["s"][-1] > umbral:
+                continue
+            p = D["p"]; sc = D["s"]; fe = pd.to_datetime(D["d"])
+            st = {}
+            for h in (10, 20):
+                rs, base = [], []
+                for i in range(len(sc) - h):
+                    if p[i] is None or p[i + h] is None:
+                        continue
+                    r = p[i + h] / p[i] - 1
+                    base.append(r)
+                    if sc[i] <= umbral:
+                        rs.append(r)
+                st[h] = {"n": len(rs), "media": (round(100 * float(np.mean(rs)), 2) if rs else None),
+                         "sube": (round(100 * float(np.mean(np.array(rs) > 0))) if rs else None),
+                         "base": (round(100 * float(np.mean(base)), 2) if base else None)}
+            ep, ult = 0, None
+            for i, v in enumerate(sc[:-1]):
+                if v <= umbral:
+                    if ult is None or (fe[i] - ult).days > 10:
+                        ep += 1
+                    ult = fe[i]
+            racha = 0
+            for v in reversed(sc):
+                if v > umbral:
+                    break
+                racha += 1
+            out.append({"sym": s, "nota": sc[-1], "racha": racha, "ep": ep, "st": st})
+    except Exception as _dege:
+        _deg("oph:cero", _dege)
+    return out
+
+
+def _oph_cero_html(lista, corto=False):
+    if not lista:
+        return ""
+    fr = []
+    for x in lista:
+        a, b = x["st"].get(10) or {}, x["st"].get(20) or {}
+        if a.get("n"):
+            dato = (f"antes, tras una nota 0–1 subió de media un <b>{a['media']:+.1f}%</b> a 10 sesiones ({a['sube']}% de las veces) "
+                    f"y {b['media']:+.1f}% a 20, frente a {a['base']:+.1f}% y {b['base']:+.1f}% de un día cualquiera "
+                    f"({x['ep']} episodios distintos)")
+        else:
+            dato = "sin casos anteriores todavía"
+        fr.append(f"<b>{esc(x['sym'])}</b> en nota <b>{x['nota']}</b>"
+                  + (f" ({x['racha']} días seguidos)" if x["racha"] > 1 else "") + f": {dato}.")
+    if corto:
+        return "<b>Nota 0–1:</b> " + " · ".join(f"{esc(x['sym'])} ({x['nota']})" for x in lista) + " — mira el panel de la nota."
+    return ("<div style='margin:6px 0;padding:8px 12px;border-left:3px solid #4CC2E0;background:rgba(76,194,224,.07);font-size:12.5px;line-height:1.6'>"
+            "<b style='color:#4CC2E0'>🔵 Nota 0–1 hoy</b> (en la historia ha sido zona de compra, al revés de lo que parece)<br>"
+            + "<br>".join(fr)
+            + "<div style='color:#9FB0C8;font-size:11.5px;margin-top:3px'>Ojo: son pocos episodios y casi todos de mercado alcista. "
+              "En el IWM no ha funcionado. Manda el semáforo (CENTINELA) y el cierre del viernes. No es asesoramiento.</div></div>")
+
+
 def _op_hist_html(op):
     try:
         datos = (op or {}).get("hist")
@@ -24259,6 +24332,7 @@ def _op_hist_html(op):
             return ""
         n = max(len(v["d"]) for v in datos.values())
         nr = max(sum(v.get("r") or []) for v in datos.values())
+        aviso = _oph_cero_html(_oph_cero(datos))
         val = meta.get("validacion") or {}
         txt_rc = ""
         if nr:
@@ -24276,6 +24350,7 @@ def _op_hist_html(op):
             "se mueve y qué hizo el índice después. Sirve para comprobar con el tiempo si una nota de 0–1 es buena entrada "
             f"o si una caída desde 8 avisa de salida. Hay <b>{n}</b> días.{txt_rc} Con menos de unos 60–100 días las "
             "tablas de abajo son anecdóticas.</div>"
+            + aviso +
             "<div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:12.5px'>"
             f"<label>Índice <select id='oph_s' style='background:#0E1626;color:#E6EDF6;border:1px solid #24344F;border-radius:6px;padding:3px 6px'>{opts}</select></label>"
             "<label>Media de <input id='oph_m' type='number' min='1' max='60' value='5' style='width:52px;background:#0E1626;color:#E6EDF6;border:1px solid #24344F;border-radius:6px;padding:3px 6px'> días</label>"

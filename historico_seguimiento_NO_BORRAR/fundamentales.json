@@ -4394,17 +4394,20 @@
 "ebitda": 1379000064.0
 },
 "OII": {
-"fecha": "2026-10-15",
+"fecha": "2026-10-23",
 "nom": "Oceaneering International, Inc.",
 "sector": "Energy",
-"mc": 4284751360.0,
-"fcf": 237835120.0,
-"per": 12.442196,
-"per_f": 18.558514,
-"margen": 0.121879995,
-"deuda": 822158976.0,
-"caja": 636473024.0,
-"ebitda": 404923008.0
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 3908529408.0,
+"fcf": null,
+"per": 11.972561,
+"per_f": 17.455738,
+"margen": 0.11373,
+"deuda": 491416992.0,
+"caja": null,
+"ebitda": 412132000.0
 },
 "LMT": {
 "fecha": "2026-10-15",
@@ -4994,5 +4997,53 @@
 "deuda": 5720000000.0,
 "caja": 2484999936.0,
 "ebitda": 1468000000.0
+},
+"GOOG": {
+"fecha": "2026-10-23",
+"nom": "Alphabet Inc.",
+"sector": "Communication Services",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 3880313683968.0,
+"fcf": 22665000960.0,
+"per": 15.919719,
+"per_f": 20.65808,
+"margen": 0.54771,
+"deuda": 120790999040.0,
+"caja": 242473992192.0,
+"ebitda": 173164003328.0
+},
+"GOOGL": {
+"fecha": "2026-10-23",
+"nom": "Alphabet Inc.",
+"sector": "Communication Services",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 3916147458048.0,
+"fcf": 22665000960.0,
+"per": 16.066732,
+"per_f": 20.84885,
+"margen": 0.54771,
+"deuda": 120790999040.0,
+"caja": 242473992192.0,
+"ebitda": 173164003328.0
+},
+"ETN": {
+"fecha": "2026-10-23",
+"nom": "Eaton Corporation, PLC",
+"sector": "Industrials",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 142197112832.0,
+"fcf": 3106125056.0,
+"per": 37.24415,
+"per_f": 22.46691,
+"margen": 0.12752,
+"deuda": 21326000128.0,
+"caja": 695000000.0,
+"ebitda": 6639000064.0
 }
 }

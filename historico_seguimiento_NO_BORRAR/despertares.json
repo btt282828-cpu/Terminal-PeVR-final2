@@ -721,5 +721,34 @@
 "eslabon": "C0-HIPER",
 "cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
 }
+},
+{
+"date": "2026-10-28",
+"sym": "TLT",
+"fase": "DESPERTANDO",
+"pts": 7,
+"pre": 0,
+"caida": -8.1,
+"cmf": 0.103,
+"sil": 2,
+"vr": 0.85,
+"huellas": [
+"volumen 0.85× (poca atención)",
+"GIRO VERTICAL 2.4× (impulso +1.6 en 3s)",
+"CMF>+0.05: el dinero ya ENTRA",
+"MANOS: SUELO del Koncorde hace 14s (el verde volvió a entrar tras bajar de cero), vivo mientras no cierre bajo 76.43"
+],
+"px0": 80.99,
+"inval": 74.8,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 98.4,
+"usd_cmf": -0.187,
+"china": "floja",
+"china_cmf": 0.109,
+"eslabon": "C0-HIPER",
+"cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
+}
 }
 ]

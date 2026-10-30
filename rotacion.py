@@ -12100,6 +12100,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _idx_extra = ""
         try:
             if operativa:
+                _idx_extra += _estr_html(operativa.get("estr"))
+        except Exception as _dege:
+            _deg("estructura:html", _dege)
+        try:
+            if operativa:
                 _idx_extra += _est_html(operativa.get("estilos")) + _fe_html(operativa.get("fe")) + _idxc_html(operativa.get("idxc"))
         except Exception as _dege:
             _deg("idxc:html", _dege)
@@ -15900,6 +15905,18 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _wadd(AMB, "CLÍMAX", f"{s2}: {f2.get('ret1d', 0):+.1f}% {clima_dia(f2.get('clima_hace') or 0)} (z {f2.get('zday', 0):+.1f}) — la vela que ve todo el mundo; posible agotamiento, no fuerza", s2, -1)
         for s2, f2 in [x for x in _climas if x[1]["clima"] == "capitulacion"][:3]:
             _wadd("#B980FF", "CAPITUL", f"{s2}: {f2.get('ret1d', 0):+.1f}% {clima_dia(f2.get('clima_hace') or 0)} (z {f2.get('zday', 0):+.1f}) — pánico de un día; el cazador de suelos empieza a vigilar", s2, 1)
+        try:
+            _ex = (((operativa or {}).get("estr") or {}).get("sect") or {}).get("extrema")
+            if _ex and _ex.get("hoy") and _ex.get("hace_inicio", 99) <= 2:
+                _wadd("#B980FF", "V.EXTREMA", f"Venta extrema desde el {_ex['inicio']}: {ESTR_EXT_SECT} u 8 de los 8 sectores fuera de tecnología con dinero saliendo — históricamente zona de compra de todo el mercado (por tramos; ha fallado en caídas largas)", "MERCADO", 1)
+        except Exception as _dege:
+            _deg("wire:extrema", _dege)
+        try:
+            _em = ((operativa or {}).get("estr") or {}).get("empuje")
+            if _em and _em.get("hace", 99) <= 2:
+                _wadd(GRN, "EMPUJE", f"Empuje de dinero {'hoy' if _em.get('hoy') else 'el ' + str(_em.get('fecha'))}: las acciones del S&P con dinero entrando pasan de <{ESTR_EMP_BAJO:.0f}% a >{ESTR_EMP_ALTO:.0f}% en {ESTR_EMP_SES} sesiones — históricamente, todo el mercado subió más de lo normal a un mes; no dice en qué índice estar", "MERCADO", 1)
+        except Exception as _dege:
+            _deg("wire:empuje", _dege)
         for s2, f2 in sorted([(s3, f3) for s3, f3 in (flow or {}).items() if f3.get("acum_ext") and s3 in rrg],
                              key=lambda x: -(x[1].get("noct20") or 0))[:4]:
             _wadd(CYN, "NOCTURNO", f"{s2}: gap nocturno {f2.get('noct20', 0):+.1f}% en 20 sesiones con CMF {f2.get('cmf', 0):+.2f} — la compra ocurre en su bolsa local; el CMF americano no la ve", s2, 1)
@@ -22482,6 +22499,363 @@ def _fe_html(fe):
 
 
 # ======================================================================
+# v8.4 — ESTRUCTURA DEL DINERO: ¿entra solo en tecnología o en todo el mercado?
+#   Tres medidas, con lo que el terminal ya descarga (0 descargas extra):
+#     1) cuántos de los 8 sectores que NO son tecnología (XLF XLE XLV XLI XLY XLP XLU XLB) tienen dinero
+#        entrando (CMF de 20 sesiones > +0,05) y cuántos saliendo (< −0,05);
+#     2) tecnología contra el resto: CMF del XLK menos la media de esos 8 (> 0 = el dinero se concentra en tecnología);
+#     3) % de acciones del S&P (sin las 10 gigantes) con dinero entrando y saliendo.
+#   VENTA EXTREMA: 7 u 8 de los 8 sectores con dinero saliendo (la más temprana: aparece antes del suelo).
+#   EMPUJE DE DINERO: el % de acciones con dinero entrando pasa de menos del 25 % a más del 50 % en 10 sesiones.
+#   Probado 2004-2026 (42 veces): a 20 sesiones TODOS los índices subieron más que de media; a 60, como siempre.
+#   Lo que NO hace (probado): decir en qué ETF estar. Elegir QQQ/SPY/IWM/RSP con estas medidas no ganó al azar,
+#   y con el dinero ya repartido el RSP y el IWM no batieron después al QQQ. Solo informa. No es asesoramiento.
+# ======================================================================
+ESTR_SECT = ["XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB"]
+ESTR_TEC = "XLK"
+ESTR_MEGA = {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "AVGO", "BRK-B", "BRK.B"}
+ESTR_UMB = 0.05                 # el mismo umbral de CMF que todo el terminal
+ESTR_EMP_BAJO, ESTR_EMP_ALTO, ESTR_EMP_SES = 25.0, 50.0, 10
+ESTR_FILE = os.path.join(SEGUIMIENTO_DIR, "estructura_estado.json")
+ESTR_EXT_SECT = 7               # VENTA EXTREMA: 7 u 8 de los 8 sectores fuera de tecnología con dinero saliendo
+# VENTA EXTREMA, estudio 2004 → ago-2026: 49 episodios (primer día de cada uno, separados 60 días o más).
+# (ETF, media a 20 ses., cualquier día, cuántas subieron a 20, % cualquier día, media a 60, cualquier día)
+ESTR_EXT_ESTUDIO = {"n": 49, "desde": "2004", "filas": [
+    ("SPY", 3.2, 0.9, 40, 67, 5.3, 2.8), ("QQQ", 3.4, 1.2, 37, 65, 6.4, 3.8),
+    ("RSP", 3.2, 0.9, 41, 65, 5.7, 2.7), ("IWM", 3.5, 0.9, 41, 60, 6.0, 2.5)],
+    "control": "frente a días con una caída parecida del SPY (misma bajada en 20 sesiones y misma distancia al máximo) pero SIN la señal: "
+               "+1,7 a +2,1 puntos más a 20 sesiones (t≈2) y +1,1 a +1,7 a 60 (t≈1)"}
+# Resultado del estudio (S&P sin las 10 gigantes, miembros de cada día, 2004 → ago-2026; 42 empujes separados
+# al menos 60 días). Media a N sesiones desde la apertura siguiente, frente a la media de cualquier día.
+ESTR_EMP_ESTUDIO = {"n": 42, "desde": "2004", "filas": [
+    ("SPY", 1.8, 0.9, 30, 2.9, 2.8, 32, 67), ("QQQ", 2.9, 1.2, 32, 4.9, 3.8, 33, 65),
+    ("RSP", 1.9, 0.9, 26, 2.9, 2.7, 32, 65), ("IWM", 1.6, 0.8, 25, 2.4, 2.5, 33, 60)]}
+
+
+def _estr_cmf(d, n=20):
+    """CMF de n sesiones como serie. None si faltan máximos, mínimos o volumen: no se inventa."""
+    try:
+        if d is None or not {"High", "Low", "Close", "Volume"}.issubset(d.columns):
+            return None
+        x = d[["High", "Low", "Close", "Volume"]].dropna()
+        if len(x) < n + 5:
+            return None
+        rg = (x["High"] - x["Low"]).replace(0, np.nan)
+        clv = (((x["Close"] - x["Low"]) - (x["High"] - x["Close"])) / rg).fillna(0.0)
+        v = x["Volume"].astype(float)
+        den = v.rolling(n).sum().replace(0, np.nan)
+        return (clv * v).rolling(n).sum() / den
+    except Exception as _dege:
+        _deg("estructura:cmf", _dege)
+        return None
+
+
+def compute_estructura(daily, stk_ohlcv, corte=None):
+    """Las tres medidas sesión a sesión, la lectura de hoy y el último EMPUJE. None si no hay datos."""
+    try:
+        out = {"fecha": None, "sect": None, "acc": None, "lectura": None, "empuje": None}
+        # 1 y 2) sectores
+        cs = {}
+        for s in ESTR_SECT + [ESTR_TEC]:
+            c = _estr_cmf((daily or {}).get(s))
+            if c is not None:
+                cs[s] = c if corte is None else c[c.index <= pd.Timestamp(corte)]
+        nos = [s for s in ESTR_SECT if s in cs]
+        if len(nos) >= 6:
+            C = pd.DataFrame(cs).sort_index()
+            C = C[C[nos].notna().sum(axis=1) >= 6].tail(120)
+            if len(C):
+                ent = (C[nos] > ESTR_UMB).sum(axis=1)
+                sal = (C[nos] < -ESTR_UMB).sum(axis=1)
+                tec = (C[ESTR_TEC] - C[nos].mean(axis=1)) if ESTR_TEC in C else None
+                u = C.iloc[-1]
+                ext = None
+                _on = [i for i, v in enumerate((sal >= ESTR_EXT_SECT).values) if v]
+                if _on:
+                    _ep = [_on[0]]
+                    for i in _on[1:]:
+                        _ep = [i] if i - _ep[-1] > 40 else _ep + [i]
+                    ext = {"hoy": _on[-1] == len(sal) - 1, "inicio": str(C.index[_ep[0]].date()),
+                           "fin": str(C.index[_ep[-1]].date()), "hace_inicio": int(len(sal) - 1 - _ep[0]),
+                           "hace_fin": int(len(sal) - 1 - _ep[-1]), "dias": len(_ep)}
+                out["sect"] = {"extrema": ext, "n": len(nos), "entra": int(ent.iloc[-1]), "sale": int(sal.iloc[-1]),
+                               "entra_10": (int(ent.iloc[-11]) if len(ent) > 10 else None),
+                               "tec": (float(tec.iloc[-1]) if tec is not None and tec.iloc[-1] == tec.iloc[-1] else None),
+                               "tec_10": (float(tec.iloc[-11]) if tec is not None and len(tec) > 10 and tec.iloc[-11] == tec.iloc[-11] else None),
+                               "filas": sorted([(s, float(u[s])) for s in nos if u[s] == u[s]], key=lambda z: -z[1]),
+                               "xlk": (float(u[ESTR_TEC]) if ESTR_TEC in C and u[ESTR_TEC] == u[ESTR_TEC] else None),
+                               "serie_entra": [int(x) for x in ent.values],
+                               "serie_tec": ([float(x) if x == x else None for x in tec.values] if tec is not None else None),
+                               "fechas": [str(d.date()) for d in C.index]}
+                out["fecha"] = str(C.index[-1].date())
+        # 3) acciones
+        cols = {}
+        for t, d in (stk_ohlcv or {}).items():
+            if str(t).upper() in ESTR_MEGA:
+                continue
+            c = _estr_cmf(d)
+            if c is not None:
+                cols[str(t)] = c if corte is None else c[c.index <= pd.Timestamp(corte)]
+        if len(cols) >= AMP_MIN_ACCIONES:
+            A = pd.DataFrame(cols).sort_index()
+            cnt = A.notna().sum(axis=1)
+            normal = float(cnt.tail(60).median()) if len(cnt) else 0.0
+            A = A[(cnt >= AMP_MIN_ACCIONES) & (cnt >= 0.8 * normal)]     # día incompleto = hueco, no medida
+            if len(A) >= ESTR_EMP_SES + 2:
+                val = A.notna().sum(axis=1)
+                pe = (A > ESTR_UMB).sum(axis=1) / val * 100.0
+                ps = (A < -ESTR_UMB).sum(axis=1) / val * 100.0
+                emp = (pe.rolling(ESTR_EMP_SES).min().shift(1) < ESTR_EMP_BAJO) & (pe > ESTR_EMP_ALTO)
+                fe = [d for d, v in emp.items() if v]
+                out["acc"] = {"n": int(val.iloc[-1]), "entra": float(pe.iloc[-1]), "sale": float(ps.iloc[-1]),
+                              "entra_10": (float(pe.iloc[-11]) if len(pe) > 10 else None),
+                              "min10": float(pe.iloc[-ESTR_EMP_SES - 1:-1].min()) if len(pe) > ESTR_EMP_SES else None,
+                              "serie_entra": [float(x) for x in pe.values], "serie_sale": [float(x) for x in ps.values]}
+                if fe:
+                    ult = fe[-1]
+                    hace = int(len(pe) - 1 - pe.index.get_loc(ult))
+                    out["empuje"] = {"fecha": str(ult.date()), "hace": hace, "hoy": hace == 0}
+                if out["fecha"] is None or str(A.index[-1].date()) > out["fecha"]:
+                    out["fecha"] = str(A.index[-1].date())
+        if not out["sect"] and not out["acc"]:
+            return None
+        out["lectura"] = _estr_lectura(out)
+        return out
+    except Exception as _dege:
+        _deg("estructura", _dege)
+        return None
+
+
+def _estr_lectura(e):
+    s, a = e.get("sect") or {}, e.get("acc") or {}
+    ent, sal, tec = s.get("entra"), s.get("sale"), s.get("tec")
+    pe, ps = a.get("entra"), a.get("sale")
+    amplio = (pe is not None and pe >= 50 and (ent is None or ent >= 5)) or (pe is None and ent is not None and ent >= 6)
+    if amplio and (tec is None or tec < 0):
+        return {"tipo": "AMPLIO", "col": "#2FD08A",
+                "txt": "El dinero entra en casi todo el mercado, no solo en tecnología."}
+    if sal is not None and sal >= ESTR_EXT_SECT:
+        return {"tipo": "VENTA EXTREMA", "col": "#B980FF",
+                "txt": "El dinero sale de casi todos los sectores a la vez. Históricamente, zona de compra de todo el mercado."}
+    if (ps is not None and ps >= 50) or (sal is not None and sal >= 6):
+        return {"tipo": "SALE DE TODO", "col": "#F4607A",
+                "txt": "El dinero sale de la mayoría de sectores y acciones."}
+    if tec is not None and tec > 0.10 and (ent is None or ent <= 2):
+        return {"tipo": "SOLO TECNOLOGÍA", "col": "#4CC2E0",
+                "txt": "El dinero se concentra en tecnología; el resto del mercado no acompaña."}
+    return {"tipo": "MIXTO", "col": "#F4B740", "txt": "Ni repartido ni concentrado: el dinero entra en unos sitios y sale de otros."}
+
+
+def update_estructura_ledger(e, daily):
+    """Graba la estructura de este cierre (idempotente). Memoria fuera de muestra: lo que se vio en su día."""
+    recs = []
+    try:
+        if os.path.exists(ESTR_FILE):
+            with open(ESTR_FILE, "r", encoding="utf-8") as fh:
+                recs = json.load(fh)
+    except Exception as _dege:
+        _deg("estructura:leer", _dege)
+        recs = []
+    if not e or not e.get("fecha"):
+        return recs
+    px = {}
+    for s in (BENCH, "QQQ", "IWM", "RSP"):
+        try:
+            px[s] = round(float(daily[s]["Close"].dropna().iloc[-1]), 4)
+        except Exception:
+            pass
+    s, a = e.get("sect") or {}, e.get("acc") or {}
+    r1 = lambda v: (round(float(v), 1) if v is not None else None)
+    rec = {"date": e["fecha"], "sect_entra": s.get("entra"), "sect_sale": s.get("sale"),
+           "tec": (round(s["tec"], 3) if s.get("tec") is not None else None),
+           "acc_entra": r1(a.get("entra")), "acc_sale": r1(a.get("sale")), "n_acc": a.get("n"),
+           "lectura": (e.get("lectura") or {}).get("tipo"),
+           "empuje": bool((e.get("empuje") or {}).get("hoy")),
+           "extrema": bool(((s.get("extrema") or {}).get("hoy"))), "px": px}
+    recs = [r for r in recs if r.get("date") != rec["date"]]
+    recs.append(rec)
+    recs = sorted(recs, key=lambda r: r["date"])[-800:]
+    try:
+        guardar_json_seguro(ESTR_FILE, recs, indent=0)
+    except Exception as _dege:
+        _deg("estructura:guardar", _dege)
+    return recs
+
+
+_ESTR_NOM = {"XLF": "financiero", "XLE": "energía", "XLV": "salud", "XLI": "industria", "XLY": "consumo",
+             "XLP": "básicos", "XLU": "eléctricas", "XLB": "materiales"}
+
+
+def _estr_html(e):
+    if not e:
+        return ""
+    s, a, l, emp = e.get("sect") or {}, e.get("acc") or {}, e.get("lectura") or {}, e.get("empuje")
+    h = ["<div class='panel full'><h2>🧩 Estructura del dinero: ¿solo tecnología o todo el mercado?</h2>"
+         "<div class='note'>Mira <b>dónde</b> entra el dinero (CMF de 20 sesiones, la regla de todo el terminal: más de +0,05 entra, "
+         "menos de −0,05 sale). Sirve para ver a tiempo cambios como el de octubre de 2026, cuando el dinero pasó de estar solo en "
+         "tecnología a entrar en todos los sectores. <b>Lo que está probado (2004–2026):</b> estas medidas <b>no dicen en qué ETF estar</b> "
+         "(elegir QQQ, SPY, IWM o RSP con ellas no ganó al azar), pero dos momentos sí han precedido subidas de todo el mercado: la <b>VENTA EXTREMA</b> "
+         "(casi todos los sectores sacando dinero a la vez; la más temprana, llega antes del suelo) y el <b>EMPUJE</b> (el dinero vuelve de golpe; llega después).</div>"]
+    if l:
+        h.append(f"<div style='margin:10px 0;font-size:15px'><b style='color:{l['col']}'>{esc(l['tipo'])}</b> · {esc(l['txt'])}"
+                 f" <span style='color:#5E708A;font-size:12px'>cierre {esc(e.get('fecha') or '')}</span></div>")
+    cajas = []
+    if s:
+        _d = lambda v, o: "" if o is None else f" <span style='color:#9FB0C8'>(hace 10 sesiones: {o})</span>"
+        fil = " · ".join(f"<span style='color:{'#2FD08A' if c > ESTR_UMB else '#F4607A' if c < -ESTR_UMB else '#9FB0C8'}'>"
+                         f"{esc(_ESTR_NOM.get(t, t))} {c:+.2f}</span>" for t, c in s.get("filas") or [])
+        tec = s.get("tec")
+        tec_txt = ("—" if tec is None else
+                   f"<b style='color:{'#4CC2E0' if tec > 0.05 else '#2FD08A' if tec < -0.05 else '#9FB0C8'}'>{tec:+.2f}</b> "
+                   + ("(el dinero se concentra en tecnología)" if tec > 0.05 else "(el dinero va más al resto que a tecnología)" if tec < -0.05 else "(parejo)"))
+        graf = _svg_linea_umbral(s.get("serie_entra"), refs=[(5, "#2FD08A", "5")], w=320, h=64, color="#2FD08A", lo=0, hi=8)
+        cajas.append("<div style='flex:1 1 360px;min-width:260px;border:1px solid var(--line);border-radius:10px;padding:10px 12px'>"
+                     f"<div style='font-weight:700'>Sectores fuera de tecnología</div>"
+                     f"<div style='font-size:13px;margin:4px 0'>Con dinero entrando: <b>{s['entra']} de {s['n']}</b>{_d(0, s.get('entra_10'))} · "
+                     f"saliendo: <b>{s['sale']}</b></div>"
+                     f"<div style='font-size:12px;line-height:1.6'>{fil}</div>"
+                     f"<div style='font-size:12.5px;margin-top:4px'>Tecnología (XLK) contra el resto: {tec_txt}</div>"
+                     f"{graf}<div style='font-size:10px;color:#5E708A'>sectores con dinero entrando, últimas {len(s.get('serie_entra') or [])} sesiones</div></div>")
+    if a:
+        graf = _svg_linea_umbral(a.get("serie_entra"), refs=[(ESTR_EMP_ALTO, "#2FD08A", "50%"), (ESTR_EMP_BAJO, "#F4607A", "25%")],
+                                 w=320, h=64, color="#4CC2E0", lo=0, hi=100)
+        cajas.append("<div style='flex:1 1 360px;min-width:260px;border:1px solid var(--line);border-radius:10px;padding:10px 12px'>"
+                     f"<div style='font-weight:700'>Acciones del S&amp;P (sin las 10 gigantes)</div>"
+                     f"<div style='font-size:13px;margin:4px 0'>Con dinero entrando: <b>{a['entra']:.0f}%</b>"
+                     + (f" <span style='color:#9FB0C8'>(hace 10 sesiones: {a['entra_10']:.0f}%)</span>" if a.get("entra_10") is not None else "")
+                     + f" · saliendo: <b>{a['sale']:.0f}%</b> · {a['n']} acciones</div>"
+                     f"{graf}<div style='font-size:10px;color:#5E708A'>% con dinero entrando; el EMPUJE es pasar de la línea roja a la verde en 10 sesiones</div></div>")
+    h.append("<div style='display:flex;flex-wrap:wrap;gap:12px'>" + "".join(cajas) + "</div>")
+    ex = s.get("extrema")
+    sx = ESTR_EXT_ESTUDIO
+    if ex and (ex["hoy"] or ex["hace_fin"] <= 20):
+        _est = ("ACTIVA desde el " + ex["inicio"] if ex["hoy"] else
+                f"del {ex['inicio']} al {ex['fin']} (terminó hace {ex['hace_fin']} sesiones)")
+        h.append(f"<div style='margin-top:10px;padding:10px 12px;border:1px solid #B980FF88;border-radius:10px;background:#B980FF11'>"
+                 f"<b style='color:#B980FF'>🟣 VENTA EXTREMA {esc(_est)}</b>: {ESTR_EXT_SECT} u 8 de los 8 sectores fuera de tecnología "
+                 "con dinero saliendo a la vez. Es la señal más temprana: suele aparecer <b>antes</b> del suelo, mientras aún cae.</div>")
+    try:
+        h.append(_estr_plan_html(e.get("plan")))
+    except Exception as _dege:
+        _deg("estructura:plan_html", _dege)
+    filx = "".join(f"<tr><td>{t}</td><td class='r'>{m20:+.1f}%</td><td class='r'>{b20:+.1f}%</td><td class='r'>{k20} de {sx['n']} "
+                   f"({_wilson_txt(k20, sx['n'])}) · cualquier día {u20}%</td><td class='r'>{m60:+.1f}%</td><td class='r'>{b60:+.1f}%</td></tr>"
+                   for t, m20, b20, k20, u20, m60, b60 in sx["filas"])
+    h.append("<div style='margin-top:8px;font-size:12px'><b>Qué pasó tras las "
+             f"{sx['n']} VENTAS EXTREMAS desde {sx['desde']}</b> (comprando en la apertura siguiente al primer día):"
+             "<table style='width:100%;max-width:640px;margin-top:4px'><tr><th>ETF</th><th class='r'>a 20 sesiones</th><th class='r'>cualquier día</th>"
+             "<th class='r'>subió (IC 95 %)</th><th class='r'>a 60 sesiones</th><th class='r'>cualquier día</th></tr>" + filx + "</table>"
+             f"<div class='note'>Lo importante: {esc(sx['control'])}. O sea, no es solo «comprar porque ha caído». Es la mejor pista de "
+             "todas las que hemos medido, pero no está demostrada (t≈2 y se eligió entre 5 variantes). Dice <b>cuándo</b> entrar en el "
+             "mercado, no en qué ETF: tras ella subieron los cuatro parecido. Ha fallado en las caídas largas (2008, 2020, 2018): "
+             "hasta −30 % del SPY después en 2020. Entrar por tramos.</div></div>")
+    st = ESTR_EMP_ESTUDIO
+    if emp and emp.get("hace", 99) <= 20:
+        _cuando = "HOY" if emp["hoy"] else (f"hace {emp['hace']} sesiones ({emp['fecha']})")
+        h.append(f"<div style='margin-top:10px;padding:10px 12px;border:1px solid #2FD08A88;border-radius:10px;background:#2FD08A11'>"
+                 f"<b style='color:#2FD08A'>🚀 EMPUJE DE DINERO {esc(_cuando)}</b>: las acciones con dinero entrando pasaron de menos del "
+                 f"{ESTR_EMP_BAJO:.0f}% a más del {ESTR_EMP_ALTO:.0f}% en {ESTR_EMP_SES} sesiones.</div>")
+    else:
+        h.append("<div style='margin-top:10px;font-size:12.5px;color:#9FB0C8'>Sin EMPUJE en las últimas 20 sesiones"
+                 + (f" (el último, el {emp['fecha']})" if emp else "") + ".</div>")
+    filas = "".join(f"<tr><td>{t}</td><td class='r'>{m20:+.1f}%</td><td class='r'>{b20:+.1f}%</td><td class='r'>{k20} de {st['n']} ({_wilson_txt(k20, st['n'])}) · cualquier día {u20}%</td>"
+                    f"<td class='r'>{m60:+.1f}%</td><td class='r'>{b60:+.1f}%</td></tr>"
+                    for t, m20, b20, k20, m60, b60, k60, u20 in st["filas"])
+    h.append("<div style='margin-top:10px;font-size:12px'><b>Qué pasó tras los "
+             f"{st['n']} empujes desde {st['desde']}</b> (comprando en la apertura siguiente):"
+             "<table style='width:100%;max-width:640px;margin-top:4px'><tr><th>ETF</th><th class='r'>a 20 sesiones</th><th class='r'>cualquier día</th>"
+             "<th class='r'>subió (IC 95 %)</th><th class='r'>a 60 sesiones</th><th class='r'>cualquier día</th></tr>" + filas + "</table>"
+             "<div class='note'>A un mes, todos subieron más que de media y el que más, el QQQ. A tres meses, lo normal. "
+             "El % de veces que subió apenas mejora al de cualquier día: el empuje adelanta, no asegura. Los umbrales se eligieron viendo "
+             "octubre de 2026: es una pista, no una prueba. El universo del terminal (S&amp;P de hoy y acciones extra) no es idéntico al del estudio.</div></div>")
+    h.append("</div>")
+    return "".join(h)
+
+
+
+ESTR_PLAN_SYMS = ["SPY", "QQQ", "IWM", "RSP", "DIA"]
+ESTR_PLAN_NIV = (0.0, -3.0, -6.0, -9.0)      # T1 el primer día; T2-T4 solo si sigue cayendo
+ESTR_PLAN_SES = 60                            # se mide (y se revisa) 60 sesiones después del primer día
+
+
+def _estr_plan(e, daily):
+    """Plan de tramos desde el primer día de la última VENTA EXTREMA (si empezó hace menos de 60 sesiones).
+    Para cada índice: precio de referencia (cierre del primer día), niveles −3/−6/−9 %, qué tramos ya
+    se habrían tocado (por el mínimo del día) y cuánto va. None si no hay ventana reciente."""
+    try:
+        ex = ((e or {}).get("sect") or {}).get("extrema")
+        if not ex:
+            return None
+        ini = pd.Timestamp(ex["inicio"])
+        filas = []
+        for sym in ESTR_PLAN_SYMS:
+            d = (OPER_QQQ.get("d") if sym == "QQQ" else (daily or {}).get(sym))
+            if d is None or "Close" not in getattr(d, "columns", []):
+                continue
+            c = d["Close"].dropna()
+            lo = d["Low"].dropna() if "Low" in d.columns else c
+            if ini not in c.index:
+                continue
+            k = c.index.get_loc(ini)
+            ses = len(c) - 1 - k
+            if ses > ESTR_PLAN_SES:
+                return None
+            ref = float(c.iloc[k])
+            mn = float(lo[lo.index >= ini].min())
+            tramos = [{"niv": n, "px": ref * (1 + n / 100.0), "hecho": (n == 0.0) or (mn <= ref * (1 + n / 100.0))}
+                      for n in ESTR_PLAN_NIV]
+            hechos = [t for t in tramos if t["hecho"]]
+            medio = sum(t["px"] for t in hechos) / len(hechos)
+            ult = float(c.iloc[-1])
+            filas.append({"sym": sym, "ref": ref, "min": mn, "min_pct": (mn / ref - 1) * 100.0, "ult": ult,
+                          "va": (ult / ref - 1) * 100.0, "tramos": tramos, "n_hechos": len(hechos),
+                          "va_medio": (ult / medio - 1) * 100.0})
+        if not filas:
+            return None
+        return {"inicio": ex["inicio"], "ses": ses, "quedan": max(0, ESTR_PLAN_SES - ses), "filas": filas}
+    except Exception as _dege:
+        _deg("estructura:plan", _dege)
+        return None
+
+
+def _estr_plan_html(pl):
+    if not pl:
+        return ""
+    fil = []
+    for f in pl["filas"]:
+        tr = " ".join(f"<span style='color:{'#2FD08A' if t['hecho'] else '#5E708A'}'>{'✔' if t['hecho'] else '·'} "
+                      f"{'T1' if t['niv'] == 0 else ('%+.0f%%' % t['niv'])} {t['px']:.2f}</span>" for t in f["tramos"])
+        col = "#2FD08A" if f["va_medio"] >= 0 else "#F4607A"
+        fil.append(f"<tr><td><b>{esc(f['sym'])}</b></td><td class='r'>{f['ref']:.2f}</td><td class='r'>{f['min_pct']:+.1f}%</td>"
+                   f"<td>{tr}</td><td class='r'>{f['n_hechos']} de 4</td><td class='r' style='color:{col}'>{f['va_medio']:+.1f}%</td></tr>")
+    return ("<div style='margin-top:10px;padding:10px 12px;border:1px solid #B980FF55;border-radius:10px'>"
+            f"<div style='font-weight:700'>📋 Plan de tramos desde la VENTA EXTREMA del {esc(pl['inicio'])}</div>"
+            "<div class='note'>Lo que se ha probado (2004–2026, SPY y RSP): un tramo el primer día y otro solo si el índice cae un −3, −6 y −9 % "
+            "desde ese cierre; se revisa a las 60 sesiones. Gana algo menos de media que entrar todo el primer día (+2,6 % frente a +5,2 % "
+            "a 60 sesiones, porque los tramos que no se tocan se quedan en liquidez), pero el peor caso baja de −7 % a −3 %. Esperar a que "
+            "cada ETF «gire» (precio o dinero) compró entre un 1,4 % y un 2,9 % más caro y ganó menos: por eso aquí no hay giro por ETF.</div>"
+            "<table style='width:100%;margin-top:6px'><tr><th>Índice</th><th class='r'>cierre 1.er día</th><th class='r'>cayó luego</th>"
+            "<th>tramos (✔ = tocado)</th><th class='r'>dentro</th><th class='r'>va (precio medio)</th></tr>" + "".join(fil) + "</table>"
+            f"<div style='font-size:11.5px;color:#9FB0C8;margin-top:4px'>Llevamos {pl['ses']} sesiones desde el primer día; "
+            + (f"quedan {pl['quedan']} para la revisión de las 60." if pl["quedan"] else "toca revisar: ya han pasado las 60 sesiones.")
+            + " Simulación en papel con cierres y mínimos diarios, no órdenes reales.</div></div>")
+
+
+def _wilson_txt(k, n, z=1.96):
+    try:
+        if not n:
+            return "—"
+        p = k / n
+        den = 1 + z * z / n
+        c = (p + z * z / (2 * n)) / den
+        m = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / den
+        return f"{(c - m) * 100:.0f}–{(c + m) * 100:.0f}%"
+    except Exception:
+        return "—"
+
+
+
+# ======================================================================
 # v8.1 — ESTILOS: HACIA DÓNDE VA EL DINERO (growth/value, igual ponderado, 7 grandes, dividendo, baja volatilidad)
 #   Pares de ETFs: quién gana a quién a 1, 3 y 12 meses, si la ventaja está sobre su media de 50 (rotación real
 #   o un día suelto), en qué punto de sus últimos 5 años está (percentil) y si el dinero (CMF, la regla del
@@ -24696,6 +25070,22 @@ def main():
                                     "muestra solo los ratios RSP/SPY e IWM/SPY")
     except Exception as _e_amp:
         _avisar("amplitud", f"amplitud no calculada: {_e_amp}")
+    # v8.4 — ESTRUCTURA DEL DINERO (sectores fuera de tecnología y acciones con dinero entrando; 0 descargas extra)
+    _estr = None
+    try:
+        _estr = compute_estructura(daily, STK_OHLCV)
+        if _estr:
+            update_estructura_ledger(_estr, daily)
+            _s1, _a1 = _estr.get("sect") or {}, _estr.get("acc") or {}
+            print(f"  🧩 Estructura del dinero: {(_estr.get('lectura') or {}).get('tipo')}"
+                  + (f" · sectores con dinero {_s1['entra']}/{_s1['n']}" if _s1 else "")
+                  + (f" · acciones con dinero {_a1['entra']:.0f}% ({_a1['n']})" if _a1 else "")
+                  + (f" · EMPUJE hace {_estr['empuje']['hace']} sesiones" if _estr.get("empuje") else ""))
+        else:
+            _avisar("estructura", "estructura del dinero sin datos suficientes hoy (sectores o acciones)")
+    except Exception as _e_estr:
+        _avisar("estructura", f"estructura del dinero no calculada: {_e_estr}")
+        _estr = None
     # v7.6 — PEQUENAS POR SECTOR (RRG frente al IWM, giro y caidas anteriores) y DE QUE ESTA HECHO
     # CADA INDICE con su cartera oficial. Todo aparte: no toca scoring, cartera, CENTINELA ni track record.
     _peq_res = None
@@ -24967,6 +25357,12 @@ def main():
         if _oper:
             _oper["conv"] = _conv
             _oper["dd4"] = _dd4
+            _oper["estr"] = _estr
+            try:
+                if _estr:
+                    _estr["plan"] = _estr_plan(_estr, daily)
+            except Exception as _e_pl:
+                _avisar("estructura", f"plan de tramos no calculado: {_e_pl}")
             # v7.9 — sectores: la estrategia del −9% y su backtest (solo informa)
             try:
                 _oper["sect_bt"] = (backtest_sectores(spy=None, corte=(df.index[-1] if VIAJE_A else None))

@@ -1,0 +1,19 @@
+[
+{
+"date": "2026-10-29",
+"sect_entra": 8,
+"sect_sale": 0,
+"tec": -0.198,
+"acc_entra": 65.2,
+"acc_sale": 15.0,
+"n_acc": 661,
+"lectura": "AMPLIO",
+"empuje": false,
+"extrema": false,
+"px": {
+"SPY": 769.36,
+"IWM": 284.01,
+"RSP": 220.04
+}
+}
+]

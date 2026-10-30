@@ -4900,5 +4900,131 @@
 "tag": "EARLY",
 "sym": "DRIV",
 "dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": 0
+},
+{
+"date": "2026-10-28",
+"tag": "CLÍMAX",
+"sym": "HYG",
+"dir": -1
+},
+{
+"date": "2026-10-28",
+"tag": "CLÍMAX",
+"sym": "ITA",
+"dir": -1
+},
+{
+"date": "2026-10-28",
+"tag": "CAPITUL",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "CAPITUL",
+"sym": "CGW",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GRADUADO",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GRADUADO",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GRADUADO",
+"sym": "XLY",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GRADUADO",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GIRO",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GIRO",
+"sym": "STX",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "GIRO",
+"sym": "COIN",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "0/3",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "0/3",
+"sym": "INDA",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "0/3",
+"sym": "ITA",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "SUELO",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "SUELO",
+"sym": "IWM",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "SUELO",
+"sym": "KRE",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "EARLY",
+"sym": "TAN",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-10-28",
+"tag": "EARLY",
+"sym": "XLRE",
+"dir": 1
 }
 ]

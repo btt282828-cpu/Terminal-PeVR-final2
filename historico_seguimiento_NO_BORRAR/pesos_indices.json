@@ -2524,7 +2524,7 @@
 ]
 ],
 "fuente": "SSGA",
-"descargado": "2026-10-30"
+"descargado": "2026-10-31"
 },
 "DIA": {
 "fecha": "2026-10-29",
@@ -2681,7 +2681,7 @@
 ]
 ],
 "fuente": "SSGA",
-"descargado": "2026-10-30"
+"descargado": "2026-10-31"
 },
 "IWM": {
 "fecha": "2026-10-29",
@@ -2701,7 +2701,7 @@
 },
 "n": 1983,
 "fuente": "iShares",
-"descargado": "2026-10-30"
+"descargado": "2026-10-31"
 },
 "QQQ": {
 "fecha": "2026-10-29",
@@ -3223,6 +3223,6 @@ null
 ]
 ],
 "fuente": "Invesco",
-"descargado": "2026-10-30"
+"descargado": "2026-10-31"
 }
 }

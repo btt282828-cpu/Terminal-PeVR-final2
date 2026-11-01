@@ -11564,7 +11564,7 @@ def _amp_acciones(stock_close, corte):
         nh = ((px >= hi) & val).sum(axis=1).where(ok)
         nl = ((px <= lo) & val).sum(axis=1).where(ok)
         return {"p50": _pct_sobre(50), "p200": _pct_sobre(200), "nh": nh, "nl": nl, "nhnl": nh - nl,
-                "n": len(series)}
+                "n": len(series), "nval": val.sum(axis=1).where(ok)}
     except Exception as _dege:
         _deg("_amp_acciones", _dege)
         return None
@@ -11670,6 +11670,8 @@ def compute_amplitud(daily, stock_close=None):
             out["acc"] = {"n": acc["n"], "p50": _ult(acc["p50"]), "p50_20": _ult(acc["p50"], 20),
                           "p200": _ult(acc["p200"]), "nh": _ult(acc["nh"]), "nl": _ult(acc["nl"]),
                           "nhnl10": (float(nn.tail(10).mean()) if len(nn) else None),
+                          "nl_pct": (lambda _a, _b: (float(_a) / float(_b) * 100.0) if (_a is not None and _b) else None)(
+                              _ult(acc["nl"]), _ult(acc["nval"]) if "nval" in acc else None),
                           "serie_p50": p50.tail(250), "serie_idx": b.reindex(p50.tail(250).index)}
             divs = _amp_divergencias(b, acc["p50"], acc["nhnl"])
             rec = [d for d in divs if (corte - d["fecha"]).days <= 90]
@@ -12098,6 +12100,11 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     # v7.7 — la primera pestaña, visible al abrir
     try:
         _idx_extra = ""
+        try:
+            if operativa:
+                _idx_extra += _plan_spy_html(operativa.get("plan_spy"))
+        except Exception as _dege:
+            _deg("planspy:html", _dege)
         try:
             if operativa:
                 _idx_extra += _estr_html(operativa.get("estr"))
@@ -15905,6 +15912,17 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _wadd(AMB, "CLÍMAX", f"{s2}: {f2.get('ret1d', 0):+.1f}% {clima_dia(f2.get('clima_hace') or 0)} (z {f2.get('zday', 0):+.1f}) — la vela que ve todo el mundo; posible agotamiento, no fuerza", s2, -1)
         for s2, f2 in [x for x in _climas if x[1]["clima"] == "capitulacion"][:3]:
             _wadd("#B980FF", "CAPITUL", f"{s2}: {f2.get('ret1d', 0):+.1f}% {clima_dia(f2.get('clima_hace') or 0)} (z {f2.get('zday', 0):+.1f}) — pánico de un día; el cazador de suelos empieza a vigilar", s2, 1)
+        try:
+            _ps = (operativa or {}).get("plan_spy") or {}
+            if _ps.get("nuevos"):
+                _n = max(_ps["nuevos"])
+                _wadd(AMB, "PLAN SPY", f"El SPY toca −{_n:g}% desde su máximo ({_ps['px']:.2f})"
+                      + (f" con {_ps['nl_pct']:.1f}% de acciones en mínimos de 52 semanas" if _ps.get("nl_pct") is not None else "")
+                      + " — mira el panel del plan", "SPY", 1)
+            if OPC_FRESCURA and not OPC_FRESCURA.get("ok"):
+                _wadd(GRY, "DATOS", f"Opciones sin actualizar desde {OPC_FRESCURA.get('ultima')}: la volatilidad y el skew que ves son de ese día", "MERCADO", 0)
+        except Exception as _dege:
+            _deg("wire:planspy", _dege)
         try:
             _ex = (((operativa or {}).get("estr") or {}).get("sect") or {}).get("extrema")
             if _ex and _ex.get("hoy") and _ex.get("hace_inicio", 99) <= 2:
@@ -22661,7 +22679,10 @@ def update_estructura_ledger(e, daily):
     px = {}
     for s in (BENCH, "QQQ", "IWM", "RSP"):
         try:
-            px[s] = round(float(daily[s]["Close"].dropna().iloc[-1]), 4)
+            _dq = (daily or {}).get(s)
+            if _dq is None and s == "QQQ":
+                _dq = OPER_QQQ.get("d")
+            px[s] = round(float(_dq["Close"].dropna().iloc[-1]), 4)
         except Exception:
             pass
     s, a = e.get("sect") or {}, e.get("acc") or {}
@@ -22853,6 +22874,215 @@ def _wilson_txt(k, n, z=1.96):
     except Exception:
         return "—"
 
+
+
+# ======================================================================
+# v8.4.1 — PLAN SPY −5 / −7,5 / −10 %: comprar las caídas del S&P por tramos (vehículo: Nasdaq-100 x2)
+#   Medido con el SPY 1995-2026 (cierres diarios, caída desde el máximo de 252 sesiones; un episodio se
+#   rearma cuando vuelve a menos del −2 %) y con el S&P desde 1928. El filtro que mejor separó un −5 % que
+#   es suelo de uno que sigue: el % de acciones del S&P en mínimos de 52 semanas ESE día (< 5 % = mejor),
+#   igual en 1995-2010 y en 2011-2026. Avisa por Telegram la primera vez que el cierre toca cada nivel.
+#   Solo informa: no es asesoramiento.
+# ======================================================================
+PLANSPY_NIV = (5.0, 7.5, 10.0)
+PLANSPY_REARME = 2.0
+PLANSPY_NL = 5.0
+PLANSPY_FILE = os.path.join(SEGUIMIENTO_DIR, "plan_spy_estado.json")
+PLANSPY_ESTUDIO = {
+    "n5": 59, "n5_200": 46, "p10": 33, "p20": 11, "extra": -2.7, "f60": 5.1, "sube60": 78,
+    "desde3_a5": 59, "rec_med5": 33, "rec40_5": 51, "rec_med10": 117,
+    "nl_bajo": (18, 21, 6.4, 6.5, 36), "nl_alto": (50, 62, 2.0, 1.7, 23)}
+
+
+def _planspy_leer():
+    try:
+        if os.path.exists(PLANSPY_FILE):
+            with open(PLANSPY_FILE, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+    except Exception as _dege:
+        _deg("planspy:leer", _dege)
+    return {}
+
+
+def compute_plan_spy(daily, amp, estr):
+    """Niveles de hoy, qué tramos se han tocado en el episodio actual (memoria en plan_spy_estado.json),
+    el filtro de mínimos de 52 semanas y el QQQ equivalente. None si no hay SPY."""
+    try:
+        d = (daily or {}).get(BENCH)
+        if d is None or "Close" not in d.columns:
+            return None
+        c = d["Close"].dropna()
+        if len(c) < 260:
+            return None
+        mx = c.rolling(252, min_periods=60).max()
+        fecha = str(c.index[-1].date())
+        px, pico = float(c.iloc[-1]), float(mx.iloc[-1])
+        dd = (px / pico - 1.0) * 100.0
+        ma200 = float(c.rolling(200).mean().iloc[-1])
+        niveles = [{"niv": n, "px": pico * (1 - n / 100.0)} for n in PLANSPY_NIV]
+        acc = (amp or {}).get("acc") or {}
+        nl_pct = acc.get("nl_pct")
+        ex = ((estr or {}).get("sect") or {}).get("extrema")
+        ve_hoy = bool(ex and ex.get("hoy"))
+        # QQQ: beta de 250 sesiones y precio equivalente en cada nivel
+        q = OPER_QQQ.get("d")
+        qinfo = None
+        try:
+            if q is not None and "Close" in q.columns:
+                qc = q["Close"].dropna()
+                j = pd.concat([c.pct_change(), qc.pct_change()], axis=1, join="inner").dropna().tail(250)
+                if len(j) >= 120:
+                    beta = float(np.cov(j.iloc[:, 1], j.iloc[:, 0])[0, 1] / j.iloc[:, 0].var())
+                    qpx = float(qc.iloc[-1])
+                    qmx = float(qc.rolling(252, min_periods=60).max().iloc[-1])
+                    qinfo = {"px": qpx, "dd": (qpx / qmx - 1) * 100.0, "beta": beta,
+                             "ma200": float(qc.rolling(200).mean().iloc[-1])}
+                    for nv in niveles:
+                        mov = nv["px"] / px - 1.0
+                        nv["qqq"] = qpx * (1 + beta * mov) if mov < 0 else None
+        except Exception as _dege:
+            _deg("planspy:qqq", _dege)
+        # episodio y tramos tocados (memoria entre noches)
+        st = _planspy_leer()
+        nuevos = []
+        if dd > -PLANSPY_REARME:
+            st = {"activo": False}
+        elif dd <= -PLANSPY_NIV[0] and not st.get("activo"):
+            st = {"activo": True, "inicio": fecha, "pico": pico, "tocados": {}}
+        if st.get("activo"):
+            for nv in niveles:
+                k = f"{nv['niv']:g}"
+                if dd <= -nv["niv"] and k not in st["tocados"]:
+                    st["tocados"][k] = {"fecha": fecha, "px": round(px, 2), "nl_pct": (round(nl_pct, 1) if nl_pct is not None else None)}
+                    nuevos.append(nv["niv"])
+        st["ultimo"] = fecha
+        try:
+            guardar_json_seguro(PLANSPY_FILE, st, indent=0)
+        except Exception as _dege:
+            _deg("planspy:guardar", _dege)
+        t5 = (st.get("tocados") or {}).get("5")
+        nl5 = (t5 or {}).get("nl_pct") if t5 else nl_pct
+        tramo1 = None if nl5 is None else ("completo" if nl5 < PLANSPY_NL else "medio")
+        return {"fecha": fecha, "px": px, "pico": pico, "dd": dd, "ma200": ma200, "niveles": niveles,
+                "nl_pct": nl_pct, "ve_hoy": ve_hoy, "qqq": qinfo, "estado": st, "nuevos": nuevos, "tramo1": tramo1}
+    except Exception as _dege:
+        _deg("planspy", _dege)
+        return None
+
+
+def plan_spy_aviso(p):
+    """Texto para Telegram si hoy se ha tocado un nivel nuevo (o None)."""
+    if not p or not p.get("nuevos"):
+        return None
+    n = max(p["nuevos"])
+    nl = p.get("nl_pct")
+    lin = [f"PLAN SPY: el cierre ({p['fecha']}) toca −{n:g}% · SPY {p['px']:.2f} (máximo {p['pico']:.2f})"]
+    if n == PLANSPY_NIV[0]:
+        if nl is None:
+            lin.append("Acciones en mínimos de 52 semanas: sin dato hoy → tramo 1 a medias por prudencia")
+        elif nl < PLANSPY_NL:
+            lin.append(f"Acciones en mínimos de 52 semanas: {nl:.1f}% (< 5%) → TRAMO 1 COMPLETO")
+        else:
+            lin.append(f"Acciones en mínimos de 52 semanas: {nl:.1f}% (≥ 5%) → TRAMO 1 A MEDIAS, guardar para −7,5%")
+    elif n == PLANSPY_NIV[1]:
+        lin.append("→ TRAMO 2")
+    else:
+        lin.append("→ TRAMO 3 (y a partir de aquí la recuperación suele tardar meses)")
+    q = p.get("qqq") or {}
+    if q:
+        lin.append(f"QQQ {q['px']:.2f} ({q['dd']:+.1f}% desde su máximo, media de 200 {q['ma200']:.2f})")
+    if p.get("ve_hoy"):
+        lin.append("VENTA EXTREMA activa en el panel de estructura")
+    lin.append("Salida: cuando el SPY recupere su máximo; revisar a las 60 sesiones. No es asesoramiento.")
+    return "\n".join(lin)
+
+
+def _plan_spy_html(p):
+    if not p:
+        return ""
+    E = PLANSPY_ESTUDIO
+    st = p.get("estado") or {}
+    toc = st.get("tocados") or {}
+    q = p.get("qqq") or {}
+    nl = p.get("nl_pct")
+    fil = []
+    for i, nv in enumerate(p["niveles"]):
+        k = f"{nv['niv']:g}"
+        t = toc.get(k)
+        falta = (nv["px"] / p["px"] - 1) * 100.0
+        accion = ("700 € · completo si &lt;5 % en mínimos, si no la mitad" if i == 0 else
+                  "650 €" if i == 1 else "650 € (o antes, si salta VENTA EXTREMA)")
+        est = (f"<b style='color:#2FD08A'>✔ tocado el {esc(t['fecha'])}</b>" + (f" · {t['nl_pct']:.1f}% en mínimos" if t.get("nl_pct") is not None else "")
+               if t else f"<span style='color:#9FB0C8'>falta {falta:+.1f}%</span>")
+        fil.append(f"<tr><td><b>Tramo {i + 1}</b></td><td class='r'>−{nv['niv']:g}%</td><td class='r'><b>{nv['px']:.2f}</b></td>"
+                   f"<td class='r'>{'' if nv.get('qqq') is None else '%.0f' % nv['qqq']}</td><td>{accion}</td><td>{est}</td></tr>")
+    nl_txt = ("sin dato" if nl is None else
+              f"<b style='color:{'#2FD08A' if nl < PLANSPY_NL else '#F4607A'}'>{nl:.1f}%</b> "
+              + ("(por debajo del 5 %: si toca −5 %, tramo completo)" if nl < PLANSPY_NL else "(5 % o más: si toca −5 %, solo medio tramo)"))
+    h = ["<div class='panel full'><h2>🎯 Plan SPY −5 / −7,5 / −10 %: comprar las caídas por tramos</h2>",
+         f"<div style='font-size:15px;margin:6px 0'>SPY <b>{p['px']:.2f}</b> · a <b style='color:{'#F4607A' if p['dd'] <= -5 else '#F4B740' if p['dd'] <= -2.5 else '#9FB0C8'}'>{p['dd']:+.1f}%</b> "
+         f"de su máximo ({p['pico']:.2f}) · media de 200 {p['ma200']:.2f} · cierre {esc(p['fecha'])}"
+         + (f" · QQQ {q['px']:.2f} ({q['dd']:+.1f}%, se mueve {q['beta']:.2f} veces el SPY)" if q else "") + "</div>",
+         f"<div style='font-size:13px;margin-bottom:6px'>Acciones del S&amp;P en mínimos de 52 semanas hoy: {nl_txt}</div>",
+         "<table style='width:100%'><tr><th>Tramo</th><th class='r'>caída</th><th class='r'>SPY</th><th class='r'>QQQ aprox.</th><th>con 2.000 €</th><th>estado</th></tr>"
+         + "".join(fil) + "</table>"]
+    if p.get("ve_hoy"):
+        h.append("<div style='margin-top:6px;color:#B980FF'><b>🟣 VENTA EXTREMA activa:</b> adelanta el tramo que toque.</div>")
+    h.append("<div class='note' style='margin-top:8px'><b>Lo medido (SPY 1995–2026, cierres diarios):</b> desde un −3 %, el "
+             f"{E['desde3_a5']} % de las veces siguió hasta el −5 %. Tocando el −5 % con el SPY sobre su media de 200 ({E['n5_200']} veces): "
+             f"siguió hasta el −10 % el {E['p10']} % y hasta el −20 % el {E['p20']} %; cayó de mediana {E['extra']} % más; a 60 sesiones "
+             f"{E['f60']:+.1f}% de media y subió el {E['sube60']} %. Recuperó el máximo en una mediana de {E['rec_med5']} sesiones desde el −5 % "
+             f"({E['rec40_5']} % en 40 o menos) y de {E['rec_med10']} desde el −10 %. "
+             f"<b>El filtro:</b> con menos del 5 % de acciones en mínimos ese día ({E['nl_bajo'][4]} casos) siguió hasta el −10 % el "
+             f"{E['nl_bajo'][0]} % (1995–2010) y el {E['nl_bajo'][1]} % (2011–2026), +{E['nl_bajo'][2]} / +{E['nl_bajo'][3]} % a 60 sesiones; "
+             f"con un 5 % o más ({E['nl_alto'][4]} casos), el {E['nl_alto'][0]} % y el {E['nl_alto'][1]} %, +{E['nl_alto'][2]} / +{E['nl_alto'][3]} %. "
+             "Pocos casos y elegido entre 13 medidas: pista, no garantía. <b>Salida:</b> cuando el SPY recupere su máximo; revisar a las 60 sesiones "
+             "(el x2 pierde en lateral). <b>Freno:</b> con el SPY en −20 % no se compra más; con el Nasdaq a −25 % de su máximo, fuera del x2. "
+             "El QQQ aproximado usa su beta de 250 sesiones. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+def guardar_dix(dx):
+    """v8.4.1: el DIX y el GEX de cada noche al histórico (antes solo se mostraban)."""
+    if not dx or not dx.get("fecha"):
+        return
+    f = os.path.join(SEGUIMIENTO_DIR, "dix_estado.json")
+    recs = []
+    try:
+        if os.path.exists(f):
+            with open(f, "r", encoding="utf-8") as fh:
+                recs = json.load(fh)
+    except Exception as _dege:
+        _deg("dix:leer", _dege)
+        recs = []
+    rec = {"date": dx["fecha"], "dix": dx.get("last"), "m5": dx.get("m5"), "pct": dx.get("pct"),
+           "gex": dx.get("gex"), "senal": dx.get("senal")}
+    recs = [r for r in recs if r.get("date") != rec["date"]] + [rec]
+    try:
+        guardar_json_seguro(f, sorted(recs, key=lambda r: r["date"])[-1500:], indent=0)
+    except Exception as _dege:
+        _deg("dix:guardar", _dege)
+
+
+def opciones_frescura():
+    """v8.4.1: ¿se grabó hoy la volatilidad de las opciones? Devuelve (ok, ultima_fecha)."""
+    try:
+        f = os.path.join(SEGUIMIENTO_DIR, "options_iv.json")
+        if not os.path.exists(f):
+            return False, None
+        with open(f, "r", encoding="utf-8") as fh:
+            h = json.load(fh)
+        fechas = [max(v) for v in h.values() if isinstance(v, dict) and v]
+        if not fechas:
+            return False, None
+        ult = max(fechas)
+        return ult >= str(dt.date.today()), ult
+    except Exception as _dege:
+        _deg("opciones:frescura", _dege)
+        return False, None
+
+
+OPC_FRESCURA = {}
 
 
 # ======================================================================
@@ -25182,6 +25412,7 @@ def main():
     _dix = fetch_dix() if DIX_ON else None
     if _dix:
         print(f"  DIX (dark pools): {_dix['m5']}% media 5d ({_dix['senal']}) · {_dix['fecha']}")
+        guardar_dix(_dix)
     elif DIX_ON:
         print("  DIX (dark pools): sin respuesta de SqueezeMetrics — el terminal sigue sin él.")
     _centinela = None
@@ -25361,8 +25592,33 @@ def main():
             try:
                 if _estr:
                     _estr["plan"] = _estr_plan(_estr, daily)
+                    update_estructura_ledger(_estr, daily)      # v8.4.1: ahora con el QQQ ya descargado
             except Exception as _e_pl:
                 _avisar("estructura", f"plan de tramos no calculado: {_e_pl}")
+            # v8.4.1 — PLAN SPY −5/−7,5/−10 y aviso por Telegram al tocar un nivel nuevo
+            try:
+                _oper["plan_spy"] = compute_plan_spy(daily, _amp, _estr)
+                _ps = _oper["plan_spy"]
+                if _ps:
+                    print(f"  🎯 Plan SPY: {_ps['dd']:+.1f}% desde el máximo"
+                          + (f" · acciones en mínimos 52s {_ps['nl_pct']:.1f}%" if _ps.get("nl_pct") is not None else "")
+                          + (f" · NUEVO nivel tocado: −{max(_ps['nuevos']):g}%" if _ps.get("nuevos") else ""))
+                    _msg_ps = plan_spy_aviso(_ps)
+                    if _msg_ps and not VIAJE_A:
+                        notify(_msg_ps)
+            except Exception as _e_ps:
+                _avisar("plan_spy", f"plan SPY no calculado: {_e_ps}")
+            # v8.4.1 — ¿se grabaron hoy las opciones? (llevaban días paradas sin avisar)
+            try:
+                if OPCIONES_ON and not VIAJE_A:
+                    _ok_o, _ult_o = opciones_frescura()
+                    OPC_FRESCURA.clear()
+                    OPC_FRESCURA.update({"ok": _ok_o, "ultima": _ult_o})
+                    if not _ok_o:
+                        _avisar("opciones", f"la volatilidad de las opciones NO se ha grabado hoy (último dato guardado: {_ult_o}). "
+                                            "Lo que muestran los paneles de opciones es de ese día, no de hoy.")
+            except Exception as _e_of:
+                _avisar("opciones", f"no se pudo comprobar la frescura de las opciones: {_e_of}")
             # v7.9 — sectores: la estrategia del −9% y su backtest (solo informa)
             try:
                 _oper["sect_bt"] = (backtest_sectores(spy=None, corte=(df.index[-1] if VIAJE_A else None))

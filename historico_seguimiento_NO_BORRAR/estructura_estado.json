@@ -21,14 +21,15 @@
 "sect_entra": 7,
 "sect_sale": 0,
 "tec": -0.165,
-"acc_entra": 63.6,
-"acc_sale": 14.9,
-"n_acc": 659,
+"acc_entra": 63.5,
+"acc_sale": 15.0,
+"n_acc": 661,
 "lectura": "AMPLIO",
 "empuje": false,
 "extrema": false,
 "px": {
 "SPY": 755.72,
+"QQQ": 690.49,
 "IWM": 279.33,
 "RSP": 218.31
 }

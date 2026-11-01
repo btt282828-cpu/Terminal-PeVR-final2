@@ -779,5 +779,34 @@
 "eslabon": "C0-HIPER",
 "cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
 }
+},
+{
+"date": "2026-10-30",
+"sym": "VGK",
+"fase": "DESPERTANDO",
+"pts": 9,
+"pre": 0,
+"caida": -5.4,
+"cmf": 0.107,
+"sil": 2,
+"vr": 0.81,
+"huellas": [
+"volumen 0.81× (poca atención)",
+"1/3 estructurales",
+"GIRO VERTICAL 2.9× (impulso +1.8 en 3s)",
+"precio aún quieto (+1.3% en 4s): anticipación"
+],
+"px0": 87.54,
+"inval": 82.87,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 98.9,
+"usd_cmf": -0.318,
+"china": "floja",
+"china_cmf": 0.194,
+"eslabon": "C0-HIPER",
+"cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
+}
 }
 ]

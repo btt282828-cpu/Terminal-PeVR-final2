@@ -12263,6 +12263,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _idx_extra = ""
         try:
             if operativa:
+                _idx_extra += _semaforo_html(operativa.get("semaforo"))     # v8.4.2
                 _idx_extra += _plan_spy_html(operativa.get("plan_spy"))
         except Exception as _dege:
             _deg("planspy:html", _dege)
@@ -16080,6 +16081,16 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 _wadd(AMB, "PLAN SPY", f"El SPY toca −{_n:g}% desde su máximo ({_ps['px']:.2f})"
                       + (f" con {_ps['nl_pct']:.1f}% de acciones en mínimos de 52 semanas" if _ps.get("nl_pct") is not None else "")
                       + " — mira el panel del plan", "SPY", 1)
+            _smw = (operativa or {}).get("semaforo") or {}
+            for _nw in (_smw.get("nuevos") or []):
+                _wadd(("#2FD08A", AMB, "#F4607A")[min(_smw.get("av", 0), 2)], "NIVEL",
+                      f"{_nw['sym']} toca −{_nw['niv']:g}% desde su máximo ({_nw['px']:.2f})" + (" — su nivel bueno" if _nw["bueno"] else "")
+                      + f": {_nw['tamano']} — mira el semáforo", _nw["sym"], 1)
+            if _smw.get("agudo"):
+                _pw = _smw.get("panico") or {}
+                _wadd("#F4607A", "PÁNICO", "Pánico agudo en el VIX"
+                      + (f" (VIX9D/VIX {_pw['t9']:.2f}, VIX/VIX3M {_pw['t3']:.2f})" if _pw.get("t9") and _pw.get("t3") else "")
+                      + ": en ámbar o rojo, las caídas siguieron 2 de cada 3 veces — tramo pequeño y reserva para el siguiente nivel", "MERCADO", -1)
             if OPC_FRESCURA and not OPC_FRESCURA.get("ok"):
                 _wadd(GRY, "DATOS", f"Opciones sin actualizar desde {OPC_FRESCURA.get('ultima')}: la volatilidad y el skew que ves son de ese día", "MERCADO", 0)
         except Exception as _dege:
@@ -23217,6 +23228,308 @@ def _plan_spy_html(p):
     return "".join(h)
 
 
+# ======================================================================
+# v8.4.2 — 🚦 SEMÁFORO DE ENTRADA EN CAÍDAS (SPY, RSP, DIA, QQQ, IWM, MAGS) Y PÁNICO AGUDO
+#   El plan de capital: cada ETF compra en SU nivel bueno (SPY/RSP/DIA −5 %, QQQ/IWM/MAGS −10 %) y en
+#   los siguientes, con el tamaño que dice el semáforo DEL DÍA QUE TOCA:
+#     avisos: ≥ 5 % de acciones del S&P en mínimos de 52 semanas · VIX ≥ 25
+#     VERDE (0) tramo completo · ÁMBAR (1) medio · ROJO (2) un cuarto
+#   PÁNICO AGUDO (estudio del 3-nov-2026 con los historiales de CBOE): VIX9D/VIX o VIX/VIX3M > 1,10 y el
+#   VIX todavía a menos de un 5 % de su máximo de 5 días. En ámbar/rojo, con pánico agudo siguió cayendo
+#   hasta el siguiente nivel el 65 % (26 casos 2011–2026), sin él el 37 % (27). En verde no cambia nada.
+#   Máximo de referencia: el más alto de 52 semanas con máximos de vela (como las líneas del gráfico).
+#   Memoria de cada caída en semaforo_estado.json (+ registro diario para medirlo fuera de muestra).
+#   Solo informa. No es asesoramiento.
+# ======================================================================
+SEM_ETF = (("SPY", 5.0, (10.0, 20.0), "x3"), ("RSP", 5.0, (10.0, 20.0), "x3"), ("DIA", 5.0, (10.0, 20.0), "x3"),
+           ("QQQ", 10.0, (20.0,), "x3"), ("IWM", 10.0, (20.0,), "x2 como mucho"), ("MAGS", 10.0, (20.0,), "x1 (sin historial)"))
+SEM_NL = 5.0
+SEM_VIX = 25.0
+SEM_REARME = 0.5
+SEM_PAN_EST = 1.10
+SEM_PAN_PICO = 0.95
+SEM_FILE = os.path.join(SEGUIMIENTO_DIR, "semaforo_estado.json")
+SEM_URLS = {"VIX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+            "VIX9D": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX9D_History.csv",
+            "VIX3M": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX3M_History.csv"}
+SEM_ESTUDIO = {"verde": (1, 46), "ambar": (17, 35), "rojo": (15, 28), "pan_si": (65, 26), "pan_no": (37, 27),
+               "pan_m5": (61, 41), "pan_m10": (75, 30)}
+
+
+def _sem_cboe(nombre):
+    """Serie de cierres de un índice de CBOE (CSV diario). None si falla."""
+    try:
+        r = requests.get(SEM_URLS[nombre], timeout=30, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        d = pd.read_csv(StringIO(r.text))
+        d.columns = [str(c).strip().upper() for c in d.columns]
+        col = "CLOSE" if "CLOSE" in d.columns else d.columns[-1]
+        s = pd.Series(pd.to_numeric(d[col], errors="coerce").values,
+                      index=pd.to_datetime(d["DATE"], format="mixed", errors="coerce")).dropna()
+        s = s[~s.index.duplicated(keep="last")].sort_index()
+        return s if len(s) > 30 else None
+    except Exception as _dege:
+        _deg(f"semaforo:cboe:{nombre}", _dege)
+        return None
+
+
+def compute_panico(ref=None, vix_respaldo=None):
+    """VIX, VIX9D y VIX3M del último cierre (CBOE; si va un día por detrás, Yahoo) y si hay pánico agudo."""
+    try:
+        S, fuente = {}, {}
+        for k in ("VIX", "VIX9D", "VIX3M"):
+            s = _sem_cboe(k)
+            fuente[k] = "CBOE" if s is not None else None
+            if ref is not None and s is not None:
+                s = s[s.index <= pd.Timestamp(ref)]
+            if (s is None or not len(s) or (ref is not None and s.index[-1] < pd.Timestamp(ref))) and yf is not None and not VIAJE_A:
+                try:
+                    g = yf.download("^" + k, period="1mo", progress=False, auto_adjust=False)
+                    if g is not None and len(g):
+                        gc = g["Close"]
+                        gc = (gc.iloc[:, 0] if isinstance(gc, pd.DataFrame) else gc).dropna()
+                        gc.index = pd.to_datetime(gc.index).tz_localize(None)
+                        if ref is not None:
+                            gc = gc[gc.index <= pd.Timestamp(ref)]
+                        if len(gc):
+                            s = gc if s is None else pd.concat([s, gc[gc.index > s.index[-1]]])
+                            fuente[k] = (fuente[k] + "+Yahoo") if fuente[k] else "Yahoo"
+                except Exception as _dege:
+                    _deg(f"semaforo:yahoo:{k}", _dege)
+            if s is None and k == "VIX" and vix_respaldo is not None:
+                s = pd.Series(vix_respaldo).dropna()
+                fuente[k] = "terminal"
+            S[k] = s
+        vix = S.get("VIX")
+        if vix is None or len(vix) < 6:
+            return None
+        f = vix.index[-1]
+        v = float(vix.iloc[-1])
+        v9 = S.get("VIX9D"); v3 = S.get("VIX3M")
+        v9v = float(v9.loc[:f].iloc[-1]) if v9 is not None and len(v9.loc[:f]) else None
+        v3v = float(v3.loc[:f].iloc[-1]) if v3 is not None and len(v3.loc[:f]) else None
+        t9 = (v9v / v) if v9v else None
+        t3 = (v / v3v) if v3v else None
+        pico5 = float(vix.iloc[-5:].max())
+        rel_pico = v / pico5 if pico5 else None
+        chg5 = (v / float(vix.iloc[-6]) - 1) * 100.0
+        est = (t9 is not None and t9 > SEM_PAN_EST) or (t3 is not None and t3 > SEM_PAN_EST)
+        agudo = bool(est and rel_pico is not None and rel_pico >= SEM_PAN_PICO)
+        return {"fecha": str(f.date()), "vix": v, "vix9d": v9v, "vix3m": v3v, "t9": t9, "t3": t3,
+                "rel_pico": rel_pico, "chg5": chg5, "estructura": bool(est), "agudo": agudo,
+                "fuente": fuente, "completo": (t9 is not None or t3 is not None)}
+    except Exception as _dege:
+        _deg("semaforo:panico", _dege)
+        return None
+
+
+def _sem_tamano(av, agudo):
+    """(fracción de R, texto) según semáforo y pánico agudo."""
+    if av == 0:
+        return 1.0, "tramo completo (1R)"
+    if av == 1:
+        return (0.25, "un cuarto (¼R): ámbar con pánico agudo") if agudo else (0.5, "medio tramo (½R)")
+    return (0.25, "un cuarto (¼R) y guarda el resto: rojo con pánico agudo") if agudo else (0.25, "un cuarto (¼R)")
+
+
+def _sem_reconstruir(c, h, niv):
+    """Primera vez que se ve un ETF (sin memoria): rehace la caída en curso con los precios de ~1 año,
+    para no dar por «nuevo» un nivel que ya se tocó antes de instalar el semáforo."""
+    e = {"activo": False}
+    try:
+        mx = h.rolling(252, min_periods=60).max()
+        dd = (c / mx - 1) * 100.0
+        for i in range(max(60, len(c) - 300), len(c) - 1):
+            v = dd.iat[i]
+            if pd.isna(v):
+                continue
+            if v > -SEM_REARME:
+                e = {"activo": False}
+                continue
+            if v <= -niv[0] and not e.get("activo"):
+                e = {"activo": True, "inicio": str(c.index[i].date()), "pico": round(float(mx.iat[i]), 2), "tocados": {}}
+            if e.get("activo"):
+                for n in niv:
+                    k = f"{n:g}"
+                    if v <= -n and k not in e["tocados"]:
+                        e["tocados"][k] = {"fecha": str(c.index[i].date()), "px": round(float(c.iat[i]), 2), "av": None,
+                                           "agudo": None, "tamano": "(antes de instalar el semáforo)"}
+    except Exception as _dege:
+        _deg("semaforo:reconstruir", _dege)
+    return e
+
+
+def compute_semaforo(daily, amp, vix_respaldo=None):
+    """Estado de los 6 ETF frente a sus niveles, semáforo y pánico de hoy, y niveles nuevos tocados."""
+    try:
+        ref = None
+        try:
+            _b = (daily or {}).get(BENCH)
+            ref = _b["Close"].dropna().index[-1] if _b is not None else None
+        except Exception:
+            ref = None
+        pan = compute_panico(ref, vix_respaldo)
+        acc = (amp or {}).get("acc") or {}
+        nl = acc.get("nl_pct")
+        vix = (pan or {}).get("vix")
+        a1 = nl is not None and nl >= SEM_NL
+        a2 = vix is not None and vix >= SEM_VIX
+        av = int(a1) + int(a2)
+        agudo = bool((pan or {}).get("agudo"))
+        frac, txt = _sem_tamano(av, agudo)
+        st = {}
+        try:
+            if os.path.exists(SEM_FILE):
+                with open(SEM_FILE, "r", encoding="utf-8") as fh:
+                    st = json.load(fh) or {}
+        except Exception as _dege:
+            _deg("semaforo:leer", _dege)
+            st = {}
+        eps = st.get("etf") or {}
+        filas, nuevos = [], []
+        fecha_ref = str(ref.date()) if ref is not None else None
+        for sym, bueno, sig, veh in SEM_ETF:
+            d = OPER_QQQ.get("d") if sym == "QQQ" else (daily or {}).get(sym)
+            if d is None or "Close" not in d.columns:
+                continue
+            c = d["Close"].dropna()
+            if len(c) < 60:
+                continue
+            h = d["High"].reindex(c.index).fillna(c) if "High" in d.columns else c
+            pico = float(h.rolling(252, min_periods=60).max().iloc[-1])
+            px = float(c.iloc[-1])
+            dd = (px / pico - 1) * 100.0
+            fch = str(c.index[-1].date())
+            niv = [bueno] + list(sig)
+            e = eps.get(sym) if sym in eps else _sem_reconstruir(c, h, niv)
+            e = e or {}
+            if dd > -SEM_REARME or not e.get("activo"):
+                e = {"activo": False} if dd > -SEM_REARME else e
+            if dd <= -niv[0] and not e.get("activo"):
+                e = {"activo": True, "inicio": fch, "pico": round(pico, 2), "tocados": {}}
+            if e.get("activo"):
+                for n in niv:
+                    k = f"{n:g}"
+                    if dd <= -n and k not in e["tocados"]:
+                        fr, tx = _sem_tamano(av, agudo)
+                        e["tocados"][k] = {"fecha": fch, "px": round(px, 2), "av": av, "agudo": agudo,
+                                           "nl": (round(nl, 1) if nl is not None else None),
+                                           "vix": (round(vix, 2) if vix is not None else None), "tamano": tx}
+                        if fch == fecha_ref or fecha_ref is None:
+                            nuevos.append({"sym": sym, "niv": n, "px": px, "tamano": tx, "bueno": n == bueno})
+            eps[sym] = e
+            filas.append({"sym": sym, "px": px, "pico": pico, "dd": dd, "fecha": fch, "veh": veh,
+                          "niveles": [{"niv": n, "px": pico * (1 - n / 100.0), "bueno": n == bueno,
+                                       "toc": (e.get("tocados") or {}).get(f"{n:g}")} for n in niv],
+                          "prox": next((n for n in niv if dd > -n), None)})
+        log = [r for r in (st.get("log") or []) if r.get("date") != fecha_ref]
+        if fecha_ref:
+            log.append({"date": fecha_ref, "nl": (round(nl, 2) if nl is not None else None),
+                        "vix": (round(vix, 2) if vix is not None else None),
+                        "t9": (round(pan["t9"], 3) if pan and pan.get("t9") else None),
+                        "t3": (round(pan["t3"], 3) if pan and pan.get("t3") else None),
+                        "rel_pico": (round(pan["rel_pico"], 3) if pan and pan.get("rel_pico") else None),
+                        "av": av, "agudo": agudo, "dd": {f["sym"]: round(f["dd"], 2) for f in filas}})
+        st = {"etf": eps, "log": sorted(log, key=lambda r: r["date"])[-800:], "ultimo": fecha_ref}
+        if not VIAJE_A:
+            try:
+                guardar_json_seguro(SEM_FILE, st, indent=0)
+            except Exception as _dege:
+                _deg("semaforo:guardar", _dege)
+        return {"fecha": fecha_ref, "nl": nl, "vix": vix, "av": av, "avisos": (a1, a2), "panico": pan,
+                "agudo": agudo, "frac": frac, "tamano": txt, "filas": filas, "nuevos": nuevos}
+    except Exception as _dege:
+        _deg("semaforo", _dege)
+        return None
+
+
+def semaforo_aviso(s):
+    """Texto de Telegram si hoy algún ETF toca un nivel por primera vez en esta caída (o None)."""
+    if not s or not s.get("nuevos"):
+        return None
+    col = ("VERDE", "ÁMBAR", "ROJO")[min(s["av"], 2)]
+    lin = [f"🚦 SEMÁFORO {col} · cierre {s['fecha']}"]
+    for n in s["nuevos"]:
+        lin.append(f"{n['sym']} toca −{n['niv']:g}% ({n['px']:.2f})" + (" — su NIVEL BUENO" if n["bueno"] else "")
+                   + f" → {n['tamano']}")
+    nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
+    lin.append(f"Acciones en mínimos 52 sem.: {nl:.1f}%" if nl is not None else "Acciones en mínimos 52 sem.: sin dato")
+    lin.append(f"VIX {vx:.1f}" if vx is not None else "VIX: sin dato")
+    if p.get("completo"):
+        lin.append(("PÁNICO AGUDO: " if s["agudo"] else "Sin pánico agudo: ")
+                   + (f"VIX9D/VIX {p['t9']:.2f} · " if p.get("t9") else "") + (f"VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else ""))
+    lin.append("Vehículo: SPY/RSP/DIA/QQQ x3 · IWM x2 como mucho · MAGS x1. Venta: al recuperar su máximo. No es asesoramiento.")
+    return "\n".join(lin)
+
+
+def _semaforo_html(s):
+    if not s or not s.get("filas"):
+        return ""
+    E = SEM_ESTUDIO
+    av = s["av"]
+    colh = ("#2FD08A", "#F4B740", "#F4607A")[min(av, 2)]
+    nomh = ("VERDE", "ÁMBAR", "ROJO")[min(av, 2)]
+    nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
+    a1, a2 = s.get("avisos") or (False, False)
+    def _ok(b):
+        return "<b style='color:#F4607A'>⚠</b>" if b else "<b style='color:#2FD08A'>✔</b>"
+    cab = (f"<div style='display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 8px'>"
+           f"<span style='font-size:18px;font-weight:800;color:{colh}'>● {nomh}</span>"
+           f"<span>si un ETF toca hoy su nivel: <b style='color:{colh}'>{esc(s['tamano'])}</b></span></div>"
+           f"<div style='font-size:13px;margin-bottom:4px'>{_ok(a1)} Acciones del S&amp;P en mínimos de 52 semanas: "
+           + (f"<b>{nl:.1f}%</b>" if nl is not None else "sin dato") + f" (aviso desde {SEM_NL:g} %) · "
+           f"{_ok(a2)} VIX: " + (f"<b>{vx:.2f}</b>" if vx is not None else "sin dato") + f" (aviso desde {SEM_VIX:g})</div>")
+    if p.get("completo"):
+        pan = ("<b style='color:#F4607A'>🔥 PÁNICO AGUDO</b>" if s["agudo"] else
+               "<b style='color:#2FD08A'>Sin pánico agudo</b>" if not p.get("estructura") else
+               "<b style='color:#F4B740'>Estructura invertida, pero el VIX ya baja de su pico</b>")
+        cab += (f"<div style='font-size:13px;margin-bottom:8px'>{pan} · VIX9D/VIX "
+                + (f"<b>{p['t9']:.2f}</b>" if p.get("t9") else "–") + " · VIX/VIX3M "
+                + (f"<b>{p['t3']:.2f}</b>" if p.get("t3") else "–") + f" (pánico si alguno &gt; {SEM_PAN_EST:.2f})"
+                + (f" · VIX al {p['rel_pico'] * 100:.0f}% de su máximo de 5 días" if p.get("rel_pico") else "")
+                + f" · VIX {p['chg5']:+.0f}% en 5 días · datos del {esc(p['fecha'])}"
+                + (" <span style='color:#F4B740'>(VIX con un día de retraso)</span>" if s.get("fecha") and p.get("fecha") and p["fecha"] < s["fecha"] else "")
+                + "</div>")
+    else:
+        cab += "<div style='font-size:13px;margin-bottom:8px;color:#F4B740'>VIX9D y VIX3M sin descargar hoy: el pánico agudo no se puede medir.</div>"
+    fil = []
+    for f in s["filas"]:
+        ddc = "#F4607A" if any(n["toc"] for n in f["niveles"]) else "#F4B740" if f["dd"] <= -2.5 else "#9FB0C8"
+        cel = []
+        for n in f["niveles"]:
+            t = n["toc"]
+            falta = (n["px"] / f["px"] - 1) * 100.0
+            _tav = t.get("av") if t else None
+            _tcol = "#4CC2E0" if _tav is None else ("#2FD08A", "#F4B740", "#F4607A")[min(_tav, 2)]
+            et = (f"<b style='color:{_tcol}'>✔ {esc(t['fecha'][5:])}</b>"
+                  + (" 🔥" if t.get("agudo") else "") if t else f"<span style='color:#9FB0C8'>{falta:+.1f}%</span>")
+            cel.append(f"<td class='r'>{'<b>' if n['bueno'] else ''}−{n['niv']:g}% {n['px']:.2f}{'</b>' if n['bueno'] else ''}<br>{et}</td>")
+        cel += ["<td></td>"] * (3 - len(f["niveles"]))
+        fil.append(f"<tr><td><b>{f['sym']}</b><br><span style='font-size:11px;color:#9FB0C8'>{esc(f['veh'])}</span></td>"
+                   f"<td class='r'>{f['px']:.2f}<br><span style='font-size:11px;color:#9FB0C8'>máx. {f['pico']:.2f}</span></td>"
+                   f"<td class='r'><b style='color:{ddc}'>{f['dd']:+.1f}%</b></td>" + "".join(cel) + "</tr>")
+    h = ["<div class='panel full'><h2>🚦 Semáforo de entrada en caídas: SPY · RSP · DIA · QQQ · IWM · MAGS</h2>", cab,
+         "<table style='width:100%'><tr><th>ETF</th><th class='r'>cierre</th><th class='r'>desde máx.</th>"
+         "<th class='r'>nivel bueno</th><th class='r'>siguiente</th><th class='r'>siguiente</th></tr>" + "".join(fil) + "</table>"]
+    if s.get("nuevos"):
+        h.append("<div style='margin-top:8px'><b style='color:" + colh + "'>Hoy toca:</b> "
+                 + " · ".join(f"{n['sym']} −{n['niv']:g}% → {esc(n['tamano'])}" for n in s["nuevos"]) + "</div>")
+    h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> el nivel en negrita es el bueno de cada ETF; ✔ = tocado en esta caída, "
+             "con el color del semáforo de ESE día (🔥 = había pánico agudo; azul = tocado antes de instalar el semáforo, sin dato). La cifra gris es lo que falta para tocarlo. Un nivel se compra solo "
+             "la primera vez que se toca en cada caída; la caída se reinicia cuando el ETF vuelve a menos del 0,5 % de su máximo. "
+             f"<b>Lo medido (109 veces 2004–2026, nivel bueno de SPY/RSP/DIA/QQQ/IWM):</b> con VERDE siguió hasta el siguiente nivel "
+             f"{E['verde'][0]} de {E['verde'][1]} veces; ÁMBAR {E['ambar'][0]} de {E['ambar'][1]}; ROJO {E['rojo'][0]} de {E['rojo'][1]}. "
+             f"<b>Pánico agudo</b> (VIX9D/VIX o VIX/VIX3M &gt; {SEM_PAN_EST:.2f} con el VIX aún en su máximo de 5 días), solo cuenta en ámbar/rojo: "
+             f"siguió cayendo el {E['pan_si'][0]} % ({E['pan_si'][1]} casos 2011–2026) frente al {E['pan_no'][0]} % sin él ({E['pan_no'][1]}); "
+             f"en los −5 % {E['pan_m5'][0]} frente a {E['pan_m5'][1]} %, en los −10 % {E['pan_m10'][0]} frente a {E['pan_m10'][1]} %. "
+             "Aguanta en 2011–18 y en 2019–26, pero son 26 episodios: pista, no regla. Ojo: lo contrario de lo que se suele leer — el VIX "
+             "invertido el día del nivel no es suelo; el suelo que aguanta llega con el miedo contenido. DIX, GEX, VVIX, SKEW y put/call no "
+             "aportaron. Venta: cuando el ETF recupera su máximo. MAGS no tiene historial para probarlo. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
 def guardar_dix(dx):
     """v8.4.1: el DIX y el GEX de cada noche al histórico (antes solo se mostraban)."""
     if not dx or not dx.get("fecha"):
@@ -23311,6 +23624,83 @@ def guardar_historiales_opciones(forzar=False):
     if _mal:
         _avisar("historiales", "historial no guardado: " + "; ".join(_mal), nivel="info")
     return res
+
+
+# v8.4.2 — HISTORIAL DEL UNIVERSO DE ETF (para estudiar en qué ETF funciona «comprar el −10 % y esperar al máximo»)
+#   Cierres y máximos diarios AJUSTADOS de todo el universo de la terminal (sectores, temáticos, pelotones, los 6
+#   índices) + oro, bonos, dólar, materias primas, bitcoin y futuros gestionados. Comprimido, desde 2000, una vez
+#   cada HIST_UNI_DIAS días (≈3 MB por vez). Solo guarda: no cambia ningún panel.
+HIST_UNI_ON = True
+HIST_UNI_DIAS = 30
+HIST_UNI_EXTRA = ["SPY", "QQQ", "DIA", "IWM", "RSP", "MAGS", "GLD", "IAU", "SLV", "TLT", "IEF", "SHY", "TIP", "UUP",
+                  "DBC", "USO", "IBIT", "DBMF", "KMLM", "CTA", "XLRE", "XLC", "IBB", "EFA", "IYR", "HYG", "LQD", "MDY", "GDXJ"]
+
+
+def guardar_historial_universo(forzar=False):
+    """Descarga el universo entero (por bloques, para no saturar a Yahoo) y lo guarda en historiales/.
+    Devuelve un texto corto con el resultado."""
+    if not HIST_UNI_ON or VIAJE_A or yf is None:
+        return None
+    carpeta = os.path.join(SEGUIMIENTO_DIR, "historiales")
+    meta_f = os.path.join(carpeta, "_meta.json")
+    try:
+        os.makedirs(carpeta, exist_ok=True)
+        meta = {}
+        if os.path.exists(meta_f):
+            try:
+                with open(meta_f, "r", encoding="utf-8") as fh:
+                    meta = json.load(fh)
+            except Exception:
+                meta = {}
+        m = meta.get("universo") or {}
+        f_c = os.path.join(carpeta, "universo_close.csv.gz")
+        f_h = os.path.join(carpeta, "universo_high.csv.gz")
+        try:
+            _ult = dt.date.fromisoformat(m.get("fecha", "1900-01-01"))
+        except Exception:
+            _ult = dt.date(1900, 1, 1)
+        if not forzar and os.path.exists(f_c) and (dt.date.today() - _ult).days < HIST_UNI_DIAS:
+            return "al día"
+        uni = list(dict.fromkeys(HIST_UNI_EXTRA + SECTORS + THEMATIC + EXTRA
+                                 + [mb for cfg in PELOTONES.values() for mb in cfg.get("members", [])]))
+        cl, hi, falta = {}, {}, []
+        for k in range(0, len(uni), 12):
+            bloque = uni[k:k + 12]
+            try:
+                g = yf.download(bloque, start="2000-01-01", progress=False, auto_adjust=True,
+                                group_by="ticker", threads=True)
+            except Exception as _e:
+                _deg("universo:bloque", _e)
+                g = None
+            for t in bloque:
+                try:
+                    x = g[t] if (g is not None and isinstance(g.columns, pd.MultiIndex)) else g
+                    c = x["Close"].dropna() if x is not None else None
+                    if c is None or len(c) < 60:
+                        falta.append(t)
+                        continue
+                    cl[t] = c.round(4)
+                    hi[t] = x["High"].reindex(c.index).round(4)
+                except Exception:
+                    falta.append(t)
+            time.sleep(2)
+        if len(cl) < 10:
+            raise RuntimeError(f"solo {len(cl)} ETF descargados")
+        C = pd.DataFrame(cl).sort_index()
+        Hh = pd.DataFrame(hi).sort_index()
+        C.index.name = Hh.index.name = "date"
+        C.to_csv(f_c + ".tmp", compression="gzip")
+        Hh.to_csv(f_h + ".tmp", compression="gzip")
+        os.replace(f_c + ".tmp", f_c)
+        os.replace(f_h + ".tmp", f_h)
+        meta["universo"] = {"fecha": str(dt.date.today()), "etf": len(cl), "dias": len(C),
+                            "ultima": str(C.index[-1].date()), "sin_datos": falta,
+                            "desde": {t: str(v.index[0].date()) for t, v in cl.items()}}
+        guardar_json_seguro(meta_f, meta, indent=1)
+        return f"ok {len(cl)} ETF, {len(C)} días" + (f", sin datos: {', '.join(falta)}" if falta else "")
+    except Exception as _e:
+        _avisar("historiales", f"historial del universo no guardado: {type(_e).__name__}: {str(_e)[:100]}", nivel="info")
+        return None
 
 
 def opciones_frescura():
@@ -25668,6 +26058,9 @@ def main():
         _hres = guardar_historiales_opciones()
         if _hres:
             print("  Historiales opciones/DIX: " + " · ".join(f"{k}: {v}" for k, v in _hres.items()))
+        _ures = guardar_historial_universo()
+        if _ures:
+            print(f"  Historial del universo de ETF: {_ures}")
     except Exception as _e_hist:
         _avisar("historiales", f"historiales no guardados: {_e_hist}", nivel="info")
     _centinela = None
@@ -25863,6 +26256,24 @@ def main():
                         notify(_msg_ps)
             except Exception as _e_ps:
                 _avisar("plan_spy", f"plan SPY no calculado: {_e_ps}")
+            # v8.4.2 — 🚦 SEMÁFORO DE ENTRADA (6 ETF) + PÁNICO AGUDO, con aviso por Telegram
+            try:
+                _oper["semaforo"] = compute_semaforo(daily, _amp, locals().get("vix_close"))
+                _sm = _oper["semaforo"]
+                if _sm:
+                    _pp = _sm.get("panico") or {}
+                    print(f"  🚦 Semáforo {('VERDE', 'ÁMBAR', 'ROJO')[min(_sm['av'], 2)]} · "
+                          + ("PÁNICO AGUDO" if _sm["agudo"] else "sin pánico agudo")
+                          + (f" (VIX9D/VIX {_pp['t9']:.2f}, VIX/VIX3M {_pp['t3']:.2f})" if _pp.get("t9") and _pp.get("t3") else "")
+                          + " · " + " ".join(f"{f['sym']} {f['dd']:+.1f}%" for f in _sm["filas"])
+                          + (" · NUEVO: " + ", ".join(f"{n['sym']} −{n['niv']:g}%" for n in _sm["nuevos"]) if _sm.get("nuevos") else ""))
+                    _msg_sm = semaforo_aviso(_sm)
+                    if _msg_sm and not VIAJE_A:
+                        notify(_msg_sm)
+                    if not _pp.get("completo"):
+                        _avisar("semaforo", "VIX9D/VIX3M no descargados: el pánico agudo no se puede medir hoy", nivel="info")
+            except Exception as _e_sm:
+                _avisar("semaforo", f"semáforo de entrada no calculado: {_e_sm}")
             # v8.4.1 — ¿se grabaron hoy las opciones? (llevaban días paradas sin avisar)
             try:
                 if OPCIONES_ON and not VIAJE_A:

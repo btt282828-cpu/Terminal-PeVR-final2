@@ -6952,13 +6952,111 @@ def compute_cobertura(options, rrg=None, flow=None, min_hist=8):
             "listo": any(c["rank"] is not None for c in cestas)}
 
 
+# ======================================================================
+# v8.4.2 — OPCIONES: SEGUNDA FUENTE (CBOE) Y MENOS PRESIÓN SOBRE YAHOO
+#   Desde el 29-oct-2026 Yahoo dejó de dar cadenas de opciones al servidor de GitHub (options_iv.json
+#   sin grabar; antes ya había huecos sueltos). No era el código ni la versión de yfinance (sin release
+#   desde agosto): Yahoo frena ~250-300 peticiones seguidas desde IPs de centro de datos.
+#   Ahora: Yahoo primero, con pausa entre ETF. Si N ETF seguidos no devuelven cadena, el resto del build
+#   va DIRECTO a CBOE (cotizaciones retrasadas 15 min, gratis, sin clave): UNA petición por ETF con la
+#   cadena completa (IV, volumen, interés abierto, bid/ask). Si Yahoo falla en un ETF suelto, se prueba
+#   CBOE solo para ese. Mismas métricas y mismos filtros: CBOE se disfraza de yf.Ticker.
+#   La fuente de cada ETF se guarda («fuente» y «src» en options_iv.json) y sale en SALUD DEL BUILD.
+# ======================================================================
+OPC_CBOE_ON = True                 # False = solo Yahoo (comportamiento anterior)
+OPC_CBOE_URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/{sym}.json"
+OPC_YAHOO_PAUSA = 0.4              # segundos entre ETF en Yahoo (antes: ninguna)
+OPC_YAHOO_FALLOS_MAX = 4           # ETF seguidos sin cadena en Yahoo -> el resto del build por CBOE
+OPC_FUENTE = {"yahoo": 0, "cboe": 0, "fallos": 0, "modo": "yahoo", "cboe_err": 0, "cboe_ult_err": ""}
+_CBOE_CACHE = {}
+
+
+class _CboeTicker:
+    """Imita lo que el terminal usa de yf.Ticker: .options (vencimientos 'AAAA-MM-DD'),
+    .option_chain(venc) -> (.calls, .puts) con las columnas de Yahoo, y .fast_info['lastPrice'].
+    Lanza excepción si CBOE no responde o no trae cadena (quien llama decide qué hacer)."""
+
+    def __init__(self, sym):
+        import re as _re
+        from collections import namedtuple as _nt
+        self.sym = sym
+        self._Chain = _nt("Chain", "calls puts underlying")
+        r = requests.get(OPC_CBOE_URL.format(sym=str(sym).upper().replace(".", "/")), timeout=25,
+                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                                  "Accept": "application/json"})
+        if r.status_code != 200:
+            raise RuntimeError(f"CBOE HTTP {r.status_code}")
+        d = (r.json() or {}).get("data") or {}
+        filas = d.get("options") or []
+        if not filas:
+            raise RuntimeError("CBOE sin cadena")
+        patron = _re.compile(r"^(.*?)(\d{6})([CP])(\d{8})$")
+        recs = []
+        for o in filas:
+            mt = patron.match(str(o.get("option", "")))
+            if not mt:
+                continue
+            yymmdd, lado, k = mt.group(2), mt.group(3), mt.group(4)
+            recs.append({"exp": f"20{yymmdd[:2]}-{yymmdd[2:4]}-{yymmdd[4:]}", "lado": lado,
+                         "strike": int(k) / 1000.0,
+                         "volume": o.get("volume"), "openInterest": o.get("open_interest"),
+                         "impliedVolatility": o.get("iv"), "bid": o.get("bid"), "ask": o.get("ask"),
+                         "lastPrice": o.get("last_trade_price"), "lastTradeDate": o.get("last_trade_time")})
+        if not recs:
+            raise RuntimeError("CBOE: símbolos de opción no reconocidos")
+        df = pd.DataFrame(recs)
+        for c in ("strike", "volume", "openInterest", "impliedVolatility", "bid", "ask", "lastPrice"):
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+        _ivm = df["impliedVolatility"][df["impliedVolatility"] > 0].median()
+        if pd.notna(_ivm) and _ivm > 3:             # por si algún día la sirve en % en vez de en tanto por uno
+            df["impliedVolatility"] = df["impliedVolatility"] / 100.0
+        df.loc[df["impliedVolatility"] <= 0, "impliedVolatility"] = np.nan
+        self._df = df
+        self.options = tuple(sorted(df["exp"].unique()))
+        px = d.get("current_price") or d.get("close") or d.get("prev_day_close")
+        try:
+            px = float(px)
+        except Exception:
+            px = None
+        self.fast_info = {"lastPrice": px}
+
+    def option_chain(self, e):
+        g = self._df[self._df["exp"] == e]
+        cols = ["strike", "volume", "openInterest", "impliedVolatility", "bid", "ask", "lastPrice", "lastTradeDate"]
+        calls = g[g["lado"] == "C"][cols].sort_values("strike").reset_index(drop=True)
+        puts = g[g["lado"] == "P"][cols].sort_values("strike").reset_index(drop=True)
+        return self._Chain(calls, puts, {})
+
+    def history(self, period="5d"):
+        return pd.DataFrame({"Close": [self.fast_info["lastPrice"]]}) if self.fast_info.get("lastPrice") else pd.DataFrame()
+
+
+def _cboe_ticker(sym):
+    """CBOE con caché por build (muros_opciones vuelve a pedir SPY/QQQ). None si falla."""
+    if not OPC_CBOE_ON:
+        return None
+    if sym in _CBOE_CACHE:
+        return _CBOE_CACHE[sym]
+    tk = None
+    try:
+        tk = _CboeTicker(sym)
+    except Exception as _e:
+        OPC_FUENTE["cboe_err"] += 1
+        OPC_FUENTE["cboe_ult_err"] = f"{sym}: {type(_e).__name__}: {str(_e)[:80]}"
+        _deg("opciones:cboe", _e)
+    _CBOE_CACHE[sym] = tk
+    return tk
+
+
 def compute_options(symbols, flow=None, daily=None, max_syms=40):
     """OPTIONS DESK — descarga cadenas de opciones de Yahoo (gratis) y calcula por ETF: put/call
     (volumen y OI), IV y su percentil aprox, skew y max pain. Si el ETF sale ILIQUIDO y tiene
     proxy definido, se analizan sus 2-3 acciones mas grandes y se promedian (señal de apoyo,
-    etiquetada). La divergencia con el CMF del ETF es lo valioso. Best-effort, nunca rompe."""
-    if yf is None:
+    etiquetada). La divergencia con el CMF del ETF es lo valioso. Best-effort, nunca rompe.
+    v8.4.2: si Yahoo no da cadena, la toma de CBOE (ver _CboeTicker)."""
+    if yf is None and not OPC_CBOE_ON:
         return None
+    OPC_FUENTE.update({"yahoo": 0, "cboe": 0, "fallos": 0, "modo": ("yahoo" if yf is not None else "cboe")})
     hoy = pd.Timestamp.today().normalize()
     flow = flow or {}
     # --- FASE DE SESION: el campo 'volume' de Yahoo se resetea cada dia. Un build antes o durante la
@@ -6977,10 +7075,9 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
         _deg("compute_options:2295", _dege)
         pass
 
-    def _analiza(tkr, spot_hint=None):
-        """Analiza la cadena de UN ticker. Devuelve dict con metricas crudas o None."""
+    def _analiza_tk(tk, tkr, spot_hint=None, avisa=True):
+        """Analiza la cadena de UN ticker (de Yahoo o de CBOE). Devuelve dict con metricas crudas o None."""
         try:
-            tk = yf.Ticker(tkr)
             exps = tk.options
             if not exps:
                 return None
@@ -7164,8 +7261,42 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                     "maxpain": maxpain, "mp_dist": mp_dist, "spot": spot, "iliquido": iliq,
                     "dte_iv": dte_iv, "n_exp_pcr": n_exp_pcr, "cadena": _cad}
         except Exception as e:
-            _avisar(f"options.{tkr}", f"cadena de opciones no analizada: {type(e).__name__}: {e}")
+            if avisa:
+                _avisar(f"options.{tkr}", f"cadena de opciones no analizada: {type(e).__name__}: {e}")
+            else:
+                _deg(f"options.{tkr}", e)
             return None
+
+    def _analiza(tkr, spot_hint=None):
+        """v8.4.2: Yahoo primero (con pausa); si no da cadena, CBOE. Tras OPC_YAHOO_FALLOS_MAX fallos
+        seguidos en Yahoo, el resto del build va directo a CBOE para no gastar tiempo ni peticiones."""
+        m = None
+        if OPC_FUENTE["modo"] == "yahoo" and yf is not None:
+            try:
+                m = _analiza_tk(yf.Ticker(tkr), tkr, spot_hint, avisa=not OPC_CBOE_ON)
+            except Exception as _dege:
+                _deg("compute_options:yahoo", _dege)
+                m = None
+            time.sleep(OPC_YAHOO_PAUSA)
+            if m is not None:
+                OPC_FUENTE["yahoo"] += 1
+                OPC_FUENTE["fallos"] = 0
+                m["fuente"] = "Yahoo"
+                return m
+            OPC_FUENTE["fallos"] += 1
+            if OPC_CBOE_ON and OPC_FUENTE["fallos"] >= OPC_YAHOO_FALLOS_MAX:
+                OPC_FUENTE["modo"] = "cboe"
+                print(f"  OPTIONS DESK: Yahoo sin cadena en {OPC_FUENTE['fallos']} ETF seguidos -> el resto por CBOE")
+        if not OPC_CBOE_ON:
+            return None
+        tk = _cboe_ticker(tkr)
+        if tk is None:
+            return None
+        m = _analiza_tk(tk, tkr, spot_hint, avisa=True)
+        if m is not None:
+            OPC_FUENTE["cboe"] += 1
+            m["fuente"] = "CBOE"
+        return m
 
     out = {}
     _iv_descartadas = []   # se agrupan en UN solo aviso al final (evita inundar el panel de salud)
@@ -7200,7 +7331,8 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                      "maxpain": None, "mp_dist": None,        # el max pain de una accion no aplica al ETF
                      "spot": spot, "iliquido": False,
                      "dte_iv": hijos[0][1].get("dte_iv"),
-                     "n_exp_pcr": hijos[0][1].get("n_exp_pcr")}
+                     "n_exp_pcr": hijos[0][1].get("n_exp_pcr"),
+                     "fuente": hijos[0][1].get("fuente")}
                 proxy_lbl = "+".join(t for t, _ in hijos)
         # --- CLAMP DE IV: el campo impliedVolatility de Yahoo por strike es basura en pre-market o en
         #     strikes sin cruce (a veces 3-5% o 120-165% para ETFs de renta variable). Un rango fijo no
@@ -7260,7 +7392,7 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                   "spot": (round(m["spot"], 2) if m.get("spot") else None), "cmf": cmf,
                   "diverg": diverg, "iliquido": m["iliquido"], "proxy": proxy_lbl,
                   "dte_iv": m.get("dte_iv"), "vol_parcial": vol_parcial,
-                  "n_exp_pcr": m.get("n_exp_pcr")}
+                  "n_exp_pcr": m.get("n_exp_pcr"), "fuente": m.get("fuente")}
     # --- IV RANK REAL: se guarda la IV de cada ETF en cada ejecucion (historico propio) y, con >=10
     #     observaciones, se calcula el rank contra SU historia. El "IV pct" contra vol realizada sale
     #     inflado siempre (el seguro cotiza con prima de riesgo por naturaleza); el rank propio no. ---
@@ -7283,7 +7415,7 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                 continue
             serie = _hist.setdefault(s, {})
             serie[_hoyk] = {"iv": o.get("iv"), "dte": o.get("dte_iv"), "proxy": bool(o.get("proxy")),
-                            "skew": o.get("skew")}
+                            "skew": o.get("skew"), "src": o.get("fuente")}
             if len(serie) > 250:
                 for k in sorted(serie)[:len(serie) - 250]:
                     serie.pop(k, None)
@@ -7320,6 +7452,13 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
         _avisar("options.pcr", f"put/call fuera de banda plausible [0.29-3.5] en {len(_pcr_descartados)} ETF(s) "
                 f"— cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: {', '.join(_pcr_descartados[:12])}"
                 + (f" y {len(_pcr_descartados)-12} mas" if len(_pcr_descartados) > 12 else ""))
+    # v8.4.2 — de dónde salió cada cadena (si CBOE tuvo que entrar, que se vea en SALUD DEL BUILD)
+    _fy, _fc = OPC_FUENTE["yahoo"], OPC_FUENTE["cboe"]
+    print(f"  OPTIONS DESK: fuentes -> Yahoo {_fy} · CBOE {_fc}" + (f" · CBOE falló {OPC_FUENTE['cboe_err']}" if OPC_FUENTE["cboe_err"] else ""))
+    if _fc:
+        _avisar("options.fuente", f"Yahoo no dio cadena en todos los ETF: {_fc} por CBOE (retraso 15 min) y {_fy} por Yahoo", nivel="info")
+    if OPC_CBOE_ON and not out and OPC_FUENTE["cboe_err"]:
+        _avisar("options.cboe", f"CBOE tampoco respondió ({OPC_FUENTE['cboe_err']} fallos; último {OPC_FUENTE['cboe_ult_err']})")
     return out or None
 
 def _vd_card(v):
@@ -20455,11 +20594,20 @@ def muros_opciones(sym, venc, spot=None):
     """Muros del vencimiento mensual: el strike con más calls abiertas por encima del precio (techo
        que se suele citar), el de más puts por debajo (suelo), y el max pain. Interés abierto = el de
        ayer (Yahoo lo actualiza una vez al día)."""
-    if yf is None or not OPCIONES_ON:
+    if (yf is None and not OPC_CBOE_ON) or not OPCIONES_ON:
         return None
     try:
-        tk = yf.Ticker(sym)
-        exps = list(tk.options or [])
+        tk, exps = None, []
+        if yf is not None and OPC_FUENTE.get("modo") != "cboe":
+            try:
+                tk = yf.Ticker(sym)
+                exps = list(tk.options or [])
+            except Exception as _dege:
+                _deg("muros_opciones:yahoo", _dege)
+                exps = []
+        if not exps:                                   # v8.4.2: Yahoo sin cadena -> CBOE
+            tk = _cboe_ticker(sym)
+            exps = list(tk.options) if tk is not None else []
         if not exps:
             return None
         objetivo = str(venc)
@@ -20468,6 +20616,11 @@ def muros_opciones(sym, venc, spot=None):
         if e is None:
             return None
         ch = tk.option_chain(e)
+        if (ch.calls is None or not len(ch.calls)) and not isinstance(tk, _CboeTicker):   # v8.4.2
+            tk = _cboe_ticker(sym)
+            if tk is None:
+                return None
+            ch = tk.option_chain(e)
         calls = ch.calls[["strike", "openInterest"]].fillna(0)
         puts = ch.puts[["strike", "openInterest"]].fillna(0)
         if spot is None:
@@ -25173,7 +25326,7 @@ def main():
         _avisar("cobertura", f"panel de cobertura no disponible: {_e_cob}")
         _cobertura = None
     if _n_opt == 0:
-        _avisar("options", "OPTIONS DESK vacío: Yahoo no devolvió ninguna cadena (¿rate limit / sin conexión?); paneles de opciones ausentes este build")
+        _avisar("options", "OPTIONS DESK vacío: ni Yahoo ni CBOE devolvieron ninguna cadena (¿rate limit / sin conexión?); paneles de opciones ausentes este build")
     elif _n_opt < max(5, len(_uni_opt) // 3):
         _avisar("options", f"OPTIONS DESK parcial: solo {_n_opt}/{len(_uni_opt)} ETFs con cadena — posible rate limit de Yahoo a mitad de descarga")
     tau = calendario_tau()

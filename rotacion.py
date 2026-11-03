@@ -7426,7 +7426,11 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
             # formato nuevo: {"iv": x, "dte": n, "proxy": bool}; formato viejo: float suelto
             return (v.get("iv") if isinstance(v, dict) else v)
         for s, o in out.items():
-            if o.get("iv") is None and o.get("skew") is None:
+            # v8.4.2 — CORREGIDO: si la IV de hoy se descartó por no plausible (pasa mucho con la bolsa
+            # USA cerrada), el skew sale de la MISMA cadena rota: no se guarda ninguno de los dos.
+            # Antes se guardaba el skew solo y luego el rank hacía «v <= None» -> TypeError -> se
+            # abortaba el bloque entero y NO se grababa ningún ETF (options_iv.json parado desde el 28-oct).
+            if o.get("iv") is None:
                 continue
             serie = _hist.setdefault(s, {})
             serie[_hoyk] = {"iv": o.get("iv"), "dte": o.get("dte_iv"), "proxy": bool(o.get("proxy")),
@@ -7444,7 +7448,8 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                     and bool(v.get("proxy")) == bool(o.get("proxy"))
                     and (v.get("dte") is None or _dte0 is None or abs(v["dte"] - _dte0) <= 7)]
             vals = comp if len(comp) >= 10 else [x for x in (_iv_de(v) for k, v in serie.items() if k != _hoyk) if x is not None]
-            if len(vals) >= 10:
+            vals = [v for v in vals if isinstance(v, (int, float))]
+            if len(vals) >= 10 and isinstance(o.get("iv"), (int, float)):
                 o["iv_rank"] = int(round(100 * sum(1 for v in vals if v <= o["iv"]) / len(vals)))
                 o["iv_rank_comparable"] = bool(len(comp) >= 10)
         try:
@@ -23234,6 +23239,80 @@ def guardar_dix(dx):
         _deg("dix:guardar", _dege)
 
 
+# ======================================================================
+# v8.4.2 — HISTORIALES DE OPCIONES PARA ESTUDIAR SUELOS (DIX/GEX, VIX9D, VIX3M, VVIX, SKEW)
+#   Para probar si el pánico de opciones (VIX por encima del VIX a 3 meses, SKEW, VVIX) o los dark
+#   pools (DIX alto, GEX negativo) separan los suelos buenos del −5 % y del −10 % de los que siguen
+#   cayendo. Desde el entorno de análisis estos dominios están bloqueados; desde GitHub no.
+#   Se guardan los CSV TAL CUAL en historico_seguimiento_NO_BORRAR/historiales/, como mucho una vez
+#   cada HIST_OPC_DIAS días (no ensucian el repo cada noche). Solo guarda: no cambia ningún panel.
+# ======================================================================
+HIST_OPC_ON = True
+HIST_OPC_DIAS = 7
+HIST_OPC_FUENTES = {
+    "dix_gex.csv": DIX_URL,
+    "cboe_vix.csv": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+    "cboe_vix9d.csv": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX9D_History.csv",
+    "cboe_vix3m.csv": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX3M_History.csv",
+    "cboe_vvix.csv": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VVIX_History.csv",
+    "cboe_skew.csv": "https://cdn.cboe.com/api/global/us_indices/daily_prices/SKEW_History.csv",
+}
+
+
+def guardar_historiales_opciones(forzar=False):
+    """Descarga y guarda los historiales completos. Devuelve {archivo: 'ok N filas' | 'error ...' | 'al día'}."""
+    res = {}
+    if not HIST_OPC_ON or VIAJE_A:
+        return res
+    carpeta = os.path.join(SEGUIMIENTO_DIR, "historiales")
+    meta_f = os.path.join(carpeta, "_meta.json")
+    try:
+        os.makedirs(carpeta, exist_ok=True)
+        meta = {}
+        if os.path.exists(meta_f):
+            try:
+                with open(meta_f, "r", encoding="utf-8") as fh:
+                    meta = json.load(fh)
+            except Exception:
+                meta = {}
+        hoy = dt.date.today()
+        for nombre, url in HIST_OPC_FUENTES.items():
+            m = meta.get(nombre) or {}
+            ruta = os.path.join(carpeta, nombre)
+            try:
+                _ult = dt.date.fromisoformat(m.get("fecha", "1900-01-01"))
+            except Exception:
+                _ult = dt.date(1900, 1, 1)
+            if not forzar and os.path.exists(ruta) and (hoy - _ult).days < HIST_OPC_DIAS:
+                res[nombre] = "al día"
+                continue
+            try:
+                r = requests.get(url, timeout=30, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                  "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+                    "Accept": "text/csv,text/plain,*/*"})
+                txt = r.text if r.status_code == 200 else ""
+                lineas = [ln for ln in txt.splitlines() if ln.strip()]
+                if r.status_code != 200 or len(lineas) < 100 or not any("," in ln for ln in lineas[:5]) or "<html" in txt[:500].lower():
+                    raise RuntimeError(f"HTTP {r.status_code}, {len(lineas)} líneas")
+                with open(ruta + ".tmp", "w", encoding="utf-8", newline="") as fh:
+                    fh.write("\n".join(lineas) + "\n")
+                os.replace(ruta + ".tmp", ruta)
+                meta[nombre] = {"fecha": str(hoy), "filas": len(lineas) - 1, "url": url,
+                                "cabecera": lineas[0][:120], "ultima": lineas[-1][:120]}
+                res[nombre] = f"ok {len(lineas) - 1} filas"
+            except Exception as _e:
+                meta.setdefault(nombre, {})["error"] = f"{hoy}: {type(_e).__name__}: {str(_e)[:100]}"
+                res[nombre] = f"error {type(_e).__name__}: {str(_e)[:80]}"
+        guardar_json_seguro(meta_f, meta, indent=1)
+    except Exception as _dege:
+        _deg("historiales:guardar", _dege)
+    _mal = [f"{k} ({v})" for k, v in res.items() if v.startswith("error")]
+    if _mal:
+        _avisar("historiales", "historial no guardado: " + "; ".join(_mal), nivel="info")
+    return res
+
+
 def opciones_frescura():
     """v8.4.1: ¿se grabó hoy la volatilidad de las opciones? Devuelve (ok, ultima_fecha)."""
     try:
@@ -25585,6 +25664,12 @@ def main():
         guardar_dix(_dix)
     elif DIX_ON:
         print("  DIX (dark pools): sin respuesta de SqueezeMetrics — el terminal sigue sin él.")
+    try:                                   # v8.4.2 — historiales para el estudio de suelos (1 vez por semana)
+        _hres = guardar_historiales_opciones()
+        if _hres:
+            print("  Historiales opciones/DIX: " + " · ".join(f"{k}: {v}" for k, v in _hres.items()))
+    except Exception as _e_hist:
+        _avisar("historiales", f"historiales no guardados: {_e_hist}", nivel="info")
     _centinela = None
     try:
         _centinela = compute_centinela(df, rrg, flow, _suelo, dix=_dix, plan=plan)

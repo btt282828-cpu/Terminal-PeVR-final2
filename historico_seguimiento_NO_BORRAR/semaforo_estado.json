@@ -1,0 +1,89 @@
+{
+"etf": {
+"SPY": {
+"activo": false
+},
+"RSP": {
+"activo": true,
+"inicio": "2026-09-23",
+"pico": 222.6,
+"tocados": {
+"5": {
+"fecha": "2026-09-23",
+"px": 211.31,
+"av": null,
+"agudo": null,
+"tamano": "(antes de instalar el semáforo)"
+}
+}
+},
+"DIA": {
+"activo": true,
+"inicio": "2026-09-16",
+"pico": 544.92,
+"tocados": {
+"5": {
+"fecha": "2026-09-16",
+"px": 513.92,
+"av": null,
+"agudo": null,
+"tamano": "(antes de instalar el semáforo)"
+}
+}
+},
+"QQQ": {
+"activo": true,
+"inicio": "2026-11-02",
+"pico": 762.86,
+"tocados": {
+"10": {
+"fecha": "2026-11-02",
+"px": 681.09,
+"av": 0,
+"agudo": false,
+"nl": 2.5,
+"vix": 21.15,
+"tamano": "tramo completo (1R)"
+}
+}
+},
+"IWM": {
+"activo": true,
+"inicio": "2026-10-14",
+"pico": 304.39,
+"tocados": {
+"10": {
+"fecha": "2026-10-14",
+"px": 271.37,
+"av": null,
+"agudo": null,
+"tamano": "(antes de instalar el semáforo)"
+}
+}
+},
+"MAGS": {
+"activo": false
+}
+},
+"log": [
+{
+"date": "2026-11-02",
+"nl": 2.54,
+"vix": 21.15,
+"t9": 1.062,
+"t3": 0.979,
+"rel_pico": 1.0,
+"av": 0,
+"agudo": false,
+"dd": {
+"SPY": -3.78,
+"RSP": -1.18,
+"DIA": -4.69,
+"QQQ": -10.72,
+"IWM": -8.29,
+"MAGS": -8.81
+}
+}
+],
+"ultimo": "2026-11-02"
+}

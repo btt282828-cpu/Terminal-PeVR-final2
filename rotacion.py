@@ -6981,11 +6981,23 @@ class _CboeTicker:
         from collections import namedtuple as _nt
         self.sym = sym
         self._Chain = _nt("Chain", "calls puts underlying")
-        r = requests.get(OPC_CBOE_URL.format(sym=str(sym).upper().replace(".", "/")), timeout=25,
-                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                                  "Accept": "application/json"})
-        if r.status_code != 200:
-            raise RuntimeError(f"CBOE HTTP {r.status_code}")
+        r = None
+        for _intento in range(2):                     # un reintento si CBOE da error de servidor o de red
+            try:
+                r = requests.get(OPC_CBOE_URL.format(sym=str(sym).upper().replace(".", "/")), timeout=25,
+                                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                                        "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+                                          "Accept": "application/json"})
+            except Exception:
+                if _intento:
+                    raise
+                time.sleep(1.5)
+                continue
+            if r.status_code < 500:
+                break
+            time.sleep(1.5)
+        if r is None or r.status_code != 200:
+            raise RuntimeError(f"CBOE HTTP {getattr(r, 'status_code', '?')}")
         d = (r.json() or {}).get("data") or {}
         filas = d.get("options") or []
         if not filas:
@@ -7056,7 +7068,8 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
     v8.4.2: si Yahoo no da cadena, la toma de CBOE (ver _CboeTicker)."""
     if yf is None and not OPC_CBOE_ON:
         return None
-    OPC_FUENTE.update({"yahoo": 0, "cboe": 0, "fallos": 0, "modo": ("yahoo" if yf is not None else "cboe")})
+    OPC_FUENTE.update({"yahoo": 0, "cboe": 0, "fallos": 0, "modo": ("yahoo" if yf is not None else "cboe"),
+                       "yahoo_sin": 0, "yahoo_ult_err": "", "cboe_err": 0, "cboe_ult_err": "", "corrio": True})
     hoy = pd.Timestamp.today().normalize()
     flow = flow or {}
     # --- FASE DE SESION: el campo 'volume' de Yahoo se resetea cada dia. Un build antes o durante la
@@ -7265,6 +7278,7 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                 _avisar(f"options.{tkr}", f"cadena de opciones no analizada: {type(e).__name__}: {e}")
             else:
                 _deg(f"options.{tkr}", e)
+                OPC_FUENTE["yahoo_ult_err"] = f"{tkr}: {type(e).__name__}: {str(e)[:90]}"
             return None
 
     def _analiza(tkr, spot_hint=None):
@@ -7284,6 +7298,7 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
                 m["fuente"] = "Yahoo"
                 return m
             OPC_FUENTE["fallos"] += 1
+            OPC_FUENTE["yahoo_sin"] = OPC_FUENTE.get("yahoo_sin", 0) + 1
             if OPC_CBOE_ON and OPC_FUENTE["fallos"] >= OPC_YAHOO_FALLOS_MAX:
                 OPC_FUENTE["modo"] = "cboe"
                 print(f"  OPTIONS DESK: Yahoo sin cadena en {OPC_FUENTE['fallos']} ETF seguidos -> el resto por CBOE")
@@ -7459,6 +7474,8 @@ def compute_options(symbols, flow=None, daily=None, max_syms=40):
         _avisar("options.fuente", f"Yahoo no dio cadena en todos los ETF: {_fc} por CBOE (retraso 15 min) y {_fy} por Yahoo", nivel="info")
     if OPC_CBOE_ON and not out and OPC_FUENTE["cboe_err"]:
         _avisar("options.cboe", f"CBOE tampoco respondió ({OPC_FUENTE['cboe_err']} fallos; último {OPC_FUENTE['cboe_ult_err']})")
+    if OPC_FUENTE.get("yahoo_ult_err") and _fc:
+        _avisar("options.yahoo", f"Yahoo sin cadena en {OPC_FUENTE.get('yahoo_sin', 0)} ETF; último error: {OPC_FUENTE['yahoo_ult_err']}", nivel="info")
     return out or None
 
 def _vd_card(v):
@@ -25930,6 +25947,26 @@ def main():
         print(f"Version publica (lite): {_lp}  [{len(_lite) // 1024} KB]")
     except Exception as _e_lite:
         _avisar("lite", f"version publica no generada: {_e_lite}")
+
+    # --- v8.4.2 — SALUD DEL BUILD Y FUENTES DE OPCIONES AL HISTÓRICO --------
+    # El panel solo se veía en la web. Ahora cada ejecución deja su resumen en el repo
+    # (salud_build.json, últimas 60) para poder revisar un build sin abrir los logs de Actions.
+    try:
+        _sf = os.path.join(SEGUIMIENTO_DIR, "salud_build.json")
+        _sr = []
+        if os.path.exists(_sf):
+            try:
+                with open(_sf, "r", encoding="utf-8") as _fh:
+                    _sr = json.load(_fh)
+            except Exception:
+                _sr = []
+        _sr.append({"ts": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+                    "opciones": {k: OPC_FUENTE.get(k) for k in ("corrio", "yahoo", "yahoo_sin", "yahoo_ult_err", "cboe",
+                                                              "cboe_err", "cboe_ult_err", "modo")},
+                    "avisos": [{"o": _o, "m": _t, "n": _n} for _o, _t, _n in SALUD_BUILD[:80]]})
+        guardar_json_seguro(_sf, _sr[-60:], indent=0)
+    except Exception as _e_sbj:
+        _deg("salud_build:guardar", _e_sbj)
 
     # --- EL TERMINAL MANDA EN LA RAIZ (v4.1) -------------------------------
     # Antes la raiz del sitio la ocupaba la pagina publica de La Estela, que

@@ -63,5 +63,60 @@
 "n": 1
 }
 ]
+},
+{
+"ts": "2026-11-03 09:40 UTC",
+"opciones": {
+"corrio": true,
+"yahoo": 71,
+"yahoo_sin": 1,
+"yahoo_ult_err": "",
+"cboe": 1,
+"cboe_err": 0,
+"cboe_ult_err": "",
+"modo": "yahoo"
+},
+"avisos": [
+{
+"o": "datos.DRAM",
+"m": "ETF joven: 32 semanas de 85 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "datos.NCLD",
+"m": "ETF joven: 14 semanas de 85 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "options",
+"m": "build a las 04:32 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre",
+"n": 1
+},
+{
+"o": "options.iv",
+"m": "IV descartada por no plausible en 43 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): SPY 3%/11r, TAN 143%/34r, ARKK 5%/42r, QTUM 5%/35r, SMH 4%/42r, SOXX 4%/50r",
+"n": 1
+},
+{
+"o": "options.pcr",
+"m": "put/call fuera de banda plausible [0.29-3.5] en 1 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: XME (OI 4.39)",
+"n": 1
+},
+{
+"o": "options.fuente",
+"m": "Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 71 por Yahoo",
+"n": 1
+},
+{
+"o": "acciones",
+"m": "6 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
+"n": 1
+},
+{
+"o": "valida.CL=F",
+"m": "yahoo: cierres <= 0 o serie vacia — fuente descartada, se prueba la siguiente",
+"n": 1
+}
+]
 }
 ]

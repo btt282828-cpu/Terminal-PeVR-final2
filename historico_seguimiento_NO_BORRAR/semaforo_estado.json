@@ -4,18 +4,7 @@
 "activo": false
 },
 "RSP": {
-"activo": true,
-"inicio": "2026-09-23",
-"pico": 222.6,
-"tocados": {
-"5": {
-"fecha": "2026-09-23",
-"px": 211.31,
-"av": null,
-"agudo": null,
-"tamano": "(antes de instalar el semáforo)"
-}
-}
+"activo": false
 },
 "DIA": {
 "activo": true,
@@ -101,7 +90,25 @@
 "IWM": -8.08,
 "MAGS": -8.07
 }
+},
+{
+"date": "2026-11-04",
+"nl": 2.54,
+"vix": 16.61,
+"t9": 0.915,
+"t3": 0.884,
+"rel_pico": 0.785,
+"av": 0,
+"agudo": false,
+"dd": {
+"SPY": -1.89,
+"RSP": -0.08,
+"DIA": -2.17,
+"QQQ": -9.3,
+"IWM": -6.69,
+"MAGS": -6.01
+}
 }
 ],
-"ultimo": "2026-11-03"
+"ultimo": "2026-11-04"
 }

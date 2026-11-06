@@ -1164,5 +1164,83 @@
 }
 },
 "sat": "LIQUIDEZ"
+},
+{
+"date": "2026-11-05",
+"idx": {
+"SPY": {
+"score": 4,
+"ver": "ESPERAR",
+"p": [
+"a",
+"r",
+"a",
+"r",
+"v"
+],
+"px": 733.0
+},
+"QQQ": {
+"score": 1,
+"ver": "NO TOCAR",
+"p": [
+"r",
+"r",
+"r",
+"r",
+"a"
+],
+"px": 647.05
+},
+"DIA": {
+"score": 5,
+"ver": "ESPERAR",
+"p": [
+"a",
+"r",
+"a",
+"a",
+"v"
+],
+"px": 514.27
+},
+"IWM": {
+"score": 2,
+"ver": "NO TOCAR",
+"p": [
+"r",
+"r",
+"r",
+"a",
+"a"
+],
+"px": 270.98
+},
+"RSP": {
+"score": 10,
+"ver": "ESPERAR",
+"p": [
+"v",
+"v",
+"v",
+"v",
+"v"
+],
+"px": 216.87
+},
+"MAGS": {
+"score": 4,
+"ver": "ESPERAR",
+"p": [
+"a",
+"r",
+"r",
+"v",
+"a"
+],
+"px": 66.85
+}
+},
+"sat": "LIQUIDEZ"
 }
 ]

@@ -1,7 +1,20 @@
 {
 "etf": {
 "SPY": {
-"activo": false
+"activo": true,
+"inicio": "2026-11-05",
+"pico": 781.62,
+"tocados": {
+"5": {
+"fecha": "2026-11-05",
+"px": 733.0,
+"av": 2,
+"agudo": true,
+"nl": 5.2,
+"vix": 28.18,
+"tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
+}
+}
 },
 "RSP": {
 "activo": false
@@ -51,7 +64,20 @@
 }
 },
 "MAGS": {
-"activo": false
+"activo": true,
+"inicio": "2026-11-05",
+"pico": 74.78,
+"tocados": {
+"10": {
+"fecha": "2026-11-05",
+"px": 66.85,
+"av": 2,
+"agudo": true,
+"nl": 5.2,
+"vix": 28.18,
+"tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
+}
+}
 }
 },
 "log": [
@@ -108,7 +134,25 @@
 "IWM": -6.69,
 "MAGS": -6.01
 }
+},
+{
+"date": "2026-11-05",
+"nl": 5.24,
+"vix": 28.18,
+"t9": 1.159,
+"t3": 1.103,
+"rel_pico": 1.0,
+"av": 2,
+"agudo": true,
+"dd": {
+"SPY": -6.22,
+"RSP": -3.27,
+"DIA": -5.62,
+"QQQ": -15.18,
+"IWM": -10.97,
+"MAGS": -10.6
+}
 }
 ],
-"ultimo": "2026-11-04"
+"ultimo": "2026-11-05"
 }

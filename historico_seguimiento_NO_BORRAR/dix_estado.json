@@ -30,5 +30,13 @@
 "pct": 4,
 "gex": 5456160875.27001,
 "senal": "neutro"
+},
+{
+"date": "2026-11-05",
+"dix": 37.9,
+"m5": 40.9,
+"pct": 0,
+"gex": 1844749552.5200007,
+"senal": "compra dark pool débil (sin red)"
 }
 ]

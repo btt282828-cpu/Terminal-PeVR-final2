@@ -5734,5 +5734,185 @@
 "tag": "EARLY",
 "sym": "ITA",
 "dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": 0
+},
+{
+"date": "2026-11-05",
+"tag": "CLÍMAX",
+"sym": "XRT",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "CLÍMAX",
+"sym": "EWG",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "CLÍMAX",
+"sym": "JETS",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "CAPITUL",
+"sym": "EWJ",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "CAPITUL",
+"sym": "PAVE",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "CAPITUL",
+"sym": "IWM",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "PLAN SPY",
+"sym": "SPY",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "NIVEL",
+"sym": "SPY",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "NIVEL",
+"sym": "MAGS",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "PÁNICO",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "NOCTURNO",
+"sym": "VGK",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "GRADUADO",
+"sym": "ITA",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "GRADUADO",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "GRADUADO",
+"sym": "INDA",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "GRADUADO",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "GIRO",
+"sym": "KWEB",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "GIRO",
+"sym": "REMX",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "GIRO",
+"sym": "GDX",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "FLOW",
+"sym": "MOO",
+"dir": -1
+},
+{
+"date": "2026-11-05",
+"tag": "0/3",
+"sym": "JETS",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "0/3",
+"sym": "FXI",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "0/3",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "SUELO",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "SUELO",
+"sym": "JETS",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "SUELO",
+"sym": "FXI",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "EARLY",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "EARLY",
+"sym": "XLY",
+"dir": 1
+},
+{
+"date": "2026-11-05",
+"tag": "SENT",
+"sym": "F&G",
+"dir": 1
 }
 ]

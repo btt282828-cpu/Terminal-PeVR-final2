@@ -1,0 +1,53 @@
+{
+ "caidas": {
+  "fecha": "2026-11-06",
+  "dd": {
+   "SPY": -5.93,
+   "RSP": -3.64,
+   "DIA": -6.0,
+   "QQQ": -13.99,
+   "IWM": -10.09,
+   "MAGS": -9.69
+  },
+  "vix": 25.64,
+  "agudo": false,
+  "en_minimos": 1.35
+ },
+ "indices": {
+  "SPY": [
+   "NO TOCAR",
+   3
+  ],
+  "QQQ": [
+   "NO TOCAR",
+   1
+  ],
+  "DIA": [
+   "ESPERAR",
+   5
+  ],
+  "IWM": [
+   "NO TOCAR",
+   2
+  ],
+  "RSP": [
+   "ESPERAR",
+   8
+  ],
+  "MAGS": [
+   "ESPERAR",
+   4
+  ]
+ },
+ "dinero": {
+  "lectura": "MIXTO",
+  "sect_entra": 2,
+  "sect_sale": 2,
+  "empuje": false,
+  "extrema": false
+ },
+ "centinela": "ACECHO",
+ "plan_spy": [
+  "5"
+ ]
+}

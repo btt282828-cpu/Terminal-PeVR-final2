@@ -16,7 +16,7 @@ Estados: EN COLA · EN CURSO · DESCARTADA · CANDIDATA PARA OBSERVAR · SOLO OB
 - La confirma: A gana a B en aprender (≤2018) y en comprobar (2019-2022), con t > 2 contando episodios.
 - La tumba: diferencia < 1 punto o de signo distinto en los dos trozos.
 - Variantes máximas: 3 (VIX ≥ 20, ≥ 25, ≥ 30).
-- Estado: EN COLA.
+- Estado: DESCARTADA (6-nov-2026). Ver estudios/i002.md: en aprender dif −0,9 pts, en comprobar −5,6 pts; caja sin abrir.
 
 ## I-003 · Detector de semis (especificación pendiente de Pe)
 - De dónde sale: idea de Pe para la mesa de SEMIS.

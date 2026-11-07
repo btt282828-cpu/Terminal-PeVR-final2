@@ -13,7 +13,7 @@
 - (30-oct) Incoherencia pendiente de que Pe decida: en `_op_veredicto`, ACECHO bloquea más que DISTRIBUCIÓN.
 
 ## Trabajo a medias
-- Nada todavía.
+- 6-nov: I-002 probada y descartada. Siguiente en cola: I-003 (semis; contexto, pendiente de especificación de Pe).
 
 ## Qué ha decidido Pe
 - Quiere el informe todos los días, al terminar la terminal.

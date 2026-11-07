@@ -1,0 +1,253 @@
+name: Agente companero
+# Cuando se ejecuta:
+#   - solo, cada vez que TERMINA la terminal ("Terminal PeVR"), haya ido bien o mal.
+#     Si esa ejecucion de la terminal era la cita sobrante del cambio de hora (no hizo nada),
+#     el agente tampoco hace nada.
+#   - a mano, desde la pestana Actions (boton "Run workflow"), para probarlo.
+on:
+  workflow_run:
+    workflows: ["Terminal PeVR"]
+    types: [completed]
+  workflow_dispatch:
+
+# Lo que puede hacer la maquina: guardar la carpeta agente/ y leer como fue la terminal.
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: agente
+  cancel-in-progress: false
+
+env:
+  # ── LO UNICO QUE PUEDES TOCAR ─────────────────────────────────────────────
+  # "no" = version GRATIS: vigilante + marcador + resumen del dia, sin IA (no hace falta clave).
+  # "si" = ademas entra la IA (tu compañero). Necesita UNO de estos secretos:
+  #        ANTHROPIC_API_KEY (pago por uso, aparte)  o  CLAUDE_CODE_OAUTH_TOKEN (tu suscripcion de Claude).
+  USAR_IA: "si"
+  # Lunes a jueves: repaso corto (vigilante, marcador, lectura y "lo que se te pasa"), SIN investigar.
+  # Viernes (la noche del viernes): repaso + investigacion de verdad.
+  # Frenos para no comerse tu plan: maximo de pasos del agente (y, solo si usas clave de pago, gasto maximo en dolares).
+  TURNOS_DIA: "25"
+  TURNOS_VIERNES: "60"
+  TOPE_DIA: "0.60"
+  TOPE_VIERNES: "2.50"
+  # Modelo: "sonnet" (recomendado, gasta menos del plan) u "opus" (mas listo, gasta bastante mas).
+  MODELO: "sonnet"
+  # ─────────────────────────────────────────────────────────────────────────
+
+jobs:
+  agente:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Ha trabajado de verdad la terminal?
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENTO" != "workflow_run" ]; then
+            echo "Lanzado a mano: se ejecuta."
+            echo "toca=si" >> "$GITHUB_OUTPUT"
+            echo "build=lanzado a mano" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          estado=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --jq '.jobs[] | select(.name=="build") | .conclusion' | head -1)
+          echo "Trabajo 'build' de la terminal: '$estado'"
+          if [ -z "$estado" ] || [ "$estado" = "skipped" ]; then
+            echo "Era la cita sobrante del cambio de hora: el agente no hace nada."
+            echo "toca=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "toca=si" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build=$estado" >> "$GITHUB_OUTPUT"
+
+      - name: Descargar el repositorio
+        if: steps.decide.outputs.toca == 'si'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 30
+          # El agente NO recibe permiso para subir nada: lo sube la maquina al final.
+          persist-credentials: false
+
+      - name: Limpiar lo de ayer
+        if: steps.decide.outputs.toca == 'si'
+        # Para que el agente nunca lea datos o errores de otro dia.
+        run: rm -rf agente/hoy agente/telegram.txt && mkdir -p agente/hoy
+
+      - name: Si la terminal fallo, guardar su error para el agente
+        if: steps.decide.outputs.toca == 'si' && steps.decide.outputs.build != 'success' && github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p agente/hoy
+          gh run view "$RUN_ID" --repo "${{ github.repository }}" --log-failed 2>&1 | tail -300 > agente/hoy/log_fallo.txt || true
+          echo "Guardadas $(wc -l < agente/hoy/log_fallo.txt) lineas del error."
+
+      - name: Preparar Python
+        if: steps.decide.outputs.toca == 'si'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Vigilante y marcador (sin IA)
+        if: steps.decide.outputs.toca == 'si'
+        continue-on-error: true
+        run: |
+          pip install -q pandas numpy yfinance
+          python agente/preparar.py
+
+      - name: Fecha de mercado
+        id: fecha
+        if: steps.decide.outputs.toca == 'si'
+        run: |
+          FECHA=$(python -c "import json;print(json.load(open('agente/hoy/vigilante.json'))['fecha_mercado_esperada'])" 2>/dev/null || TZ=Europe/Madrid date +%F)
+          echo "Fecha de mercado: $FECHA"
+          echo "fecha=$FECHA" >> "$GITHUB_OUTPUT"
+
+      - name: Guardar el resumen del dia (version sin IA)
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA != 'si'
+        env:
+          FECHA: ${{ steps.fecha.outputs.fecha }}
+        run: |
+          mkdir -p agente/informes
+          if [ -f agente/hoy/resumen.md ]; then
+            { cat agente/hoy/telegram_sin_ia.txt 2>/dev/null; echo; echo; cat agente/hoy/resumen.md; } > "agente/informes/$FECHA.md"
+          fi
+
+      - name: Instalar Claude Code
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si'
+        run: |
+          for _ in 1 2 3; do
+            curl -fsSL https://claude.ai/install.sh | bash && break
+            echo "Fallo la instalacion, reintento..."; sleep 10
+          done
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Trabajo del agente
+        id: agente
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si'
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          # Vale cualquiera de las dos: clave de pago por uso (API) o tu suscripcion de Claude.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ESTADO_BUILD: ${{ steps.decide.outputs.build }}
+          FECHA: ${{ steps.fecha.outputs.fecha }}
+        run: |
+          [ -z "$ANTHROPIC_API_KEY" ] && unset ANTHROPIC_API_KEY
+          [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] && unset CLAUDE_CODE_OAUTH_TOKEN
+          if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+            echo "FALTA la clave: crea el secreto ANTHROPIC_API_KEY o CLAUDE_CODE_OAUTH_TOKEN (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          mkdir -p agente/informes agente/estudios /tmp/agente
+          if [ "$(date -d "$FECHA" +%u)" = "5" ]; then
+            MODO="SEMANAL (repaso completo + investigacion)"; TURNOS="$TURNOS_VIERNES"; TOPE="$TOPE_VIERNES"
+          else
+            MODO="DIARIO (repaso corto, SIN investigar)"; TURNOS="$TURNOS_DIA"; TOPE="$TOPE_DIA"
+          fi
+          echo "Modo: $MODO · maximo $TURNOS pasos"
+          # El tope en dolares solo se aplica con clave de pago; con suscripcion frena el numero de pasos.
+          extra=()
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then extra=(--max-budget-usd "$TOPE"); echo "Tope de gasto: $TOPE \$"; fi
+          codigo=0
+          claude -p "Buenos dias. Fecha de mercado: $FECHA ($(LC_ALL=C date -d "$FECHA" +%A)). Hora de Madrid ahora: $(TZ=Europe/Madrid date '+%H:%M'). Resultado de la terminal anoche: $ESTADO_BUILD. MODO DE HOY: $MODO. Tienes como mucho $TURNOS pasos: escribe el informe pronto. Haz tu rutina tal y como dice tu manual. Escribe el informe en agente/informes/$FECHA.md y el mensaje en agente/telegram.txt." \
+            --append-system-prompt "$(cat agente/INSTRUCCIONES.md)" \
+            --model "$MODELO" \
+            --max-turns "$TURNOS" \
+            "${extra[@]}" \
+            --dangerously-skip-permissions \
+            --output-format text > /tmp/salida_agente.txt 2>&1 || codigo=$?
+          echo "---- ultimas lineas del agente ----"
+          tail -40 /tmp/salida_agente.txt
+          exit $codigo
+
+      - name: Guardar solo la carpeta agente/ (la correa)
+        id: guardar
+        if: steps.decide.outputs.toca == 'si'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FECHA: ${{ steps.fecha.outputs.fecha }}
+        run: |
+          set -e
+          # 1) Todo lo que el agente haya tocado FUERA de agente/ se deshace.
+          git checkout -- . ':(exclude)agente' 2>/dev/null || true
+          git clean -fdq -e agente/ || true
+          # 2) Su manual, su script y las notas de Pe tampoco los puede cambiar.
+          for f in agente/INSTRUCCIONES.md agente/preparar.py agente/notas_de_pe.md agente/.gitignore; do
+            git checkout -- "$f" 2>/dev/null || true
+          done
+          # 3) Nada de archivos grandes.
+          find agente -type f -size +2M -print -delete || true
+          git config user.name "agente-companero"
+          git config user.email "github-actions@github.com"
+          git add agente
+          if git diff --staged --quiet; then
+            echo "El agente no ha cambiado nada."
+            exit 0
+          fi
+          git commit -q -m "agente ${FECHA:-$(date -u +%F)}"
+          url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          for _ in 1 2 3; do
+            if git pull -q --rebase "$url" main && git push -q "$url" HEAD:main; then
+              echo "Guardado."
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 15
+          done
+          echo "No se pudo guardar tras 3 intentos."
+          exit 1
+
+      - name: Avisar por Telegram
+        if: always() && steps.decide.outputs.toca == 'si'
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FECHA: ${{ steps.fecha.outputs.fecha }}
+          RESULTADO_AGENTE: ${{ steps.agente.outcome }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$CHAT" ]; then
+            echo "Telegram no configurado: el informe queda en agente/informes/ del repositorio."
+            exit 0
+          fi
+          python - <<'EOF'
+          import json, os, pathlib
+          fecha = os.environ.get("FECHA") or ""
+          p = pathlib.Path("agente/telegram.txt")
+          sin_ia = pathlib.Path("agente/hoy/telegram_sin_ia.txt")
+          con_ia = os.environ.get("USAR_IA") == "si"
+          if con_ia and p.exists() and p.read_text(encoding="utf-8").strip():
+              texto = p.read_text(encoding="utf-8").strip()
+              if os.environ.get("RESULTADO_AGENTE") != "success":
+                  texto += "\n\n(El agente no terminó del todo hoy: tope de gasto o error. Esto es lo que llegó a escribir.)"
+          elif sin_ia.exists() and sin_ia.read_text(encoding="utf-8").strip():
+              texto = sin_ia.read_text(encoding="utf-8").strip()
+              if con_ia:
+                  texto += "\n\n(Hoy la IA no ha podido trabajar: falta la clave, tope de gasto o error. Este es el resumen sin IA.)"
+          else:
+              texto = "🤖 Compañero · " + fecha + "\n⚠️ Hoy no se ha podido preparar el resumen. Datos del vigilante:\n"
+              try:
+                  v = json.load(open("agente/hoy/vigilante.json", encoding="utf-8"))
+                  for icono, k in (("🔴", "rojo"), ("🟠", "ambar"), ("🟢", "verde")):
+                      for x in v.get(k, [])[:4]:
+                          texto += icono + " " + x[:200] + "\n"
+              except Exception as e:
+                  texto += "Tampoco hay datos del vigilante (" + type(e).__name__ + ")."
+          if fecha and pathlib.Path("agente/informes/" + fecha + ".md").exists():
+              texto += "\n\nInforme completo: https://github.com/" + os.environ["REPO"] + "/blob/main/agente/informes/" + fecha + ".md"
+          pathlib.Path("/tmp/tg.txt").write_text(texto[:3900], encoding="utf-8")
+          EOF
+          curl -sS -o /tmp/tg_respuesta.json -w "Telegram HTTP %{http_code}\n" \
+            -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text@/tmp/tg.txt" \
+            -d "disable_web_page_preview=true"

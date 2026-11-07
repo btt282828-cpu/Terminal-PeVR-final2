@@ -5704,5 +5704,37 @@
 "deuda": 37474000896.0,
 "caja": 34000000.0,
 "ebitda": 5920000000.0
+},
+"TEAM": {
+"fecha": "2026-11-07",
+"nom": "Atlassian Corporation",
+"sector": "Technology",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 38902370304.0,
+"fcf": 2026821504.0,
+"per": 465.69693,
+"per_f": 22.89644,
+"margen": 0.01284,
+"deuda": 1226968064.0,
+"caja": 1120504064.0,
+"ebitda": 736844032.0
+},
+"AR": {
+"fecha": "2026-11-07",
+"nom": "Antero Resources Corporation",
+"sector": "Energy",
+"fcur": "USD",
+"cur": "USD",
+"moneda_ok": true,
+"mc": 11081467904.0,
+"fcf": 262193248.0,
+"per": 8.14447,
+"per_f": 7.8838234,
+"margen": 0.22984,
+"deuda": 4652964864.0,
+"caja": null,
+"ebitda": 2631474944.0
 }
 }

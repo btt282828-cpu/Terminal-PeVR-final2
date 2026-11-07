@@ -16089,7 +16089,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             for _xw in (_smw.get("salidas") or []):
                 _wadd("#2FD08A", "SALIDA", f"{_xw['sym']} recupera su máximo ({_xw['px']:.2f}): vende sus tramos", _xw["sym"], 1)
             if "se_va" in (_smw.get("eventos") or []):
-                _wadd("#2FD08A", "SE VA EL PÁNICO", "El VIX vuelve por debajo del VIX a 3 meses: compra la ½ de reserva guardada", "MERCADO", 1)
+                _wadd("#2FD08A", "SE VA EL PÁNICO", "El VIX vuelve por debajo del VIX a 3 meses: compra la ½ de reserva guardada en los ETF donde la guardaste", "MERCADO", 1)
             if "rendicion" in (_smw.get("eventos") or []):
                 _wadd("#2FD08A", "RENDICIÓN", "Rendición total (mínimos, sectores y VIX invertido): así llegaron las V de 2018, 2020 y 2025", "MERCADO", 1)
             if _smw.get("agudo"):
@@ -23503,6 +23503,20 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
         if not hay_caida:
             mer = {}
         else:
+            # v8.4.2b — Si la memoria del mercado está vacía (primera noche del detector, o se perdió), el pánico de
+            # la caída en curso se reconstruye con el registro diario (log), desde que empezó la caída y sin hoy.
+            # Sin esto, un pánico anterior a la primera noche no se recuerda y «SE VA EL PÁNICO» no saltaría nunca.
+            if not mer.get("panico_desde"):
+                _ini = min((f["inicio"] for f in filas if f.get("activo") and f.get("inicio")), default=None)
+                if _ini:
+                    for _r in sorted(st.get("log") or [], key=lambda r: r.get("date") or ""):
+                        _d, _t = _r.get("date"), _r.get("t3")
+                        if not _d or _t is None or _d < _ini or (fecha_ref and _d >= fecha_ref):
+                            continue
+                        if _t >= SEM_PAN_EST and (not mer.get("panico_desde") or mer.get("panico_se_fue")):
+                            mer["panico_desde"], mer["panico_se_fue"] = _d, None
+                        elif mer.get("panico_desde") and not mer.get("panico_se_fue") and _t < SEM_PAN_FUERA:
+                            mer["panico_se_fue"] = _d
             if t3 is not None and t3 >= SEM_PAN_EST and (not mer.get("panico_desde") or mer.get("panico_se_fue")):
                 mer["panico_desde"] = fecha_ref
                 mer["panico_se_fue"] = None
@@ -23536,12 +23550,30 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
         out = {"fecha": fecha_ref, "nl": nl, "vix": vix, "av": av, "avisos": (a1, a2), "panico": pan,
                "agudo": agudo, "frac": frac, "tamano": txt, "filas": filas, "nuevos": nuevos, "salidas": salidas,
                "mercado": mer, "panico_vivo": panico_vivo, "eventos": eventos, "rendicion": rend}
+        out["con_reserva"] = [f["sym"] for f in filas if _det_con_reserva(f)]
         for f in filas:
             f["que"] = _det_que_hacer(f, out)
         return out
     except Exception as _dege:
         _deg("semaforo", _dege)
         return None
+
+
+def _det_frac_toc(t):
+    """v8.4.2b — Qué parte del tramo se compró al tocar un nivel (1 = completo). Los toques grabados por versiones
+    anteriores no guardan 'frac': se deduce del texto del tamaño (¼R / ½R)."""
+    try:
+        if t.get("frac") is not None:
+            return float(t["frac"])
+        tx = str(t.get("tamano") or "")
+        return 0.25 if "¼" in tx else (0.5 if "½" in tx else 1.0)
+    except Exception:
+        return 1.0
+
+
+def _det_con_reserva(f):
+    """v8.4.2b — True si en esta caída algún nivel se compró pequeño (por pánico o semáforo) y quedó reserva guardada."""
+    return bool(f.get("activo")) and any(n.get("toc") and _det_frac_toc(n["toc"]) < 1 for n in f.get("niveles") or [])
 
 
 def _det_que_hacer(f, s):
@@ -23571,11 +23603,18 @@ def _det_que_hacer(f, s):
         prox = next((n for n in f["niveles"] if not n["toc"]), None)
         if rend_aqui:
             pass
-        elif s.get("panico_vivo"):
+        elif s.get("panico_vivo") and _det_con_reserva(f):
             lin.append("Hay pánico: guarda la reserva. " + (f"<b>½ cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0) y <b>½ en el siguiente nivel (−{prox['niv']:g}% en {prox['px']:.2f})</b>."
                                                           if prox else "Lo que te quede, <b>cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0)."))
-        elif "se_va" in (s.get("eventos") or []):
+        elif s.get("panico_vivo"):
+            lin.append("Hay pánico, pero en este ETF no tienes reserva guardada (compraste tramo completo o aún no tocó nivel). "
+                       + (f"Si toca el siguiente nivel (−{prox['niv']:g}% en {prox['px']:.2f}) con pánico, compra pequeño y guarda el resto."
+                          if prox else "Mantener hasta que recupere su máximo."))
+        elif "se_va" in (s.get("eventos") or []) and _det_con_reserva(f):
             lin.append("<b style='color:#2FD08A'>HOY SE VA EL PÁNICO → compra la ½ de reserva guardada para este ETF.</b>")
+        elif "se_va" in (s.get("eventos") or []):
+            lin.append("Hoy se va el pánico, pero en este ETF no tienes reserva guardada: no hay que comprar nada extra. "
+                       + (f"Siguiente tramo: −{prox['niv']:g}% en {prox['px']:.2f}." if prox else ""))
         elif prox:
             lin.append(f"Siguiente tramo: −{prox['niv']:g}% en {prox['px']:.2f} (falta {(prox['px'] / f['px'] - 1) * 100:+.1f}%), con el semáforo de ese día.")
         else:
@@ -23614,8 +23653,10 @@ def semaforo_aviso(s):
     for x in s.get("salidas") or []:
         lin.append(f"✅ SALIDA: {x['sym']} recupera su máximo ({x['px']:.2f}) → vende sus tramos")
     if "se_va" in (s.get("eventos") or []):
-        lin.append("🟢 SE VA EL PÁNICO (VIX por debajo del VIX a 3 meses): compra la ½ de reserva guardada en los ETF con caída abierta. "
-                   f"Histórico: tras irse el pánico cayó de mediana {SEM_OPT['seva'][0]:.1f}% y ganó {SEM_OPT['seva'][1]:+.1f}% a 120 sesiones.")
+        _cr = s.get("con_reserva") or []
+        lin.append("🟢 SE VA EL PÁNICO (VIX por debajo del VIX a 3 meses): "
+                   + (f"compra la ½ de reserva guardada en {', '.join(_cr)}. " if _cr else "no tienes reserva guardada en ningún ETF: nada extra que comprar. ")
+                   + f"Histórico: tras irse el pánico cayó de mediana {SEM_OPT['seva'][0]:.1f}% y ganó {SEM_OPT['seva'][1]:+.1f}% a 120 sesiones.")
     if "rendicion" in (s.get("eventos") or []):
         r = s.get("rendicion") or {}
         lin.append(f"🔥 RENDICIÓN TOTAL: {r.get('nl', 0):.0f}% de acciones en mínimos, {r.get('sect_sale')} sectores sacando dinero, VIX invertido. "
@@ -23650,7 +23691,8 @@ def _semaforo_html(s):
     if s.get("panico_vivo"):
         pv, pc, ps = "🔥 PÁNICO", "#F4607A", f"desde el {esc(str(m.get('panico_desde'))[5:])} · VIX/VIX3M {p.get('t3') or 0:.2f} (se va bajo {SEM_PAN_FUERA:.2f})"
     elif "se_va" in (s.get("eventos") or []):
-        pv, pc, ps = "🟢 SE VA HOY", "#2FD08A", f"VIX/VIX3M {p.get('t3') or 0:.2f}: compra la ½ guardada"
+        pv, pc, ps = "🟢 SE VA HOY", "#2FD08A", (f"VIX/VIX3M {p.get('t3') or 0:.2f}: compra la ½ guardada en {', '.join(s.get('con_reserva') or [])}"
+                                                 if s.get("con_reserva") else f"VIX/VIX3M {p.get('t3') or 0:.2f}: sin reserva guardada")
     elif m.get("panico_se_fue"):
         pv, pc, ps = "Se fue", "#2FD08A", f"el {esc(str(m.get('panico_se_fue'))[5:])}"
     else:

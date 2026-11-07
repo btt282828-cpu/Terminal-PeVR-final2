@@ -1,0 +1,11 @@
+# El agente no guarda datos pesados en el repositorio
+*.csv
+*.gz
+*.zip
+*.pkl
+*.parquet
+*.feather
+*.h5
+*.db
+datos/
+__pycache__/

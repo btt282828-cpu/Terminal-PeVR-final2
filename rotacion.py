@@ -16086,6 +16086,12 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                 _wadd(("#2FD08A", AMB, "#F4607A")[min(_smw.get("av", 0), 2)], "NIVEL",
                       f"{_nw['sym']} toca −{_nw['niv']:g}% desde su máximo ({_nw['px']:.2f})" + (" — su nivel bueno" if _nw["bueno"] else "")
                       + f": {_nw['tamano']} — mira el semáforo", _nw["sym"], 1)
+            for _xw in (_smw.get("salidas") or []):
+                _wadd("#2FD08A", "SALIDA", f"{_xw['sym']} recupera su máximo ({_xw['px']:.2f}): vende sus tramos", _xw["sym"], 1)
+            if "se_va" in (_smw.get("eventos") or []):
+                _wadd("#2FD08A", "SE VA EL PÁNICO", "El VIX vuelve por debajo del VIX a 3 meses: compra la ½ de reserva guardada", "MERCADO", 1)
+            if "rendicion" in (_smw.get("eventos") or []):
+                _wadd("#2FD08A", "RENDICIÓN", "Rendición total (mínimos, sectores y VIX invertido): así llegaron las V de 2018, 2020 y 2025", "MERCADO", 1)
             if _smw.get("agudo"):
                 _pw = _smw.get("panico") or {}
                 _wadd("#F4607A", "PÁNICO", "Pánico agudo en el VIX"
@@ -23255,6 +23261,27 @@ SEM_URLS = {"VIX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_
 SEM_ESTUDIO = {"verde": (1, 46), "ambar": (17, 35), "rojo": (15, 28), "pan_si": (65, 26), "pan_no": (37, 27),
                "pan_m5": (61, 41), "pan_m10": (75, 30)}
 
+# v8.4.2 — 🧭 DETECTOR DE CAÍDAS: todo lo estudiado en un solo panel (5/6-nov-2026)
+SEM_CAPITAL = 4000.0          # capital del plan (1R = capital / 6). Cámbialo si tu cuenta es otra.
+SEM_FED_PROXIMA = "2026-12-09"  # próxima decisión de la Fed (actualizar a mano tras cada reunión)
+SEM_REND_NL = 20.0            # RENDICIÓN TOTAL: ≥ 20 % de acciones del S&P en mínimos de 52 semanas…
+SEM_REND_SECT = 6             # … y ≥ 6 de los 8 sectores fuera de tecnología sacando dinero (CMF < −0,05)…
+SEM_PAN_FUERA = 1.0           # «se va el pánico»: tras VIX/VIX3M ≥ 1,10, el primer cierre con VIX/VIX3M < 1,0
+SEM_OPT = {"nivel": (-11.5, 6.9, 19), "sig": (-6.3, 13.1, 7), "seva": (-2.2, 11.9, 7), "mix_seva": 11.0, "mix_sig": 7.5}
+# Rejilla de ciclos (sesiones desde el máximo de 52 semanas de cierre × caída): mediana de caída extra hasta el suelo,
+# % de veces que cayó ≥ 10 % más, rentabilidad media a 60 sesiones, nº de caídas distintas. QQQ 1999-2026; S&P 1950-2025.
+SEM_CICLO = {
+    "QQQ": {"ex": [-4.5, -7.4, -3.0, None, None, None, None, -2.2, -2.9, -5.4, -11.0, None, None, None, -5.1, -5.5, -4.6, -5.0, -4.7, None, None, -2.8, -2.2, -1.8, -9.9, -22.4, None, None, -3.4, -4.6, -5.8, -1.4, -41.9, -17.1, None, -1.1, -1.8, -1.5, -45.6, -20.7, None, None],
+            "p10": [24.0, 43.0, 22.0, None, None, None, None, 15.0, 26.0, 38.0, 53.0, None, None, None, 16.0, 14.0, 26.0, 42.0, 26.0, None, None, 8.0, 16.0, 21.0, 50.0, 70.0, None, None, 12.0, 5.0, 13.0, 31.0, 73.0, 87.0, None, 1.0, 19.0, 37.0, 60.0, 58.0, None, None],
+            "f60": [4.9, 5.8, 7.6, None, None, None, None, 5.2, 4.5, 7.4, 9.4, None, None, None, 3.1, 4.1, 6.1, 5.1, 16.6, None, None, 6.5, 8.7, 7.4, 2.9, 3.2, None, None, 7.8, 6.2, 6.8, 7.5, 3.7, 8.7, None, 7.2, 8.1, 6.1, -8.4, -7.5, None, None],
+            "n": [23.0, 8.0, 6.0, 1.0, 1.0, 0.0, 0.0, 30.0, 14.0, 11.0, 7.0, 2.0, 1.0, 0.0, 32.0, 18.0, 14.0, 8.0, 3.0, 2.0, 0.0, 18.0, 15.0, 10.0, 9.0, 5.0, 1.0, 0.0, 15.0, 12.0, 10.0, 6.0, 4.0, 3.0, 1.0, 6.0, 5.0, 4.0, 3.0, 4.0, 2.0, 2.0]},
+    "SP": {"ex": [-3.4, -1.6, None, None, None, None, None, -2.5, -5.2, -5.1, None, None, None, None, -4.3, -7.4, -4.4, -4.1, -1.7, None, None, -2.5, -4.4, -2.5, -1.9, -1.0, None, None, -7.2, -5.7, -5.1, -14.1, -8.5, -2.8, None, -6.4, -6.0, -8.6, -7.1, -7.4, -8.5, -4.8],
+            "p10": [16.0, 33.0, None, None, None, None, None, 26.0, 33.0, 12.0, None, None, None, None, 36.0, 42.0, 21.0, 0.0, 4.0, None, None, 24.0, 48.0, 21.0, 8.0, 0.0, None, None, 32.0, 29.0, 34.0, 58.0, 43.0, 0.0, None, 28.0, 36.0, 42.0, 43.0, 42.0, 47.0, 37.0],
+            "f60": [3.6, 4.5, None, None, None, None, None, 3.0, 5.2, 6.8, None, None, None, None, 3.3, 3.6, 4.5, 9.1, 15.1, None, None, 3.8, 4.9, 8.1, 9.1, 14.5, None, None, 1.1, 2.2, 3.8, 4.6, 6.5, 4.2, None, 1.5, 1.6, 1.5, 1.9, -0.6, 0.1, 4.6],
+            "n": [35.0, 6.0, 2.0, 1.0, 0.0, 0.0, 0.0, 63.0, 17.0, 11.0, 2.0, 1.0, 1.0, 0.0, 62.0, 25.0, 15.0, 8.0, 6.0, 2.0, 2.0, 44.0, 20.0, 13.0, 10.0, 6.0, 1.0, 1.0, 34.0, 27.0, 20.0, 12.0, 7.0, 4.0, 1.0, 20.0, 19.0, 17.0, 17.0, 11.0, 10.0, 4.0]},
+}
+SEM_CICLO_TABLA = {"QQQ": "QQQ", "MAGS": "QQQ", "SPY": "SP", "DIA": "SP", "RSP": "SP", "IWM": "SP"}
+
 
 def _sem_cboe(nombre):
     """Serie de cierres de un índice de CBOE (CSV diario). None si falla."""
@@ -23361,8 +23388,46 @@ def _sem_reconstruir(c, h, niv):
     return e
 
 
-def compute_semaforo(daily, amp, vix_respaldo=None):
-    """Estado de los 6 ETF frente a sus niveles, semáforo y pánico de hoy, y niveles nuevos tocados."""
+def _det_ciclo(c, sym):
+    """Tiempo desde el máximo de 52 semanas (cierres), tipo de caída y estadística histórica de la casilla."""
+    try:
+        w = c.iloc[-252:]
+        m = float(w.max())
+        t = int(len(w) - 1 - int(np.where(w.values == m)[0][-1]))
+        ddc = (float(c.iloc[-1]) / m - 1) * 100.0
+        tb = 0 if t <= 10 else 1 if t <= 21 else 2 if t <= 42 else 3 if t <= 63 else 4 if t <= 126 else 5
+        db = -1 if ddc > -5 else 0 if ddc > -8 else 1 if ddc > -10 else 2 if ddc > -12 else 3 if ddc > -15 else 4 if ddc > -20 else 5 if ddc > -30 else 6
+        if ddc > -5:
+            tipo = "SIN CAÍDA"
+        elif t <= 21 and ddc <= -12:
+            tipo = "RÁPIDA"
+        elif t > 63 and ddc <= -12:
+            tipo = "LARGA"
+        elif t > 21 and -20 < ddc <= -10:
+            tipo = "MADURA"
+        else:
+            tipo = "CORRECCIÓN"
+        hist = None
+        if db >= 0:
+            T = SEM_CICLO[SEM_CICLO_TABLA.get(sym, "SP")]
+            i = tb * 7 + db
+            if T["ex"][i] is not None:
+                hist = {"ex": T["ex"][i], "p10": T["p10"][i], "f60": T["f60"][i], "n": int(T["n"][i] or 0),
+                        "tabla": "QQQ 1999-2026" if SEM_CICLO_TABLA.get(sym, "SP") == "QQQ" else "S&P 1950-2025"}
+        return {"t": t, "dd": ddc, "tipo": tipo, "hist": hist, "max_fecha": str(w.index[-1 - t].date())}
+    except Exception as _dege:
+        _deg("detector:ciclo", _dege)
+        return None
+
+
+def _det_euros(frac):
+    return SEM_CAPITAL / 6.0 * frac
+
+
+def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
+    """🧭 DETECTOR DE CAÍDAS. Por ETF: niveles y tramos de esta caída (con el semáforo del día que se tocaron),
+    tipo de caída (tiempo + distancia) y qué hacer. Mercado: semáforo, pánico agudo, «se va el pánico»,
+    rendición total y salidas (el ETF recupera su máximo). Memoria en semaforo_estado.json."""
     try:
         ref = None
         try:
@@ -23374,11 +23439,13 @@ def compute_semaforo(daily, amp, vix_respaldo=None):
         acc = (amp or {}).get("acc") or {}
         nl = acc.get("nl_pct")
         vix = (pan or {}).get("vix")
+        t3 = (pan or {}).get("t3")
         a1 = nl is not None and nl >= SEM_NL
         a2 = vix is not None and vix >= SEM_VIX
         av = int(a1) + int(a2)
         agudo = bool((pan or {}).get("agudo"))
         frac, txt = _sem_tamano(av, agudo)
+        sect_sale = ((estr or {}).get("sect") or {}).get("sale")
         st = {}
         try:
             if os.path.exists(SEM_FILE):
@@ -23388,7 +23455,7 @@ def compute_semaforo(daily, amp, vix_respaldo=None):
             _deg("semaforo:leer", _dege)
             st = {}
         eps = st.get("etf") or {}
-        filas, nuevos = [], []
+        filas, nuevos, salidas = [], [], []
         fecha_ref = str(ref.date()) if ref is not None else None
         for sym, bueno, sig, veh in SEM_ETF:
             d = OPER_QQQ.get("d") if sym == "QQQ" else (daily or {}).get(sym)
@@ -23405,25 +23472,52 @@ def compute_semaforo(daily, amp, vix_respaldo=None):
             niv = [bueno] + list(sig)
             e = eps.get(sym) if sym in eps else _sem_reconstruir(c, h, niv)
             e = e or {}
-            if dd > -SEM_REARME or not e.get("activo"):
-                e = {"activo": False} if dd > -SEM_REARME else e
+            if dd > -SEM_REARME:
+                if e.get("activo") and e.get("tocados") and (fch == fecha_ref or fecha_ref is None):
+                    salidas.append({"sym": sym, "px": px, "tramos": sorted(e["tocados"].keys(), key=float)})
+                e = {"activo": False}
             if dd <= -niv[0] and not e.get("activo"):
                 e = {"activo": True, "inicio": fch, "pico": round(pico, 2), "tocados": {}}
+            hoy = []
             if e.get("activo"):
                 for n in niv:
                     k = f"{n:g}"
                     if dd <= -n and k not in e["tocados"]:
                         fr, tx = _sem_tamano(av, agudo)
-                        e["tocados"][k] = {"fecha": fch, "px": round(px, 2), "av": av, "agudo": agudo,
+                        e["tocados"][k] = {"fecha": fch, "px": round(px, 2), "av": av, "agudo": agudo, "frac": fr,
                                            "nl": (round(nl, 1) if nl is not None else None),
                                            "vix": (round(vix, 2) if vix is not None else None), "tamano": tx}
                         if fch == fecha_ref or fecha_ref is None:
-                            nuevos.append({"sym": sym, "niv": n, "px": px, "tamano": tx, "bueno": n == bueno})
+                            nuevos.append({"sym": sym, "niv": n, "px": px, "tamano": tx, "frac": fr, "bueno": n == bueno})
+                            hoy.append(n)
             eps[sym] = e
-            filas.append({"sym": sym, "px": px, "pico": pico, "dd": dd, "fecha": fch, "veh": veh,
+            filas.append({"sym": sym, "px": px, "pico": pico, "dd": dd, "fecha": fch, "veh": veh, "activo": bool(e.get("activo")),
+                          "inicio": e.get("inicio"), "hoy": hoy, "ciclo": _det_ciclo(c, sym),
                           "niveles": [{"niv": n, "px": pico * (1 - n / 100.0), "bueno": n == bueno,
                                        "toc": (e.get("tocados") or {}).get(f"{n:g}")} for n in niv],
                           "prox": next((n for n in niv if dd > -n), None)})
+        # ── Mercado: pánico, «se va el pánico», rendición ─────────────────────
+        mer = st.get("mercado") or {}
+        hay_caida = any(f["activo"] for f in filas)
+        eventos = []
+        if not hay_caida:
+            mer = {}
+        else:
+            if t3 is not None and t3 >= SEM_PAN_EST and (not mer.get("panico_desde") or mer.get("panico_se_fue")):
+                mer["panico_desde"] = fecha_ref
+                mer["panico_se_fue"] = None
+            elif mer.get("panico_desde") and not mer.get("panico_se_fue") and t3 is not None and t3 < SEM_PAN_FUERA:
+                mer["panico_se_fue"] = fecha_ref
+                eventos.append("se_va")
+            rend_hoy = (nl is not None and nl >= SEM_REND_NL and sect_sale is not None and sect_sale >= SEM_REND_SECT
+                        and t3 is not None and t3 >= SEM_PAN_EST)
+            if rend_hoy and not mer.get("rendicion"):
+                mer["rendicion"] = fecha_ref
+                eventos.append("rendicion")
+        panico_vivo = bool(mer.get("panico_desde") and not mer.get("panico_se_fue"))
+        rend = {"hoy": bool(nl is not None and nl >= SEM_REND_NL and sect_sale is not None and sect_sale >= SEM_REND_SECT
+                            and t3 is not None and t3 >= SEM_PAN_EST),
+                "nl": nl, "sect_sale": sect_sale, "t3": t3, "fecha": mer.get("rendicion")}
         log = [r for r in (st.get("log") or []) if r.get("date") != fecha_ref]
         if fecha_ref:
             log.append({"date": fecha_ref, "nl": (round(nl, 2) if nl is not None else None),
@@ -23431,36 +23525,105 @@ def compute_semaforo(daily, amp, vix_respaldo=None):
                         "t9": (round(pan["t9"], 3) if pan and pan.get("t9") else None),
                         "t3": (round(pan["t3"], 3) if pan and pan.get("t3") else None),
                         "rel_pico": (round(pan["rel_pico"], 3) if pan and pan.get("rel_pico") else None),
-                        "av": av, "agudo": agudo, "dd": {f["sym"]: round(f["dd"], 2) for f in filas}})
-        st = {"etf": eps, "log": sorted(log, key=lambda r: r["date"])[-800:], "ultimo": fecha_ref}
+                        "sect_sale": sect_sale, "av": av, "agudo": agudo, "panico_vivo": panico_vivo, "eventos": eventos,
+                        "dd": {f["sym"]: round(f["dd"], 2) for f in filas}})
+        st = {"etf": eps, "mercado": mer, "log": sorted(log, key=lambda r: r["date"])[-800:], "ultimo": fecha_ref}
         if not VIAJE_A:
             try:
                 guardar_json_seguro(SEM_FILE, st, indent=0)
             except Exception as _dege:
                 _deg("semaforo:guardar", _dege)
-        return {"fecha": fecha_ref, "nl": nl, "vix": vix, "av": av, "avisos": (a1, a2), "panico": pan,
-                "agudo": agudo, "frac": frac, "tamano": txt, "filas": filas, "nuevos": nuevos}
+        out = {"fecha": fecha_ref, "nl": nl, "vix": vix, "av": av, "avisos": (a1, a2), "panico": pan,
+               "agudo": agudo, "frac": frac, "tamano": txt, "filas": filas, "nuevos": nuevos, "salidas": salidas,
+               "mercado": mer, "panico_vivo": panico_vivo, "eventos": eventos, "rendicion": rend}
+        for f in filas:
+            f["que"] = _det_que_hacer(f, out)
+        return out
     except Exception as _dege:
         _deg("semaforo", _dege)
         return None
 
 
+def _det_que_hacer(f, s):
+    """Instrucción clara para un ETF según el plan y el estado del mercado."""
+    try:
+        lin = []
+        sym = f["sym"]
+        if any(x["sym"] == sym for x in s.get("salidas") or []):
+            return ["<b style='color:#2FD08A'>SALIDA HOY: ha recuperado su máximo → vende sus tramos.</b>"]
+        if not f["activo"]:
+            b = f["niveles"][0]
+            return [f"Sin caída abierta. Su nivel bueno es −{b['niv']:g}% en {b['px']:.2f} (falta {(b['px'] / f['px'] - 1) * 100:+.1f}%)."]
+        hechos = [n for n in f["niveles"] if n["toc"]]
+        _r = s.get("rendicion") or {}
+        rend_ok = bool(_r.get("hoy") or _r.get("fecha"))
+        rend_aqui = bool(rend_ok and sym in ("QQQ", "IWM", "MAGS") and any(x >= 20 for x in (f["hoy"] or [])))
+        if rend_aqui:
+            lin.append("<b style='color:#2FD08A'>HOY toca −20 % CON RENDICIÓN TOTAL → entra con la reserva completa de este ETF "
+                       "(así fueron las V de 2018, 2020 y 2025).</b>")
+        elif f["hoy"]:
+            for n in f["niveles"]:
+                if n["niv"] in f["hoy"]:
+                    fr = n["toc"].get("frac") or 1.0
+                    lin.append(f"<b>HOY toca −{n['niv']:g}% → {esc(n['toc'].get('tamano', ''))} (≈ {_det_euros(fr):,.0f} € con {SEM_CAPITAL:,.0f} €).</b>".replace(",", "."))
+        if hechos:
+            lin.append("Comprado en esta caída: " + ", ".join(f"−{n['niv']:g}% el {n['toc']['fecha'][8:10]}-{n['toc']['fecha'][5:7]}" for n in hechos) + ".")
+        prox = next((n for n in f["niveles"] if not n["toc"]), None)
+        if rend_aqui:
+            pass
+        elif s.get("panico_vivo"):
+            lin.append("Hay pánico: guarda la reserva. " + (f"<b>½ cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0) y <b>½ en el siguiente nivel (−{prox['niv']:g}% en {prox['px']:.2f})</b>."
+                                                          if prox else "Lo que te quede, <b>cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0)."))
+        elif "se_va" in (s.get("eventos") or []):
+            lin.append("<b style='color:#2FD08A'>HOY SE VA EL PÁNICO → compra la ½ de reserva guardada para este ETF.</b>")
+        elif prox:
+            lin.append(f"Siguiente tramo: −{prox['niv']:g}% en {prox['px']:.2f} (falta {(prox['px'] / f['px'] - 1) * 100:+.1f}%), con el semáforo de ese día.")
+        else:
+            lin.append("Todos sus niveles comprados: mantener hasta que recupere su máximo.")
+        if prox and prox["niv"] >= 20 and sym in ("QQQ", "IWM", "MAGS"):
+            r = s.get("rendicion") or {}
+            lin.append("En su −20 %: " + ("<b style='color:#2FD08A'>hay RENDICIÓN TOTAL → reserva completa (V probable)</b>" if r.get("hoy") or r.get("fecha")
+                                         else "si NO hay rendición total (mercado tranquilo), entra con la mitad y mejor x2 que x3 (patrón 2000/2008/2022)") + ".")
+        cy = f.get("ciclo") or {}
+        if not prox:
+            pass
+        elif cy.get("tipo") == "RÁPIDA":
+            lin.append("Caída RÁPIDA: en el pasado solía seguir; no adelantes tramos.")
+        elif cy.get("tipo") == "LARGA":
+            lin.append("Caída LARGA (más de 3 meses): riesgo de mercado bajista; reserva para niveles hondos.")
+        lin.append("Venta: cuando recupere su máximo.")
+        return lin
+    except Exception as _dege:
+        _deg("detector:que", _dege)
+        return []
+
+
 def semaforo_aviso(s):
-    """Texto de Telegram si hoy algún ETF toca un nivel por primera vez en esta caída (o None)."""
-    if not s or not s.get("nuevos"):
+    """Telegram: niveles nuevos, salidas, «se va el pánico» y rendición total (o None si no hay nada nuevo)."""
+    if not s or not (s.get("nuevos") or s.get("salidas") or s.get("eventos")):
         return None
     col = ("VERDE", "ÁMBAR", "ROJO")[min(s["av"], 2)]
-    lin = [f"🚦 SEMÁFORO {col} · cierre {s['fecha']}"]
-    for n in s["nuevos"]:
-        lin.append(f"{n['sym']} toca −{n['niv']:g}% ({n['px']:.2f})" + (" — su NIVEL BUENO" if n["bueno"] else "")
-                   + f" → {n['tamano']}")
+    lin = [f"🧭 DETECTOR DE CAÍDAS · cierre {s['fecha']} · semáforo {col}" + (" · PÁNICO AGUDO" if s["agudo"] else "")]
+    _r = s.get("rendicion") or {}
+    for n in s.get("nuevos") or []:
+        if (_r.get("hoy") or _r.get("fecha")) and n["sym"] in ("QQQ", "IWM", "MAGS") and n["niv"] >= 20:
+            lin.append(f"➤ {n['sym']} toca −{n['niv']:g}% ({n['px']:.2f}) CON RENDICIÓN TOTAL → reserva completa de este ETF")
+            continue
+        lin.append(f"➤ {n['sym']} toca −{n['niv']:g}% ({n['px']:.2f})" + (" — su NIVEL BUENO" if n["bueno"] else "")
+                   + f" → {n['tamano']} (≈ {_det_euros(n.get('frac') or 1):.0f} €)")
+    for x in s.get("salidas") or []:
+        lin.append(f"✅ SALIDA: {x['sym']} recupera su máximo ({x['px']:.2f}) → vende sus tramos")
+    if "se_va" in (s.get("eventos") or []):
+        lin.append("🟢 SE VA EL PÁNICO (VIX por debajo del VIX a 3 meses): compra la ½ de reserva guardada en los ETF con caída abierta. "
+                   f"Histórico: tras irse el pánico cayó de mediana {SEM_OPT['seva'][0]:.1f}% y ganó {SEM_OPT['seva'][1]:+.1f}% a 120 sesiones.")
+    if "rendicion" in (s.get("eventos") or []):
+        r = s.get("rendicion") or {}
+        lin.append(f"🔥 RENDICIÓN TOTAL: {r.get('nl', 0):.0f}% de acciones en mínimos, {r.get('sect_sale')} sectores sacando dinero, VIX invertido. "
+                   "Así llegaron los suelos en V de 2018, 2020 y 2025: si el QQQ está en su −20 %, reserva completa.")
     nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
-    lin.append(f"Acciones en mínimos 52 sem.: {nl:.1f}%" if nl is not None else "Acciones en mínimos 52 sem.: sin dato")
-    lin.append(f"VIX {vx:.1f}" if vx is not None else "VIX: sin dato")
-    if p.get("completo"):
-        lin.append(("PÁNICO AGUDO: " if s["agudo"] else "Sin pánico agudo: ")
-                   + (f"VIX9D/VIX {p['t9']:.2f} · " if p.get("t9") else "") + (f"VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else ""))
-    lin.append("Vehículo: SPY/RSP/DIA/QQQ x3 · IWM x2 como mucho · MAGS x1. Venta: al recuperar su máximo. No es asesoramiento.")
+    lin.append((f"Mínimos 52 sem.: {nl:.1f}%" if nl is not None else "Mínimos 52 sem.: sin dato") + (f" · VIX {vx:.1f}" if vx is not None else "")
+               + (f" · VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else ""))
+    lin.append("Vehículo: SPY/RSP/DIA/QQQ x3 · IWM x2 como mucho · MAGS x1. No es asesoramiento.")
     return "\n".join(lin)
 
 
@@ -23468,67 +23631,81 @@ def _semaforo_html(s):
     if not s or not s.get("filas"):
         return ""
     E = SEM_ESTUDIO
+    O = SEM_OPT
     av = s["av"]
     colh = ("#2FD08A", "#F4B740", "#F4607A")[min(av, 2)]
     nomh = ("VERDE", "ÁMBAR", "ROJO")[min(av, 2)]
     nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
     a1, a2 = s.get("avisos") or (False, False)
-    def _ok(b):
-        return "<b style='color:#F4607A'>⚠</b>" if b else "<b style='color:#2FD08A'>✔</b>"
-    cab = (f"<div style='display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 8px'>"
-           f"<span style='font-size:18px;font-weight:800;color:{colh}'>● {nomh}</span>"
-           f"<span>si un ETF toca hoy su nivel: <b style='color:{colh}'>{esc(s['tamano'])}</b></span></div>"
-           f"<div style='font-size:13px;margin-bottom:4px'>{_ok(a1)} Acciones del S&amp;P en mínimos de 52 semanas: "
-           + (f"<b>{nl:.1f}%</b>" if nl is not None else "sin dato") + f" (aviso desde {SEM_NL:g} %) · "
-           f"{_ok(a2)} VIX: " + (f"<b>{vx:.2f}</b>" if vx is not None else "sin dato") + f" (aviso desde {SEM_VIX:g})</div>")
-    if p.get("completo"):
-        pan = ("<b style='color:#F4607A'>🔥 PÁNICO AGUDO</b>" if s["agudo"] else
-               "<b style='color:#2FD08A'>Sin pánico agudo</b>" if not p.get("estructura") else
-               "<b style='color:#F4B740'>Estructura invertida, pero el VIX ya baja de su pico</b>")
-        cab += (f"<div style='font-size:13px;margin-bottom:8px'>{pan} · VIX9D/VIX "
-                + (f"<b>{p['t9']:.2f}</b>" if p.get("t9") else "–") + " · VIX/VIX3M "
-                + (f"<b>{p['t3']:.2f}</b>" if p.get("t3") else "–") + f" (pánico si alguno &gt; {SEM_PAN_EST:.2f})"
-                + (f" · VIX al {p['rel_pico'] * 100:.0f}% de su máximo de 5 días" if p.get("rel_pico") else "")
-                + f" · VIX {p['chg5']:+.0f}% en 5 días · datos del {esc(p['fecha'])}"
-                + (" <span style='color:#F4B740'>(VIX con un día de retraso)</span>" if s.get("fecha") and p.get("fecha") and p["fecha"] < s["fecha"] else "")
-                + "</div>")
+    r = s.get("rendicion") or {}
+    m = s.get("mercado") or {}
+    try:
+        dfed = (dt.date.fromisoformat(SEM_FED_PROXIMA) - dt.date.fromisoformat(s["fecha"])).days
+    except Exception:
+        dfed = None
+    def card(tit, val, col, sub):
+        return (f"<div style='flex:1;min-width:170px;border:1px solid #223049;border-radius:8px;padding:8px 10px'>"
+                f"<div style='font-size:11px;color:#9FB0C8'>{tit}</div><div style='font-size:16px;font-weight:800;color:{col}'>{val}</div>"
+                f"<div style='font-size:11px;color:#9FB0C8'>{sub}</div></div>")
+    if s.get("panico_vivo"):
+        pv, pc, ps = "🔥 PÁNICO", "#F4607A", f"desde el {esc(str(m.get('panico_desde'))[5:])} · VIX/VIX3M {p.get('t3') or 0:.2f} (se va bajo {SEM_PAN_FUERA:.2f})"
+    elif "se_va" in (s.get("eventos") or []):
+        pv, pc, ps = "🟢 SE VA HOY", "#2FD08A", f"VIX/VIX3M {p.get('t3') or 0:.2f}: compra la ½ guardada"
+    elif m.get("panico_se_fue"):
+        pv, pc, ps = "Se fue", "#2FD08A", f"el {esc(str(m.get('panico_se_fue'))[5:])}"
     else:
-        cab += "<div style='font-size:13px;margin-bottom:8px;color:#F4B740'>VIX9D y VIX3M sin descargar hoy: el pánico agudo no se puede medir.</div>"
+        pv, pc, ps = "Sin pánico", "#2FD08A", (f"VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else "sin dato")
+    cards = "".join([
+        card("Semáforo de hoy", f"● {nomh}", colh, ("⚠ " if a1 else "") + (f"mínimos {nl:.1f}%" if nl is not None else "mínimos sin dato")
+             + " · " + ("⚠ " if a2 else "") + (f"VIX {vx:.1f}" if vx is not None else "VIX sin dato")),
+        card("Si un ETF toca nivel hoy", {1.0: "1R completo", 0.5: "½R", 0.25: "¼R"}.get(s.get("frac"), "–") + (" y guarda" if s.get("agudo") and av > 0 else ""), colh, f"1R ≈ {SEM_CAPITAL / 6:,.0f} € con {SEM_CAPITAL:,.0f} €".replace(",", ".")),
+        card("Pánico del VIX", pv, pc, ps),
+        card("Rendición total", "SÍ 🔥" if r.get("hoy") else ("hubo el " + esc(str(r['fecha'])[5:]) if r.get("fecha") else "NO"),
+             "#2FD08A" if (r.get("hoy") or r.get("fecha")) else "#9FB0C8",
+             f"mínimos {r.get('nl') or 0:.0f}% (≥{SEM_REND_NL:g}) · sectores {r.get('sect_sale') if r.get('sect_sale') is not None else '–'}/8 (≥{SEM_REND_SECT}) · VIX inv."),
+        card("Próxima Fed", esc(SEM_FED_PROXIMA[8:10] + "-" + SEM_FED_PROXIMA[5:7]), "#4CC2E0", (f"faltan {dfed} días" if dfed is not None else "") + " · subir = peor; pausar = mejor"),
+    ])
     fil = []
     for f in s["filas"]:
-        ddc = "#F4607A" if any(n["toc"] for n in f["niveles"]) else "#F4B740" if f["dd"] <= -2.5 else "#9FB0C8"
+        ddc = "#F4607A" if f["activo"] else "#F4B740" if f["dd"] <= -2.5 else "#9FB0C8"
+        cy = f.get("ciclo") or {}
+        tcol = {"RÁPIDA": "#F4607A", "LARGA": "#B48CFF", "MADURA": "#2FD08A", "CORRECCIÓN": "#F4B740"}.get(cy.get("tipo"), "#9FB0C8")
+        hs = cy.get("hist")
+        ciclo_txt = (f"<b style='color:{tcol}'>{esc(cy.get('tipo', ''))}</b><br><span style='font-size:11px;color:#9FB0C8'>{cy.get('t', 0)} ses. desde el máx. ({esc(str(cy.get('max_fecha', ''))[8:10] + '-' + str(cy.get('max_fecha', ''))[5:7])})"
+                     + (f"<br>histórico: {hs['ex']:+.1f}% más (mediana), ≥10 % más el {hs['p10']:.0f}%, a 60 ses. {hs['f60']:+.1f}% · {hs['n']} caídas" if hs else "")
+                     + "</span>") if cy else ""
         cel = []
         for n in f["niveles"]:
             t = n["toc"]
             falta = (n["px"] / f["px"] - 1) * 100.0
             _tav = t.get("av") if t else None
             _tcol = "#4CC2E0" if _tav is None else ("#2FD08A", "#F4B740", "#F4607A")[min(_tav, 2)]
-            et = (f"<b style='color:{_tcol}'>✔ {esc(t['fecha'][5:])}</b>"
-                  + (" 🔥" if t.get("agudo") else "") if t else f"<span style='color:#9FB0C8'>{falta:+.1f}%</span>")
+            et = (f"<b style='color:{_tcol}'>✔ {esc(t['fecha'][8:10] + '-' + t['fecha'][5:7])}</b>" + (" 🔥" if t.get("agudo") else "")
+                  if t else f"<span style='color:#9FB0C8'>{falta:+.1f}%</span>")
             cel.append(f"<td class='r'>{'<b>' if n['bueno'] else ''}−{n['niv']:g}% {n['px']:.2f}{'</b>' if n['bueno'] else ''}<br>{et}</td>")
         cel += ["<td></td>"] * (3 - len(f["niveles"]))
+        que = "<br>".join(f.get("que") or [])
         fil.append(f"<tr><td><b>{f['sym']}</b><br><span style='font-size:11px;color:#9FB0C8'>{esc(f['veh'])}</span></td>"
-                   f"<td class='r'>{f['px']:.2f}<br><span style='font-size:11px;color:#9FB0C8'>máx. {f['pico']:.2f}</span></td>"
-                   f"<td class='r'><b style='color:{ddc}'>{f['dd']:+.1f}%</b></td>" + "".join(cel) + "</tr>")
-    h = ["<div class='panel full'><h2>🚦 Semáforo de entrada en caídas: SPY · RSP · DIA · QQQ · IWM · MAGS</h2>", cab,
-         "<table style='width:100%'><tr><th>ETF</th><th class='r'>cierre</th><th class='r'>desde máx.</th>"
-         "<th class='r'>nivel bueno</th><th class='r'>siguiente</th><th class='r'>siguiente</th></tr>" + "".join(fil) + "</table>"]
-    if s.get("nuevos"):
-        h.append("<div style='margin-top:8px'><b style='color:" + colh + "'>Hoy toca:</b> "
-                 + " · ".join(f"{n['sym']} −{n['niv']:g}% → {esc(n['tamano'])}" for n in s["nuevos"]) + "</div>")
-    h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> el nivel en negrita es el bueno de cada ETF; ✔ = tocado en esta caída, "
-             "con el color del semáforo de ESE día (🔥 = había pánico agudo; azul = tocado antes de instalar el semáforo, sin dato). La cifra gris es lo que falta para tocarlo. Un nivel se compra solo "
-             "la primera vez que se toca en cada caída; la caída se reinicia cuando el ETF vuelve a menos del 0,5 % de su máximo. "
-             f"<b>Lo medido (109 veces 2004–2026, nivel bueno de SPY/RSP/DIA/QQQ/IWM):</b> con VERDE siguió hasta el siguiente nivel "
-             f"{E['verde'][0]} de {E['verde'][1]} veces; ÁMBAR {E['ambar'][0]} de {E['ambar'][1]}; ROJO {E['rojo'][0]} de {E['rojo'][1]}. "
-             f"<b>Pánico agudo</b> (VIX9D/VIX o VIX/VIX3M &gt; {SEM_PAN_EST:.2f} con el VIX aún en su máximo de 5 días), solo cuenta en ámbar/rojo: "
-             f"siguió cayendo el {E['pan_si'][0]} % ({E['pan_si'][1]} casos 2011–2026) frente al {E['pan_no'][0]} % sin él ({E['pan_no'][1]}); "
-             f"en los −5 % {E['pan_m5'][0]} frente a {E['pan_m5'][1]} %, en los −10 % {E['pan_m10'][0]} frente a {E['pan_m10'][1]} %. "
-             "Aguanta en 2011–18 y en 2019–26, pero son 26 episodios: pista, no regla. Ojo: lo contrario de lo que se suele leer — el VIX "
-             "invertido el día del nivel no es suelo; el suelo que aguanta llega con el miedo contenido. DIX, GEX, VVIX, SKEW y put/call no "
-             "aportaron. Venta: cuando el ETF recupera su máximo. MAGS no tiene historial para probarlo. No es asesoramiento.</div></div>")
+                   f"<td class='r'>{f['px']:.2f}<br><b style='color:{ddc}'>{f['dd']:+.1f}%</b></td><td>{ciclo_txt}</td>"
+                   + "".join(cel) + f"<td style='font-size:12px;min-width:260px'>{que}</td></tr>")
+    h = ["<div class='panel full'><h2>🧭 Detector de caídas · SPY · RSP · DIA · QQQ · IWM · MAGS</h2>",
+         f"<div style='display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px'>{cards}</div>",
+         "<div style='overflow-x:auto'><table style='width:100%'><tr><th>ETF</th><th class='r'>cierre · desde máx.</th><th>tipo de caída (tiempo)</th>"
+         "<th class='r'>nivel bueno</th><th class='r'>siguiente</th><th class='r'>siguiente</th><th>qué hacer</th></tr>" + "".join(fil) + "</table></div>"]
+    h.append("<div class='note' style='margin-top:8px'><b>Cómo funciona (todo medido 2004-2026):</b> "
+             f"1) <b>Nivel bueno</b> de cada ETF (SPY/RSP/DIA −5 %, QQQ/IWM/MAGS −10 %) y siguientes; cada nivel se compra una vez por caída. "
+             f"2) <b>Tamaño</b> según el semáforo DE ESE DÍA: verde tramo completo (siguió cayendo {E['verde'][0]} de {E['verde'][1]}), ámbar medio "
+             f"({E['ambar'][0]} de {E['ambar'][1]}), rojo un cuarto ({E['rojo'][0]} de {E['rojo'][1]}); con <b>pánico agudo</b> en ámbar/rojo, un cuarto "
+             f"(siguió el {E['pan_si'][0]} %). 3) <b>Con pánico, la reserva espera</b>: comprar en el nivel con pánico cayó después {O['nivel'][0]:.1f}% "
+             f"(mediana) y perdió a 120 sesiones el {O['nivel'][2]} %; en el siguiente nivel {O['sig'][1]:+.1f}% a 120; cuando <b>se va el pánico</b> "
+             f"(VIX/VIX3M vuelve bajo 1,0) cae después solo {O['seva'][0]:.1f}% y gana {O['seva'][1]:+.1f}%. Reserva ½ al irse el pánico + ½ en el siguiente "
+             f"nivel. 4) En el <b>−20 % del QQQ</b>: las V (2018, 2020, 2025) llegaron con <b>rendición total</b> (≥20-25 % en mínimos, 6-7 sectores "
+             "sacando dinero, VIX invertido); 2000, 2008 y 2022 con el mercado tranquilo. 5) <b>Tipo de caída</b> por tiempo: RÁPIDA (−12 % en ≤1 mes) "
+             "solía seguir; MADURA (1-3 meses, −10/−20 %) la mejor zona; LARGA (&gt;3 meses en −12 %) riesgo bajista. El tiempo NO mejora la entrada "
+             "como filtro: es contexto. 6) <b>Venta</b> al recuperar el máximo. 7) La Fed manda en el fondo del mercado: subir tipos en la caída fue "
+             "2000/2022; parar o bajar, las V. DIX, GEX, VVIX y SKEW no aportaron. ✔ = comprado ese día (color del semáforo; 🔥 con pánico; azul = "
+             "antes del detector). Euros con el capital del plan (SEM_CAPITAL). No es asesoramiento.</div></div>")
     return "".join(h)
-
 
 def guardar_dix(dx):
     """v8.4.1: el DIX y el GEX de cada noche al histórico (antes solo se mostraban)."""
@@ -26258,7 +26435,7 @@ def main():
                 _avisar("plan_spy", f"plan SPY no calculado: {_e_ps}")
             # v8.4.2 — 🚦 SEMÁFORO DE ENTRADA (6 ETF) + PÁNICO AGUDO, con aviso por Telegram
             try:
-                _oper["semaforo"] = compute_semaforo(daily, _amp, locals().get("vix_close"))
+                _oper["semaforo"] = compute_semaforo(daily, _amp, locals().get("vix_close"), locals().get("_estr"))
                 _sm = _oper["semaforo"]
                 if _sm:
                     _pp = _sm.get("panico") or {}

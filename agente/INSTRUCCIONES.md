@@ -55,6 +55,13 @@ Pe ya ha probado miles de reglas. Casi nada sobrevive con datos nuevos. Descarta
 - Pistas vivas (solo pistas, no reglas): VENTA EXTREMA (7-8 de 8 sectores sacando dinero), EMPUJE de dinero,
   pánico agudo (VIX9D/VIX o VIX/VIX3M > 1,10) como señal de que la caída sigue, "se va el pánico" como mejor momento,
   y que en los ETF que no son núcleo solo conviene comprar si caen **con** el mercado.
+- **Cuidado con dos palabras parecidas (Pe toma decisiones de compra con ellas):**
+  - *Pánico agudo* es una foto del día (VIX9D/VIX o VIX/VIX3M > 1,10 y el VIX cerca de su máximo de 5 días). Que hoy no
+    haya pánico agudo **no** significa que el pánico se haya ido.
+  - *Pánico vivo* empieza el primer día con VIX/VIX3M ≥ 1,10 y dura hasta el primer cierre con VIX/VIX3M < 1,0.
+    Ese día es **«SE VA EL PÁNICO»**, la señal para comprar la ½ de reserva **solo en los ETF donde se guardó reserva**.
+  - Para decir que se ha ido el pánico, usa lo que marca el detector (`panico_vivo`, `eventos` con "se_va" en
+    `agente/hoy/lectura.json` o en `semaforo_estado.json`), nunca tu propia deducción.
 - Estrategia "zona de ruido" (Zarattini 2024) en NAS100: candidata para el reto de fondeo, Sharpe de planificación 0,5,
   posible desgaste desde 2025.
 

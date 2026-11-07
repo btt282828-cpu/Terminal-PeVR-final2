@@ -387,8 +387,12 @@ def lectura():
     s = leer(HIST / "semaforo_estado.json")
     if isinstance(s, dict) and s.get("log"):
         u = s["log"][-1]
+        mer = s.get("mercado") or {}
         r["caidas"] = {"fecha": u.get("date"), "dd": u.get("dd", {}), "vix": u.get("vix"),
-                       "agudo": u.get("agudo"), "en_minimos": u.get("nl")}
+                       "agudo": u.get("agudo"), "en_minimos": u.get("nl"),
+                       "vix_vix3m": u.get("t3"), "panico_vivo": u.get("panico_vivo"),
+                       "panico_desde": mer.get("panico_desde"), "panico_se_fue": mer.get("panico_se_fue"),
+                       "eventos": u.get("eventos") or []}
     o = leer(HIST / "operativa_indices.json")
     if isinstance(o, list) and o:
         r["indices"] = {k: (v.get("ver"), v.get("score")) for k, v in o[-1].get("idx", {}).items()}
@@ -417,8 +421,17 @@ def telegram_sin_ia(v, m, lec):
     cd = lec.get("caidas")
     if cd:
         dd = ", ".join(f"{k} {_n(x)} %" for k, x in cd["dd"].items() if x is not None and x <= -3)
-        L.append(f"📉 Caídas: {dd or 'nada por debajo de −3 %'} · VIX {_n(cd['vix'])} · "
-                 f"pánico agudo {'SÍ' if cd['agudo'] else 'no'}")
+        L.append(f"📉 Caídas: {dd or 'nada por debajo de −3 %'} · VIX {_n(cd['vix'])}")
+        ev = cd.get("eventos") or []
+        if "se_va" in ev:
+            L.append(f"🟢 HOY SE VA EL PÁNICO (VIX/VIX3M {_n(cd.get('vix_vix3m'), 2)}): mira en la terminal en qué ETF tienes reserva")
+        elif cd.get("panico_vivo"):
+            L.append(f"🔥 Pánico vivo desde el {str(cd.get('panico_desde'))[8:10]}-{str(cd.get('panico_desde'))[5:7]}: "
+                     f"se va cuando VIX/VIX3M baje de 1,0 (hoy {_n(cd.get('vix_vix3m'), 2)})")
+        elif cd.get("agudo"):
+            L.append("🔥 Pánico agudo hoy")
+        if "rendicion" in ev:
+            L.append("🔥 RENDICIÓN TOTAL hoy")
     if lec.get("indices"):
         L.append("🚦 Índices: " + ", ".join(f"{k} {ver}" for k, (ver, _) in lec["indices"].items()))
     di = lec.get("dinero")

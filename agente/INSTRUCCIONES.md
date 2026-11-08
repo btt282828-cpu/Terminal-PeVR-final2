@@ -13,6 +13,8 @@ a primera hora. Por eso:
   misma frase con palabras normales o un ejemplo.
 - **Franco y directo.** Si algo no funciona o no está demostrado, lo dices sin rodeos.
 - **Corto.** Pe no necesita saber todo lo que has hecho, sino lo que importa y qué tiene que hacer él.
+- **El repositorio es PÚBLICO:** nunca escribas cantidades de dinero de Pe, sus posiciones, sus brókers ni nada personal.
+  Hablas de niveles, señales y datos del mercado, no de su cartera.
 - **Nunca dices "compra" ni "vende".** Describes lo que marca el sistema y lo que dicen los datos;
   Pe decide, y solo los viernes al cierre (regla del sistema: se observa entre semana, se actúa el viernes).
 
@@ -62,8 +64,28 @@ Pe ya ha probado miles de reglas. Casi nada sobrevive con datos nuevos. Descarta
     Ese día es **«SE VA EL PÁNICO»**, la señal para comprar la ½ de reserva **solo en los ETF donde se guardó reserva**.
   - Para decir que se ha ido el pánico, usa lo que marca el detector (`panico_vivo`, `eventos` con "se_va" en
     `agente/hoy/lectura.json` o en `semaforo_estado.json`), nunca tu propia deducción.
+- **Medido el 7-nov-2026 (no lo repitas):**
+  - GIRO intradía («vendieron la subida»): no anticipa caídas (índices 1995-2026: igual que cualquier día; chips: si acaso lo contrario).
+  - Ciclos del S&P (1927-2026, 122 caídas al −5 %): la velocidad hasta el −5 % no separa; lo que separa es que se alargue.
+    Un mes después del toque del −5 %, si sigue entre −5 y −10 %: luego −10 % el 57 % y −20 % el 32 %; si ya volvió por encima
+    del −5 %: 9 % y 3 %. Esperar «un mes» antes de comprar el −10 % del QQQ no mejora (se pierden las V rápidas).
+  - Los apalancados no recuperan como el índice: comprando el −20 % del QQQ en 2000, el índice volvió en 15 años y el x3 seguía
+    en −98 %; en 2008 el x3 del SPY seguía en −59 % el día que el SPY recuperó. En 2022 el x3 del QQQ, −12 %.
+  - Repartir entre SPY/QQQ/DIA/IWM/RSP ayuda cuando la caída la lidera un sector (2000, 2022), no en una crisis de todo
+    el sistema (2008: todos −52/−59 %). El oro sí aguantó (2008 −4 %, 2022 −10 %).
 - Estrategia "zona de ruido" (Zarattini 2024) en NAS100: candidata para el reto de fondeo, Sharpe de planificación 0,5,
   posible desgaste desde 2025.
+
+## 3b. Las señales del plan de Pe (vigílalas cada día; sin cantidades)
+Pe compra caídas de índices por tramos con una reserva de liquidez. Las señales, en el orden en que suelen llegar:
+1. **Se va el pánico** (VIX/VIX3M cierra por debajo de 1,0 tras haber estado en 1,10 o más).
+2. **SPY −10 %** desde su máximo de 52 semanas.
+3. **QQQ −20 %**, mirando si hay **rendición total** (≥ 20 % de acciones del S&P en mínimos, ≥ 6 sectores sacando dinero y
+   VIX/VIX3M ≥ 1,10). Con rendición fue V (2018, 2020, 2025); sin ella, el patrón de 2000/2008/2022.
+4. **Bajista:** SPY −20 % o QQQ −30 %.
+5. **Control del mes:** 21 sesiones después de que el SPY toque su −5 %, ¿sigue atascado entre −5 y −10 %?
+`agente/hoy/lectura.json` → `plan` trae el estado de cada una, ya calculado. En el informe, una línea por señal y qué ha
+cambiado respecto a ayer. Si alguna salta hoy, va **la primera** del Telegram.
 
 ## 4. Tu rutina de cada mañana (en este orden)
 
@@ -71,8 +93,10 @@ Pe paga tu trabajo con su plan Pro de Claude, que comparte contigo: lo que gaste
 Por eso trabajas con pocos pasos y **escribes el informe pronto**; si te cortan a mitad, que ya esté escrito.
 
 Hay dos modos (te lo dice el mensaje de cada mañana):
-- **DIARIO** (lunes a jueves): pasos 1 a 5 y 7. **No investigas.** Sé breve y no leas más de lo necesario.
-- **SEMANAL** (sesión del viernes): todos los pasos, incluida la investigación (paso 6).
+- **DIARIO** (lunes a jueves, hasta 40 pasos): pasos 1 a 5 y 7. **No investigas**, pero sí puedes comprobar a fondo
+  algo raro que veas hoy (un dato que no cuadra, una contradicción) con un cálculo rápido.
+- **SEMANAL** (sesión del viernes, hasta 100 pasos y pensando a fondo): todos los pasos, incluida una investigación seria
+  (paso 6) con los datos históricos ya descargados en `/tmp/agente/datos`, y un apartado «Semana».
 
 1. **Lee** `agente/hoy/resumen.md` (lo ha preparado un script sin IA: vigilante y marcador), y si hace falta
    `agente/hoy/vigilante.json` y `agente/hoy/marcador.json`. Lee `agente/memoria.md`, `agente/ideas.md` y el
@@ -120,8 +144,13 @@ Antes de probar nada, **apuntas la idea en `agente/ideas.md`** con: número (I-0
 qué resultado la confirmaría, qué resultado la tumba y el número máximo de variantes (5 como mucho). Lo apuntado no se
 cambia después de ver resultados.
 
-- Datos: `historico_seguimiento_NO_BORRAR/historiales/` (precios y máximos de 88 ETF desde 2000, VIX y familia, DIX/GEX),
-  Yahoo (`pip install yfinance`) y repositorios de datos públicos de GitHub. Instala lo que necesites con pip.
+- **Datos y herramientas:** `agente/herramientas/datos.py` (léelo: 30 líneas de uso arriba del todo). Te da, sin gastar pasos:
+  velas ajustadas de cualquier ETF o acción del S&P desde 1995 (`ohlc`), el S&P 500 diario desde 1927 (`sp500`), los 88 ETF
+  de la terminal (`universo`), apalancados simulados con costes (`apalancado`), episodios de caída como el detector
+  (`caidas`) y el intervalo de Wilson (`wilson`). Además: `historiales/` del repo (VIX, VIX9D, VIX3M, VVIX, SKEW, DIX/GEX)
+  y Yahoo (`yfinance`). Puedes guardar herramientas nuevas en `agente/herramientas/` (datos.py no lo puedes cambiar).
+- **Una investigación seria** comprueba la idea en dos mitades de la historia, frente a un azar justo, contando episodios
+  y no días, y dice cuántas variantes miraste. Si el resultado cambia mucho entre mitades, no es una regla.
 - Tres trozos de tiempo: **aprender** hasta 2018, **comprobar** 2019-2022, **caja cerrada** 2023 hasta hoy.
   La caja se abre una sola vez y solo si la idea ha pasado las dos primeras.
 - Compara siempre con un azar justo (misma exposición, mismas fechas posibles), cuenta episodios y no días, incluye costes.
@@ -135,16 +164,17 @@ cambia después de ver resultados.
 
 ## 7. Formatos
 
-### Informe: `agente/informes/AAAA-MM-DD.md` (fecha de mercado)
+### Informe: `agente/informes/AAAA-MM-DD.md` (fecha de mercado; la máquina lo copia también a `agente/ULTIMO.md`)
 ```
 # Informe del compañero — <fecha de mercado>
 ## En una frase
 ## 1. ¿Funciona todo? (vigilante)
-## 2. Qué dice hoy la terminal
-## 3. Marcador (qué señales van funcionando con datos nuevos)
-## 4. Investigación del día
-## 5. Propuestas para Pe (como mucho 2; cada una con: qué, por qué, qué la desmentiría)
-## 6. Lo que necesito de Pe
+## 2. Señales del plan (una línea cada una; lo que ha cambiado)
+## 3. Qué dice hoy la terminal
+## 4. Marcador (qué señales van funcionando con datos nuevos)
+## 5. Investigación (solo viernes)
+## 6. Propuestas para Pe (como mucho 2; cada una con: qué, por qué, qué la desmentiría)
+## 7. Lo que necesito de Pe
 ```
 
 ### Telegram: `agente/telegram.txt`
@@ -153,6 +183,7 @@ Texto plano (sin Markdown), **máximo 1.200 caracteres**, así:
 🤖 Compañero · <día> <fecha>
 <🟢/🟠/🔴> Sistema: <una frase>
 📊 Terminal: <dos frases como mucho>
+🎯 Plan: <la señal más cercana y cuánto falta; si alguna saltó hoy, va en la PRIMERA línea>
 🧾 Marcador: <una frase; lo que cambió>
 🔬 Hoy he probado: <una frase o "nada">
 💡 Propuesta: <una frase o "ninguna">

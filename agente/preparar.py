@@ -342,7 +342,7 @@ def _f(x, suf=""):
     return "—" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x}{suf}"
 
 
-def resumen_md(v, m):
+def resumen_md(v, m, lec=None):
     L = [f"# Datos del día — mercado {v['fecha_mercado_esperada']}",
          f"_Generado {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC por agente/preparar.py (sin IA)._", "",
          "## 1. Vigilante"]
@@ -350,6 +350,8 @@ def resumen_md(v, m):
         L += [f"- {icono} {x}" for x in v[nivel]]
     if v.get("avisos_resueltos"):
         L.append(f"- ✅ Avisos que ya NO salen: {', '.join(v['avisos_resueltos'])}")
+    if lec and lec.get("plan"):
+        L += ["", "## Señales del plan de compras en caídas (estado de hoy)"] + [f"- **{x['senal']}:** {x['estado']}" for x in lec["plan"]]
     L += ["", "## 2. Marcador fuera de muestra (señales del cable)",
           f"Precios: {m.get('fuente_precios')}. Entrada al cierre de la sesión siguiente a la señal. "
           "Una señal repetida en 14 días cuenta una vez. 'acierto' = se movió en la dirección que decía; "
@@ -406,7 +408,98 @@ def lectura():
     p = leer(HIST / "plan_spy_estado.json")
     if isinstance(p, dict) and p.get("activo"):
         r["plan_spy"] = sorted(p.get("tocados", {}), key=float)
+    try:
+        r["plan"] = plan(r)
+    except Exception as e:  # noqa: BLE001
+        r["plan"] = [{"senal": "error", "estado": f"{type(e).__name__}: {e}"}]
     return r
+
+
+# Festivos de la bolsa de Nueva York (para contar sesiones hasta el control del mes)
+FESTIVOS_NY = ["2026-11-26", "2026-12-25", "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31",
+               "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24"]
+
+
+def plan(lec):
+    """Estado de cada señal del plan de compras en caídas (sin cantidades de dinero: el repositorio es público).
+    Niveles desde el máximo de 52 semanas que usa el detector."""
+    s = leer(HIST / "semaforo_estado.json")
+    e = leer(HIST / "estructura_estado.json")
+    if not (isinstance(s, dict) and s.get("log") and s.get("etf")):
+        return []
+    u = s["log"][-1]
+    dd = u.get("dd") or {}
+    etf = s["etf"]
+    mer = s.get("mercado") or {}
+    sect_sale = (e[-1].get("sect_sale") if isinstance(e, list) and e else None)
+
+    def px(sym):
+        pico = (etf.get(sym) or {}).get("pico")
+        return (pico * (1 + dd[sym] / 100), pico) if pico and dd.get(sym) is not None else (None, pico)
+
+    out = []
+    t3, vix = u.get("t3"), u.get("vix")
+    if "se_va" in (u.get("eventos") or []):
+        est = "HOY SE VA EL PÁNICO"
+    elif u.get("panico_vivo"):
+        umbral = (vix / t3) if (vix and t3) else None
+        est = (f"pánico vivo desde el {mer.get('panico_desde')}; se va con VIX/VIX3M < 1,0 (hoy {_n(t3, 2)}"
+               + (f"; con el VIX a 3 meses quieto, VIX < {_n(umbral)}, hoy {_n(vix)})" if umbral else ")"))
+    elif mer.get("panico_se_fue"):
+        est = f"el pánico se fue el {mer.get('panico_se_fue')}"
+    else:
+        # memoria vacía (p. ej. primera noche del detector): se reconstruye con el registro diario
+        ini = min((x.get("inicio") for x in etf.values() if x.get("activo") and x.get("inicio")), default=None)
+        desde = None
+        for r0 in sorted(s.get("log") or [], key=lambda r: r.get("date") or ""):
+            t = r0.get("t3")
+            if not ini or not r0.get("date") or r0["date"] < ini or t is None:
+                continue
+            if t >= 1.10 and not desde:
+                desde = r0["date"]
+            elif desde and t < 1.0:
+                desde = None
+        if desde:
+            umbral = (vix / t3) if (vix and t3) else None
+            est = (f"pánico vivo desde el {desde}; se va con VIX/VIX3M < 1,0 (hoy {_n(t3, 2)}"
+                   + (f"; con el VIX a 3 meses quieto, VIX < {_n(umbral)}, hoy {_n(vix)})" if umbral else ")"))
+        else:
+            est = "no hay pánico vivo"
+    out.append({"senal": "Se va el pánico", "estado": est})
+    for sym, nivel, nombre in (("SPY", 10, "SPY −10 %"), ("QQQ", 20, "QQQ −20 %"), ("SPY", 20, "Bajista: SPY −20 %"), ("QQQ", 30, "Bajista: QQQ −30 %")):
+        p0, pico = px(sym)
+        if not pico or p0 is None:
+            continue
+        objetivo = pico * (1 - nivel / 100)
+        falta = (objetivo / p0 - 1) * 100
+        tocado = str(nivel) in ((etf.get(sym) or {}).get("tocados") or {})
+        est = ("TOCADO" if tocado or falta >= 0 else f"en {_n(objetivo, 2)}; le falta un {_n(falta)} % (hoy {_n(p0, 2)})")
+        if sym == "QQQ" and nivel == 20:
+            nl, ok_nl = u.get("nl"), (u.get("nl") or 0) >= 20
+            ok_s = (sect_sale or 0) >= 6
+            ok_t = (t3 or 0) >= 1.10
+            est += (f" · rendición total: {'SÍ' if (ok_nl and ok_s and ok_t) else 'no'} "
+                    f"(en mínimos {_n(nl)} % de 20; sectores sacando dinero {sect_sale} de 6; VIX/VIX3M {_n(t3, 2)} de 1,10)")
+        out.append({"senal": nombre, "estado": est})
+    # Control del mes: 21 sesiones después de que el SPY toque su −5 %
+    t5 = ((etf.get("SPY") or {}).get("tocados") or {}).get("5")
+    if (etf.get("SPY") or {}).get("activo") and t5 and t5.get("fecha"):
+        ctrl = np.busday_offset(np.datetime64(t5["fecha"]), 21, roll="forward", holidays=FESTIVOS_NY)
+        p0, pico = px("SPY")
+        n5 = pico * 0.95 if pico else None
+        hoy = np.datetime64(u.get("date") or v_fecha_hoy())
+        quedan = int(np.busday_count(hoy, ctrl, holidays=FESTIVOS_NY))
+        if quedan > 0:
+            est = (f"el {ctrl}; faltan {quedan} sesiones. Ese día: SPY por encima de {_n(n5, 2)} = corrección normal "
+                   f"(solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)")
+        else:
+            est = (f"pasó el {ctrl}: SPY {'POR ENCIMA del −5 % → corrección normal' if (dd.get('SPY') or 0) > -5 else 'ATASCADO bajo el −5 % → probable −10 %'}")
+        out.append({"senal": "Control del mes tras el −5 % del SPY", "estado": est})
+    return out
+
+
+def v_fecha_hoy():
+    return str(fecha_mercado_esperada())
 
 
 def telegram_sin_ia(v, m, lec):
@@ -441,6 +534,8 @@ def telegram_sin_ia(v, m, lec):
                  f" · centinela {lec.get('centinela', '—')}")
     if lec.get("plan_spy"):
         L.append("🎯 Plan SPY: tocados " + ", ".join(f"−{t} %" for t in lec["plan_spy"]))
+    for x in lec.get("plan") or []:
+        L.append(f"🎯 {x['senal']}: {x['estado']}")
     tabla = m.get("tabla", [])
     if tabla:
         maduras = [t for t in tabla if t.get("n20", 0) >= 30]
@@ -458,7 +553,7 @@ def telegram_sin_ia(v, m, lec):
     if hoy:
         imp = [f"{x['tag']} {x['sym']}" for x in hoy if x["tag"] in IMPORTANTES]
         L.append(f"📡 Cable: {len(hoy)} señales" + (" · " + ", ".join(imp[:5]) if imp else ""))
-    return "\n".join(L)[:1500]
+    return "\n".join(L)[:2500]
 
 
 def main():
@@ -472,11 +567,11 @@ def main():
     (SALIDA / "vigilante.json").write_text(json.dumps(v, ensure_ascii=False, indent=1), encoding="utf-8")
     (SALIDA / "marcador.json").write_text(json.dumps(m, ensure_ascii=False, default=str), encoding="utf-8")
     lec = lectura()
-    (SALIDA / "lectura.json").write_text(json.dumps(lec, ensure_ascii=False, indent=1), encoding="utf-8")
-    (SALIDA / "resumen.md").write_text(resumen_md(v, m), encoding="utf-8")
+    (SALIDA / "lectura.json").write_text(json.dumps(lec, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    (SALIDA / "resumen.md").write_text(resumen_md(v, m, lec), encoding="utf-8")
     tg = telegram_sin_ia(v, m, lec)
     (SALIDA / "telegram_sin_ia.txt").write_text(tg, encoding="utf-8")
-    print(resumen_md(v, m))
+    print(resumen_md(v, m, lec))
     print("──── Telegram (sin IA) ────")
     print(tg)
 

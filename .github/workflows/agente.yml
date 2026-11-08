@@ -28,11 +28,14 @@ env:
   # Lunes a jueves: repaso corto (vigilante, marcador, lectura y "lo que se te pasa"), SIN investigar.
   # Viernes (la noche del viernes): repaso + investigacion de verdad.
   # Frenos para no comerse tu plan: maximo de pasos del agente (y, solo si usas clave de pago, gasto maximo en dolares).
-  TURNOS_DIA: "25"
-  TURNOS_VIERNES: "60"
-  TOPE_DIA: "0.60"
-  TOPE_VIERNES: "2.50"
-  # Modelo: "sonnet" (recomendado, gasta menos del plan) u "opus" (mas listo, gasta bastante mas).
+  TURNOS_DIA: "40"
+  TURNOS_VIERNES: "100"
+  # Cuanto piensa antes de actuar: low, medium, high, xhigh o max (mas = mejor razonamiento y mas gasto).
+  ESFUERZO_DIA: "high"
+  ESFUERZO_VIERNES: "max"
+  TOPE_DIA: "1.00"
+  TOPE_VIERNES: "4.00"
+  # Modelo: "sonnet" (recomendado). "opus" piensa mejor, pero con el plan Pro puede no estar incluido en Claude Code.
   MODELO: "sonnet"
   # ─────────────────────────────────────────────────────────────────────────
 
@@ -99,7 +102,7 @@ jobs:
         if: steps.decide.outputs.toca == 'si'
         continue-on-error: true
         run: |
-          pip install -q pandas numpy yfinance
+          pip install -q pandas numpy yfinance pyarrow
           python agente/preparar.py
 
       - name: Fecha de mercado
@@ -109,6 +112,12 @@ jobs:
           FECHA=$(python -c "import json;print(json.load(open('agente/hoy/vigilante.json'))['fecha_mercado_esperada'])" 2>/dev/null || TZ=Europe/Madrid date +%F)
           echo "Fecha de mercado: $FECHA"
           echo "fecha=$FECHA" >> "$GITHUB_OUTPUT"
+          if [ "$(date -d "$FECHA" +%u)" = "5" ]; then echo "modo=semanal" >> "$GITHUB_OUTPUT"; else echo "modo=diario" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Datos para investigar (solo la sesion del viernes)
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si' && steps.fecha.outputs.modo == 'semanal'
+        continue-on-error: true
+        run: python agente/herramientas/datos.py --descargar
 
       - name: Guardar el resumen del dia (version sin IA)
         if: steps.decide.outputs.toca == 'si' && env.USAR_IA != 'si'
@@ -140,6 +149,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ESTADO_BUILD: ${{ steps.decide.outputs.build }}
           FECHA: ${{ steps.fecha.outputs.fecha }}
+          MODO_HOY: ${{ steps.fecha.outputs.modo }}
         run: |
           [ -z "$ANTHROPIC_API_KEY" ] && unset ANTHROPIC_API_KEY
           [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] && unset CLAUDE_CODE_OAUTH_TOKEN
@@ -148,10 +158,10 @@ jobs:
             exit 1
           fi
           mkdir -p agente/informes agente/estudios /tmp/agente
-          if [ "$(date -d "$FECHA" +%u)" = "5" ]; then
-            MODO="SEMANAL (repaso completo + investigacion)"; TURNOS="$TURNOS_VIERNES"; TOPE="$TOPE_VIERNES"
+          if [ "$MODO_HOY" = "semanal" ]; then
+            MODO="SEMANAL (repaso completo + investigacion a fondo; datos en /tmp/agente/datos)"; TURNOS="$TURNOS_VIERNES"; TOPE="$TOPE_VIERNES"; ESFUERZO="$ESFUERZO_VIERNES"
           else
-            MODO="DIARIO (repaso corto, SIN investigar)"; TURNOS="$TURNOS_DIA"; TOPE="$TOPE_DIA"
+            MODO="DIARIO (repaso, SIN investigar)"; TURNOS="$TURNOS_DIA"; TOPE="$TOPE_DIA"; ESFUERZO="$ESFUERZO_DIA"
           fi
           echo "Modo: $MODO · maximo $TURNOS pasos"
           # El tope en dolares solo se aplica con clave de pago; con suscripcion frena el numero de pasos.
@@ -162,11 +172,41 @@ jobs:
             --append-system-prompt "$(cat agente/INSTRUCCIONES.md)" \
             --model "$MODELO" \
             --max-turns "$TURNOS" \
+            --effort "$ESFUERZO" \
             "${extra[@]}" \
             --dangerously-skip-permissions \
-            --output-format text > /tmp/salida_agente.txt 2>&1 || codigo=$?
-          echo "---- ultimas lineas del agente ----"
-          tail -40 /tmp/salida_agente.txt
+            --output-format json > /tmp/salida_agente.json 2> /tmp/errores_agente.txt || codigo=$?
+          # Cuanto ha gastado el agente hoy (pasos y tokens): se guarda en agente/uso.md y va en el Telegram.
+          MODO_CORTO="${MODO%% *}" python - <<'PYEOF' || true
+          import json, os, pathlib, datetime
+          try:
+              lineas = [x for x in open("/tmp/salida_agente.json", encoding="utf-8").read().splitlines() if x.strip().startswith("{")]
+              d = json.loads(lineas[-1])
+          except Exception as e:
+              print("Sin datos de consumo:", type(e).__name__)
+              raise SystemExit(0)
+          u = d.get("usage") or {}
+          ent = int(u.get("input_tokens") or 0) + int(u.get("cache_creation_input_tokens") or 0)
+          cache = int(u.get("cache_read_input_tokens") or 0)
+          sal = int(u.get("output_tokens") or 0)
+          fila = {"fecha": os.environ.get("FECHA"), "modo": os.environ.get("MODO_CORTO"), "pasos": d.get("num_turns"),
+                  "tokens_nuevos": ent, "tokens_releidos": cache, "tokens_escritos": sal,
+                  "equivalente_api_usd": round(float(d.get("total_cost_usd") or 0), 2),
+                  "minutos": round((d.get("duration_ms") or 0) / 60000, 1), "terminado": d.get("subtype")}
+          pathlib.Path("agente/hoy").mkdir(parents=True, exist_ok=True)
+          pathlib.Path("agente/hoy/uso.json").write_text(json.dumps(fila, ensure_ascii=False, indent=1), encoding="utf-8")
+          reg = pathlib.Path("agente/uso.md")
+          if not reg.exists():
+              reg.write_text("# Consumo del agente\n\n| Fecha | Modo | Pasos | Tokens nuevos | Releídos | Escritos | ≈ $ si fuera API | Min | Final |\n|---|---|---|---|---|---|---|---|---|\n", encoding="utf-8")
+          with reg.open("a", encoding="utf-8") as f:
+              f.write((f"| {fila['fecha']} | {fila['modo']} | {fila['pasos']} | {ent:,} | {cache:,} | {sal:,} | "
+                         f"{fila['equivalente_api_usd']} | {fila['minutos']} | {fila['terminado']} |\n").replace(",", "."))
+          print("Consumo:", fila)
+          print("---- respuesta final del agente ----")
+          print(str(d.get("result") or "")[-2000:])
+          PYEOF
+          echo "---- errores (si hay) ----"
+          tail -20 /tmp/errores_agente.txt
           exit $codigo
 
       - name: Guardar solo la carpeta agente/ (la correa)
@@ -181,11 +221,15 @@ jobs:
           git checkout -- . ':(exclude)agente' 2>/dev/null || true
           git clean -fdq -e agente/ || true
           # 2) Su manual, su script y las notas de Pe tampoco los puede cambiar.
-          for f in agente/INSTRUCCIONES.md agente/preparar.py agente/notas_de_pe.md agente/.gitignore; do
+          for f in agente/INSTRUCCIONES.md agente/preparar.py agente/herramientas/datos.py agente/notas_de_pe.md agente/.gitignore; do
             git checkout -- "$f" 2>/dev/null || true
           done
-          # 3) Nada de archivos grandes.
+          # 3) Nada de archivos grandes ni restos de Python.
           find agente -type f -size +2M -print -delete || true
+          find agente -name __pycache__ -type d -prune -exec rm -rf {} + || true
+          git rm -r -q --cached agente/__pycache__ 2>/dev/null || true
+          # 4) El informe de hoy tambien en agente/ULTIMO.md (un solo enlace para verlo siempre)
+          if [ -n "$FECHA" ] && [ -f "agente/informes/$FECHA.md" ]; then cp "agente/informes/$FECHA.md" agente/ULTIMO.md; fi
           git config user.name "agente-companero"
           git config user.email "github-actions@github.com"
           git add agente
@@ -242,6 +286,12 @@ jobs:
                           texto += icono + " " + x[:200] + "\n"
               except Exception as e:
                   texto += "Tampoco hay datos del vigilante (" + type(e).__name__ + ")."
+          try:
+              uso = json.load(open("agente/hoy/uso.json", encoding="utf-8"))
+              texto += ("\n⚙️ Hoy he gastado: " + str(uso.get("pasos")) + " pasos (≈ " + format(uso.get("equivalente_api_usd") or 0, ".2f").replace(".", ",")
+                        + " $ si fuera de pago; con tu suscripción no se cobra)")
+          except Exception:
+              pass
           if fecha and pathlib.Path("agente/informes/" + fecha + ".md").exists():
               texto += "\n\nInforme completo: https://github.com/" + os.environ["REPO"] + "/blob/main/agente/informes/" + fecha + ".md"
           pathlib.Path("/tmp/tg.txt").write_text(texto[:3900], encoding="utf-8")

@@ -363,7 +363,7 @@
 ],
 "px0": 32.08,
 "inval": 31.12,
-"cerrada": false,
+"cerrada": true,
 "macro": {
 "usd": "sube",
 "usd_ratio": 97.6,
@@ -923,6 +923,35 @@
 "china_cmf": 0.091,
 "eslabon": "C0-HIPER",
 "cascada": "sin sentido claro"
+}
+},
+{
+"date": "2026-11-09",
+"sym": "KWEB",
+"fase": "DESPERTANDO",
+"pts": 10,
+"pre": 0,
+"caida": -32.3,
+"cmf": -0.016,
+"sil": 0,
+"vr": 1.65,
+"huellas": [
+"−32% de su máx 52s (paliza)",
+"30 pts bajo su media histórica",
+"10 semanas dormido en Rezagado",
+"0/3 estructurales (64-65% hist. a 4 sem)"
+],
+"px0": 24.31,
+"inval": 22.06,
+"cerrada": false,
+"macro": {
+"usd": "sube",
+"usd_ratio": 101.0,
+"usd_cmf": -0.139,
+"china": "mixta",
+"china_cmf": 0.054,
+"eslabon": "C0-HIPER",
+"cascada": "el dinero SUBE hacia el principio (vuelve a chips)"
 }
 }
 ]

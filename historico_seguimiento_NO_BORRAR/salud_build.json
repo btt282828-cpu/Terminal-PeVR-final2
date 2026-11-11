@@ -488,5 +488,70 @@
 "n": 1
 }
 ]
+},
+{
+"ts": "2026-11-11 02:14 UTC",
+"opciones": {
+"corrio": true,
+"yahoo": 63,
+"yahoo_sin": 1,
+"yahoo_ult_err": "",
+"cboe": 1,
+"cboe_err": 0,
+"cboe_ult_err": "",
+"modo": "yahoo"
+},
+"avisos": [
+{
+"o": "frescura",
+"m": "21 series con el cierre del 2026-11-10 REHECHO con barras de 1 hora (Yahoo aun no daba la barra diaria). Cierre aproximado: puede diferir unas centésimas del oficial",
+"n": 1
+},
+{
+"o": "datos.DRAM",
+"m": "ETF joven: 33 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "datos.NCLD",
+"m": "ETF joven: 15 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "options.iv",
+"m": "IV descartada por no plausible en 3 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): FAN 103%/23r, HYDR 184%/52r, UUP 34%/6r",
+"n": 1
+},
+{
+"o": "options.pcr",
+"m": "put/call fuera de banda plausible [0.29-3.5] en 14 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: TAN (vol 0.27), LIT (OI 0.18), ARKX (OI 0.22",
+"n": 1
+},
+{
+"o": "options.fuente",
+"m": "Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 63 por Yahoo",
+"n": 1
+},
+{
+"o": "acciones",
+"m": "7 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
+"n": 1
+},
+{
+"o": "frescura",
+"m": "MAGS: cierre del 2026-11-10 rehecho con barras de 1 hora (Yahoo aún no daba la barra diaria)",
+"n": 1
+},
+{
+"o": "frescura",
+"m": "SDOG: cierre del 2026-11-10 rehecho con barras de 1 hora (Yahoo aún no daba la barra diaria)",
+"n": 1
+},
+{
+"o": "valida.CL=F",
+"m": "yahoo: cierres <= 0 o serie vacia — fuente descartada, se prueba la siguiente",
+"n": 1
+}
+]
 }
 ]

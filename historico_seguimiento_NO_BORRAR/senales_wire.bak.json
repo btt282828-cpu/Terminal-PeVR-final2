@@ -6064,5 +6064,131 @@
 "tag": "SENT",
 "sym": "F&G",
 "dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": 0
+},
+{
+"date": "2026-11-10",
+"tag": "CLÍMAX",
+"sym": "XLI",
+"dir": -1
+},
+{
+"date": "2026-11-10",
+"tag": "CLÍMAX",
+"sym": "EWP",
+"dir": -1
+},
+{
+"date": "2026-11-10",
+"tag": "CLÍMAX",
+"sym": "UFO",
+"dir": -1
+},
+{
+"date": "2026-11-10",
+"tag": "CAPITUL",
+"sym": "XLK",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "CAPITUL",
+"sym": "SMH",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "CAPITUL",
+"sym": "BOTZ",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "SE VA EL PÁNICO",
+"sym": "MERCADO",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GRADUADO",
+"sym": "ITA",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GRADUADO",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GRADUADO",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GRADUADO",
+"sym": "XLI",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "FLOW",
+"sym": "XLP",
+"dir": -1
+},
+{
+"date": "2026-11-10",
+"tag": "0/3",
+"sym": "KWEB",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "0/3",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "SUELO",
+"sym": "KWEB",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "SUELO",
+"sym": "SLV",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "SUELO",
+"sym": "URA",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "EARLY",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "EARLY",
+"sym": "DRIV",
+"dir": 1
 }
 ]

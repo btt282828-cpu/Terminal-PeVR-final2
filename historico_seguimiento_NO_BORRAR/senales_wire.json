@@ -6091,30 +6091,6 @@
 },
 {
 "date": "2026-11-10",
-"tag": "CAPITUL",
-"sym": "XLK",
-"dir": 1
-},
-{
-"date": "2026-11-10",
-"tag": "CAPITUL",
-"sym": "SMH",
-"dir": 1
-},
-{
-"date": "2026-11-10",
-"tag": "CAPITUL",
-"sym": "BOTZ",
-"dir": 1
-},
-{
-"date": "2026-11-10",
-"tag": "SE VA EL PÁNICO",
-"sym": "MERCADO",
-"dir": 1
-},
-{
-"date": "2026-11-10",
 "tag": "GRADUADO",
 "sym": "ITA",
 "dir": 1
@@ -6128,20 +6104,32 @@
 {
 "date": "2026-11-10",
 "tag": "GRADUADO",
-"sym": "DRIV",
-"dir": 1
-},
-{
-"date": "2026-11-10",
-"tag": "GRADUADO",
 "sym": "XLI",
 "dir": 1
 },
 {
 "date": "2026-11-10",
-"tag": "FLOW",
-"sym": "XLP",
-"dir": -1
+"tag": "GRADUADO",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GIRO",
+"sym": "STX",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GIRO",
+"sym": "WDC",
+"dir": 1
+},
+{
+"date": "2026-11-10",
+"tag": "GIRO",
+"sym": "UFO",
+"dir": 1
 },
 {
 "date": "2026-11-10",
@@ -6164,13 +6152,13 @@
 {
 "date": "2026-11-10",
 "tag": "SUELO",
-"sym": "SLV",
+"sym": "URA",
 "dir": 1
 },
 {
 "date": "2026-11-10",
 "tag": "SUELO",
-"sym": "URA",
+"sym": "SLV",
 "dir": 1
 },
 {

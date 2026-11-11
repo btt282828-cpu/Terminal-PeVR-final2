@@ -478,5 +478,20 @@
 "RSP": 220.95,
 "IWM": 282.51
 }
+},
+{
+"date": "2026-11-10",
+"rsp": "ENSANCHANDO",
+"iwm": "ESTABLE",
+"p50": 62.1,
+"p200": 58.0,
+"nhnl10": 19.3,
+"div": false,
+"lectura": "SIN ESTRECHAMIENTO",
+"px": {
+"SPY": 749.92,
+"RSP": 220.88,
+"IWM": 280.58
+}
 }
 ]

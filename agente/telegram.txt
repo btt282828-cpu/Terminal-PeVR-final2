@@ -1,9 +1,8 @@
-🤖 Compañero · lunes 9-nov
-🎯 HOY SALTÓ «SE VA EL PÁNICO» (VIX/VIX3M cierra en 0,95 tras haber estado ≥1,10). Es la señal de la ½ de reserva solo en los ETF donde guardaste reserva. Se decide el viernes al cierre.
-🟢 Sistema: todo grabado, sin avisos.
-📊 Terminal: gran rebote (SPY de −5,9 % a −3,7 % del máximo; QQQ de −14 % a −10,9 %), VIX 19,9. Aun así el sistema dice NO TOCAR/ESPERAR y el dinero está MIXTO.
-📍 Resto del plan: SPY −10 % falta −6,5 %; QQQ −20 % falta −10,2 % (sin rendición total).
-🧾 Marcador: nada demostrado; la señal de hoy es la 1ª vez que salta (1 caso).
-🔬 Hoy he probado: nada
-💡 Propuesta: ninguna
-🙋 Necesito de ti: nada
+🤖 Compañero · martes 10-nov-2026
+🟠 Sistema: bien; solo un aviso menor (el cierre de un ETF de dividendo, SDOG, se rehízo con datos por horas).
+📊 Terminal: el mercado cede algo del rebote de ayer: SPY −4,1 % desde su máximo, QQQ −11,6 %, VIX 19,5. Dinero entrando en amplio, pero sin empuje; centinela ACECHO.
+🎯 Plan: ninguna señal nueva hoy; el pánico sigue «ido» desde el 9-nov. Lo más cercano: el control del 7-dic (SPY solo 1 % por encima de la línea buena). SPY −10 % queda a −6,2 %.
+🧾 Marcador: sin cambios; todo orientativo, nada demostrado.
+🔬 Hoy he probado: nada (día de repaso).
+💡 Propuesta: revisar por qué el cable de señales pierde al día siguiente la señal «se va el pánico».
+🙋 Necesito de ti: nada urgente. Se actúa el viernes al cierre.

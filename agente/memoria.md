@@ -8,7 +8,11 @@
 
 - 9-nov-2026: SALTÓ «SE VA EL PÁNICO» (pánico vivo del 5 al 9-nov). SPY −3,7 %, QQQ −10,9 %, VIX 19,9; centinela ACECHO; veredicto NO TOCAR/ESPERAR. Control del mes: 7-dic.
 
+- 10-nov-2026: sin señales nuevas. SPY −4,1 %, QQQ −11,6 %, IWM −7,8 %, VIX 19,5; dinero AMPLIO sin empuje; centinela ACECHO; SPY ESPERAR. Control del mes 7-dic: SPY solo 1 % sobre la línea de 742,54.
+
 ## Problemas abiertos
+- (10-nov) HIPÓTESIS sin confirmar: `senales_wire.json` perdió la fila «SE VA EL PÁNICO» (y CAPITUL/FLOW) de la noche anterior; el código la crea solo el día del evento (rotacion.py ~16091). Propuesto a Pe revisarlo. Mirar si sigue ausente y si el marcador la cuenta.
+- (10-nov) Aviso menor: SDOG con cierre rehecho por barras de 1 hora (`_fresco_una`, ~1526). Ver si se repite.
 - (6-nov) Telegram de la terminal sin activar (decisión de Pe, pendiente). Cuando lo active, además de los secretos hace falta pasar TELEGRAM_TOKEN y TELEGRAM_CHAT_ID en el `env:` del paso "Ejecutar el terminal" de build.yml.
 - (6-nov) 6 acciones de SECTOR_STOCKS sin datos en Yahoo (CTRA, EA, GATO…): probablemente compradas o con ticker nuevo. Revisar config.
 - (6-nov) Yahoo no da cierres válidos de CL=F (petróleo); la terminal pasa a otra fuente.

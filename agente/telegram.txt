@@ -1,8 +1,8 @@
-🤖 Compañero · martes 10-nov-2026
-🟠 Sistema: bien; solo un aviso menor (el cierre de un ETF de dividendo, SDOG, se rehízo con datos por horas).
-📊 Terminal: el mercado cede algo del rebote de ayer: SPY −4,1 % desde su máximo, QQQ −11,6 %, VIX 19,5. Dinero entrando en amplio, pero sin empuje; centinela ACECHO.
-🎯 Plan: ninguna señal nueva hoy; el pánico sigue «ido» desde el 9-nov. Lo más cercano: el control del 7-dic (SPY solo 1 % por encima de la línea buena). SPY −10 % queda a −6,2 %.
-🧾 Marcador: sin cambios; todo orientativo, nada demostrado.
-🔬 Hoy he probado: nada (día de repaso).
-💡 Propuesta: revisar por qué el cable de señales pierde al día siguiente la señal «se va el pánico».
-🙋 Necesito de ti: nada urgente. Se actúa el viernes al cierre.
+🤖 Compañero · miércoles 11-nov-2026
+🟢 Sistema: todo grabado y sin avisos (el aviso menor de SDOG de ayer se corrigió solo).
+📊 Terminal: día de rebote (SPY +1,3 %, QQQ +2,3 %, VIX 17,5). Dinero mixto, centinela en ACECHO; QQQ y MAGS NO TOCAR, el resto ESPERAR.
+🎯 Plan: ninguna señal saltó hoy. El pánico se fue el 9-nov. SPY a −2,8 % del máximo (le faltan −7,4 % para el −10 %); QQQ a −9,5 % (−11,6 % para su −20 %). Control del mes el 7-dic: el SPY está un 2,3 % por encima de la línea buena (742,54).
+🧾 Marcador: sin cambios, todo orientativo (pocos casos). Nada demostrado.
+🔬 Hoy he probado: nada (modo diario). Retiro la sospecha de ayer sobre el cable: no era un fallo.
+💡 Propuesta: ninguna
+🙋 Necesito de ti: nada. Hoy se observa; se actúa el viernes al cierre.

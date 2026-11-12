@@ -1,10 +1,10 @@
 {
  "fecha_mercado_esperada": "2026-11-11",
  "rojo": [],
- "ambar": [],
- "verde": [
-  "Todo grabado y sin avisos nuevos"
+ "ambar": [
+  "aviso NUEVO en SALUD DEL BUILD → options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre"
  ],
+ "verde": [],
  "archivos": {
   "semaforo_estado.json": {
    "ultima_fecha": "2026-11-11",
@@ -16,43 +16,43 @@
    "ultima_fecha": "2026-11-11",
    "sesiones_de_retraso": 0,
    "elementos": 10,
-   "elementos_antes": 9
+   "elementos_antes": 10
   },
   "dix_estado.json": {
    "ultima_fecha": "2026-11-11",
    "sesiones_de_retraso": 0,
    "elementos": 9,
-   "elementos_antes": 8
+   "elementos_antes": 9
   },
   "amplitud_estado.json": {
    "ultima_fecha": "2026-11-11",
    "sesiones_de_retraso": 0,
    "elementos": 34,
-   "elementos_antes": 33
+   "elementos_antes": 34
   },
   "operativa_indices.json": {
    "ultima_fecha": "2026-11-11",
    "sesiones_de_retraso": 0,
    "elementos": 22,
-   "elementos_antes": 21
+   "elementos_antes": 22
   },
   "centinela_estado.json": {
    "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
    "elementos": 43,
-   "elementos_antes": 42
+   "elementos_antes": 43
   },
   "options_iv.json": {
    "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
    "elementos": 2172,
-   "elementos_antes": 2109
+   "elementos_antes": 2172
   },
   "senales_wire.json": {
    "ultima_fecha": "2026-11-11",
    "sesiones_de_retraso": 0,
    "elementos": 1051,
-   "elementos_antes": 1030
+   "elementos_antes": 1051
   },
   "despertares.json": {
    "ultima_fecha": "2026-11-09",
@@ -64,7 +64,7 @@
    "ultima_fecha": "2026-11-10",
    "sesiones_de_retraso": 1,
    "elementos": 41,
-   "elementos_antes": 40
+   "elementos_antes": 41
   },
   "track_record.json": {
    "ultima_fecha": "2026-11-06",
@@ -107,18 +107,19 @@
    "dias": 8
   }
  },
- "salud_build_ultima": "2026-11-12 03:19 UTC",
+ "salud_build_ultima": "2026-11-12 06:49 UTC",
  "avisos_hoy": [
   "datos.DRAM: ETF joven: 33 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
   "datos.NCLD: ETF joven: 15 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
-  "options.iv: IV descartada por no plausible en 1 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): FAN 117%/23r",
-  "options.pcr: put/call fuera de banda plausible [0.29-3.5] en 13 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: LIT (OI 0.19), ARKX (OI 0.22), UFO (vol 0.19",
-  "options.fuente: Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 63 por Yahoo",
+  "options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre",
+  "options.iv: IV descartada por no plausible en 51 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): SPY 3%/22r, TAN 6%/45r, ICLN 142%/32r, FAN 117%/23r, LIT 5%/30r, ARKK 6%/55",
+  "options.pcr: put/call fuera de banda plausible [0.29-3.5] en 2 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: SIL (OI 0.20), FXI (OI 0.12)",
+  "options.fuente: Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 71 por Yahoo",
   "acciones: 7 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
   "valida.CL=F: yahoo: cierres <= 0 o serie vacia — fuente descartada, se prueba la siguiente"
  ],
- "avisos_nuevos": [],
- "avisos_resueltos": [
-  "frescura"
- ]
+ "avisos_nuevos": [
+  "options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre"
+ ],
+ "avisos_resueltos": []
 }

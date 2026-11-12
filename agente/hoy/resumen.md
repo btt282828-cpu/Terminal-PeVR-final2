@@ -1,9 +1,8 @@
 # Datos del día — mercado 2026-11-11
-_Generado 2026-11-12 03:20 UTC por agente/preparar.py (sin IA)._
+_Generado 2026-11-12 06:50 UTC por agente/preparar.py (sin IA)._
 
 ## 1. Vigilante
-- 🟢 Todo grabado y sin avisos nuevos
-- ✅ Avisos que ya NO salen: frescura
+- 🟠 aviso NUEVO en SALUD DEL BUILD → options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre
 
 ## Señales del plan de compras en caídas (estado de hoy)
 - **Se va el pánico:** el pánico se fue el 2026-11-09

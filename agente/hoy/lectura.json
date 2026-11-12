@@ -20,27 +20,27 @@
  },
  "indices": {
   "SPY": [
-   "ESPERAR",
+   "NOTA FLOJA",
    4
   ],
   "QQQ": [
-   "NO TOCAR",
+   "NOTA BAJA",
    2
   ],
   "DIA": [
-   "ESPERAR",
+   "NOTA MEDIA",
    7
   ],
   "IWM": [
-   "ESPERAR",
+   "NOTA MEDIA",
    7
   ],
   "RSP": [
-   "ESPERAR",
+   "NOTA ALTA",
    10
   ],
   "MAGS": [
-   "NO TOCAR",
+   "NOTA BAJA",
    3
   ]
  },

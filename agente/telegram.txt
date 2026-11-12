@@ -1,8 +1,8 @@
-🤖 Compañero · miércoles 11-nov-2026
-🟢 Sistema: todo grabado y sin avisos (el aviso menor de SDOG de ayer se corrigió solo).
-📊 Terminal: día de rebote (SPY +1,3 %, QQQ +2,3 %, VIX 17,5). Dinero mixto, centinela en ACECHO; QQQ y MAGS NO TOCAR, el resto ESPERAR.
-🎯 Plan: ninguna señal saltó hoy. El pánico se fue el 9-nov. SPY a −2,8 % del máximo (le faltan −7,4 % para el −10 %); QQQ a −9,5 % (−11,6 % para su −20 %). Control del mes el 7-dic: el SPY está un 2,3 % por encima de la línea buena (742,54).
-🧾 Marcador: sin cambios, todo orientativo (pocos casos). Nada demostrado.
-🔬 Hoy he probado: nada (modo diario). Retiro la sospecha de ayer sobre el cable: no era un fallo.
+🤖 Compañero · mié 11-nov
+🟢 Sistema: funciona, ya con la v8.5. Un aviso menor: el volumen de opciones de hoy es provisional (no te fíes del PCR-vol).
+📊 Terminal: rebote (SPY −2,8 % del máximo, QQQ −9,5 %, VIX 17,5). Dinero mixto, centinela ACECHO. Los veredictos ahora son «notas»: NOTA BAJA = el antiguo NO TOCAR, mismo valor.
+🎯 Plan: nada ha saltado hoy. Pánico ido desde el 9-nov. SPY −10 % queda a −7,4 %, QQQ −20 % a −11,6 %. Control del mes el 7-dic (SPY 2,3 % sobre la línea).
+🧾 Marcador: sin cambios; ninguna señal tiene 30 casos.
+🔬 Hoy he probado: nada (modo diario).
 💡 Propuesta: ninguna
-🙋 Necesito de ti: nada. Hoy se observa; se actúa el viernes al cierre.
+🙋 Necesito de ti: nada. Hoy se observa, se actúa el viernes.

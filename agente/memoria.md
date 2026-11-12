@@ -12,13 +12,16 @@
 
 - 11-nov-2026: sin señales nuevas. Rebote: SPY −2,8 %, QQQ −9,5 %, IWM −7,0 %, VIX 17,5; dinero MIXTO; centinela ACECHO. Control del mes 7-dic: SPY 2,3 % sobre la línea de 742,54.
 
+- 11-nov-2026 (revisado): Pe subió la terminal v8.5 (cambia pestaña «Hoy», plan único de 4 balas, notas en vez de órdenes: ESPERAR→NOTA FLOJA, NO TOCAR→NOTA BAJA; señales del plan actúan con el cierre del día). Bala 1 = «se va el pánico» 9-nov. Sin señales nuevas. Control del mes 7-dic.
+
 ## Problemas abiertos
+- (11-nov) 7 acciones de SECTOR_STOCKS sin datos (antes 6). PCR de SIL y FXI fuera de banda. Build de opciones parcial (01:41 NY).
 - (11-nov) RESUELTA/retirada: lo de «SE VA EL PÁNICO» en senales_wire.json no era fallo: el histórico (git) nunca la guardó en ese archivo. Duda menor: el marcador no mide esa señal.
 - (10-nov) Aviso menor SDOG (`_fresco_una`, ~1526): no se repitió el 11-nov; cerrado salvo que vuelva.
 - (6-nov) Telegram de la terminal sin activar (decisión de Pe, pendiente). Cuando lo active, además de los secretos hace falta pasar TELEGRAM_TOKEN y TELEGRAM_CHAT_ID en el `env:` del paso "Ejecutar el terminal" de build.yml.
 - (6-nov) 6 acciones de SECTOR_STOCKS sin datos en Yahoo (CTRA, EA, GATO…): probablemente compradas o con ticker nuevo. Revisar config.
 - (6-nov) Yahoo no da cierres válidos de CL=F (petróleo); la terminal pasa a otra fuente.
-- (30-oct) Incoherencia pendiente de que Pe decida: en `_op_veredicto`, ACECHO bloquea más que DISTRIBUCIÓN.
+- (30-oct) Incoherencia ACECHO vs DISTRIBUCIÓN en `_op_veredicto`: la v8.5 quitó las órdenes; preguntar a Pe si ya no aplica.
 
 ## Trabajo a medias
 - 6-nov: I-002 probada y descartada. Siguiente en cola: I-003 (semis; contexto, pendiente de especificación de Pe).

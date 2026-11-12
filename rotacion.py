@@ -3,6 +3,16 @@
 """
 ROTACION - Smart-Money Flow Terminal (version de escritorio)
 ============================================================
+v8.5 (11-nov-2026) - Revision a fondo de la primera pestana:
+  * Primera pestana "Hoy" con 5 bloques: datos, que toca hoy, tabla de caidas, termometro del miedo y agenda.
+    Todo lo que habia antes pasa a la pestana "Detalle", como descripcion.
+  * Un solo plan (las 4 balas de la reserva; balas_estado.json) y un solo maximo (52 semanas con maximos de vela).
+    El plan SPY y el plan en papel de Estructura quedan como estudios, sin importes ni ordenes.
+  * La nota 0-10 y el Centinela dejan de dar ordenes (fuera ENTRAR / ESPERAR / NO TOCAR y la regla nucleo-satelite).
+  * Las senales del plan de caidas actuan con el cierre del dia de la senal (no se espera al viernes).
+  * El cable de senales se fecha con el ultimo cierre diario (antes la ejecucion siguiente pisaba las de la vispera).
+  * Telegram del plan en terminos de balas; fuera el aviso aparte del plan SPY.
+
 Descarga datos REALES de fin de dia (gratis, sin API key) de:
   1) Stooq  (fuente principal, sin key)
   2) Yahoo / yfinance  (respaldo automatico, sin key)
@@ -12242,7 +12252,8 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append("<main>")
     html.append(
         "<div class='viewtabs mainbar' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
-        "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Operativa índices y sectores</button>"
+        "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Hoy</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('det',this)\" style='font-size:13px;padding:7px 16px;border-color:#9FB0C855'>🔎 Detalle</button>"
         "<button class='viewtab mainview' onclick=\"mainView('est',this)\" style='font-size:13px;padding:7px 16px;border-color:#4CC2E077'>📅 Estacionalidad</button>"
         "<button class='viewtab mainview' onclick=\"mainView('rn',this)\" style='font-size:13px;padding:7px 16px;border-color:#F4B74055;color:#F4B740'>🎲 Rachas y niveles</button>"
         "<button class='viewtab mainview' onclick=\"mainView('ctx',this)\" style='font-size:13px;padding:7px 16px'>📊 Contexto</button>"
@@ -12263,7 +12274,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         _idx_extra = ""
         try:
             if operativa:
-                _idx_extra += _semaforo_html(operativa.get("semaforo"))     # v8.4.2
+                _idx_extra += _caidas_estudio_html()                         # v8.5: lo medido, sin importes ni órdenes
                 _idx_extra += _plan_spy_html(operativa.get("plan_spy"))
         except Exception as _dege:
             _deg("planspy:html", _dege)
@@ -12300,10 +12311,21 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             _res = _resumen_html(estc, operativa, centinela, dix, rachas)
         except Exception as _dege:
             _deg("resumen:html0", _dege)
-        html.append("<div id='vista-idx' style='display:contents'>" + _res + _ag + _op_html(operativa) + _op_hist_html(operativa) + _idx_extra + "</div>")
+        # v8.5 — la primera pestaña es «Hoy» (5 bloques); lo que había aquí pasa a «Detalle», sin órdenes
+        try:
+            _hoy = _hoy_html(operativa, rachas, estc)
+        except Exception as _dege:
+            _deg("hoy:html", _dege)
+            _hoy = ("<div class='panel full'><h2>Hoy</h2><div class='note'>No se ha podido dibujar hoy "
+                    "(mira Salud del build en la pestaña PRO).</div></div>")
+        html.append("<div id='vista-idx' style='display:contents'>" + _hoy + "</div>")
+        _det_cab = ("<div class='panel full' style='padding:9px 14px;border-color:#9FB0C855'><div style='font-size:12.5px;line-height:1.55'>"
+                    "<b>🔎 Detalle.</b> Todo lo que calcula la terminal para describir el mercado. <b>Nada de esta pestaña es una orden</b>: "
+                    "el único plan está en «Hoy». " + HOY_NOTA_AVISO + "</div></div>")
+        html.append("<div id='vista-det' style='display:none'>" + _det_cab + _res + _op_html(operativa) + _op_hist_html(operativa) + _idx_extra + "</div>")
     except Exception as _dege:
         _deg("operativa:html", _dege)
-        html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Operativa índices</h2>"
+        html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Hoy</h2>"
                     "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     # v7.9 — Rachas y niveles (las ideas del chat, medidas)
     try:
@@ -16075,28 +16097,27 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         for s2, f2 in [x for x in _climas if x[1]["clima"] == "capitulacion"][:3]:
             _wadd("#B980FF", "CAPITUL", f"{s2}: {f2.get('ret1d', 0):+.1f}% {clima_dia(f2.get('clima_hace') or 0)} (z {f2.get('zday', 0):+.1f}) — pánico de un día; el cazador de suelos empieza a vigilar", s2, 1)
         try:
-            _ps = (operativa or {}).get("plan_spy") or {}
-            if _ps.get("nuevos"):
-                _n = max(_ps["nuevos"])
-                _wadd(AMB, "PLAN SPY", f"El SPY toca −{_n:g}% desde su máximo ({_ps['px']:.2f})"
-                      + (f" con {_ps['nl_pct']:.1f}% de acciones en mínimos de 52 semanas" if _ps.get("nl_pct") is not None else "")
-                      + " — mira el panel del plan", "SPY", 1)
             _smw = (operativa or {}).get("semaforo") or {}
+            _blw = (operativa or {}).get("balas") or {}
+            for _bn in (_blw.get("hoy") or []):
+                _bx = next((x for x in _blw.get("balas") or [] if x["n"] == _bn), {})
+                _wadd("#2FD08A", "BALA", f"Hoy toca la bala {_bn}: {_sin_html(_bx.get('cond', ''))}. Se actúa con este cierre — mira «Hoy»", "MERCADO", 1)
             for _nw in (_smw.get("nuevos") or []):
                 _wadd(("#2FD08A", AMB, "#F4607A")[min(_smw.get("av", 0), 2)], "NIVEL",
                       f"{_nw['sym']} toca −{_nw['niv']:g}% desde su máximo ({_nw['px']:.2f})" + (" — su nivel bueno" if _nw["bueno"] else "")
-                      + f": {_nw['tamano']} — mira el semáforo", _nw["sym"], 1)
+                      + (f". Es el nivel de la bala {_nivel_es_bala(_nw['sym'], _nw['niv'])}" if _nivel_es_bala(_nw["sym"], _nw["niv"])
+                         else ". Es un nivel de la tabla, no una bala") + " — mira «Hoy»", _nw["sym"], 1)
             for _xw in (_smw.get("salidas") or []):
-                _wadd("#2FD08A", "SALIDA", f"{_xw['sym']} recupera su máximo ({_xw['px']:.2f}): vende sus tramos", _xw["sym"], 1)
+                _wadd("#2FD08A", "SALIDA", f"{_xw['sym']} recupera su máximo ({_xw['px']:.2f}): sale lo comprado en esta caída en ese índice", _xw["sym"], 1)
             if "se_va" in (_smw.get("eventos") or []):
-                _wadd("#2FD08A", "SE VA EL PÁNICO", "El VIX vuelve por debajo del VIX a 3 meses: compra la ½ de reserva guardada en los ETF donde la guardaste", "MERCADO", 1)
+                _wadd("#2FD08A", "SE VA EL PÁNICO", "El VIX vuelve por debajo del VIX a 3 meses: es la señal de la bala 1", "MERCADO", 1)
             if "rendicion" in (_smw.get("eventos") or []):
                 _wadd("#2FD08A", "RENDICIÓN", "Rendición total (mínimos, sectores y VIX invertido): así llegaron las V de 2018, 2020 y 2025", "MERCADO", 1)
             if _smw.get("agudo"):
                 _pw = _smw.get("panico") or {}
                 _wadd("#F4607A", "PÁNICO", "Pánico agudo en el VIX"
                       + (f" (VIX9D/VIX {_pw['t9']:.2f}, VIX/VIX3M {_pw['t3']:.2f})" if _pw.get("t9") and _pw.get("t3") else "")
-                      + ": en ámbar o rojo, las caídas siguieron 2 de cada 3 veces — tramo pequeño y reserva para el siguiente nivel", "MERCADO", -1)
+                      + ": con él, las caídas siguieron 2 de cada 3 veces", "MERCADO", -1)
             if OPC_FRESCURA and not OPC_FRESCURA.get("ok"):
                 _wadd(GRY, "DATOS", f"Opciones sin actualizar desde {OPC_FRESCURA.get('ultima')}: la volatilidad y el skew que ves son de ese día", "MERCADO", 0)
         except Exception as _dege:
@@ -16146,7 +16167,13 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         if fg_idx and fg_idx["score"] <= 25:
             _wadd(RED, "SENT", f"F&G en MIEDO EXTREMO ({fg_idx['score']}) — histórico contrarian, confirma con flujo", "F&G", 1)
         # persistencia entre sesiones: guardar hoy + analizar las ultimas sesiones
-        _wire_date = (giro or {}).get("fecha") or str(df.index[-1].date())
+        _wire_date = None
+        try:
+            _wc = ((operativa or {}).get("ctx") or {}).get("cierre")
+            _wire_date = str(pd.Timestamp(_wc).date()) if _wc else None
+        except Exception as _dege:
+            _deg("wire:fecha", _dege)
+        _wire_date = _wire_date or (giro or {}).get("fecha") or str(df.index[-1].date())
         wtl = None
         try:
             wtl = analyze_wire_persistence(update_wire_ledger(wire, _wire_date))
@@ -17092,6 +17119,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
         html[_estc_pos] = ("<div id='vista-est' style='display:none'><div class='panel full'><h2>📅 Estacionalidad</h2>"
                            "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     html.append("<script>function mainView(v,b){var ix=document.getElementById('vista-idx');if(ix)ix.style.display=(v=='idx')?'contents':'none';"
+                "var dt_=document.getElementById('vista-det');if(dt_)dt_.style.display=(v=='det')?'contents':'none';"
                 "var es=document.getElementById('vista-est');if(es)es.style.display=(v=='est')?'contents':'none';"
                 "var rn=document.getElementById('vista-rn');if(rn)rn.style.display=(v=='rn')?'contents':'none';"
                 "document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
@@ -18576,8 +18604,10 @@ OPER_V, OPER_A, OPER_R, OPER_G, OPER_B = "#2FD08A", "#F4B740", "#F4607A", "#5E70
 OPER_COL = {"v": OPER_V, "a": OPER_A, "r": OPER_R, "n": OPER_G}
 OPER_PTS = {"v": 2, "a": 1, "r": 0, "n": 0}
 OPER_VERED = (  # (minimo de puntos, veredicto, color)
-    (8, "ENTRAR POCO A POCO", OPER_V), (6, "MANTENER / VIGILAR", OPER_B),
-    (4, "ESPERAR", OPER_A), (0, "NO TOCAR", OPER_R))
+    (8, "NOTA ALTA", OPER_V), (6, "NOTA MEDIA", OPER_B),
+    (4, "NOTA FLOJA", OPER_A), (0, "NOTA BAJA", OPER_R))   # v8.5: describe, no ordena (medido 2021-26: nota baja → subió más después)
+OPER_VERED_VIEJO = {"ENTRAR POCO A POCO": OPER_V, "ENTRAR SOLO MANGA PEQUEÑA": OPER_V, "MANTENER / VIGILAR": OPER_B,
+                    "ESPERAR": OPER_A, "NO TOCAR": OPER_R}    # etiquetas guardadas en el historial antes de la v8.5
 
 
 def _op_close(x):
@@ -18781,18 +18811,8 @@ def _op_veredicto(puntos, centinela):
     _nn = sum(1 for p in puntos if p["c"] == "n")
     if _nn >= 2:     # sin datos no se opina: un hueco no es un 'no tocar'
         return sc, "SIN DATOS", OPER_G, f"faltan {_nn} de los 5 puntos hoy: mira SALUD DEL BUILD"
-    # sin tendencia ni dinero a favor no se entra, sume lo que sume el resto
-    if ver == "ENTRAR POCO A POCO" and (puntos[0]["c"] == "r" or puntos[1]["c"] == "r"):
-        ver, vcol, nota = "MANTENER / VIGILAR", OPER_B, "tendencia o dinero en rojo: no se entra aunque el resto acompañe"
-    # el CENTINELA manda sobre el checklist (v7.8: antes solo se miraban LIQUIDEZ y DISTRIBUCION,
-    # y en TRANSICION -zona gris, 'no perseguir nada nuevo'- la pestaña decía ENTRAR)
-    est = (centinela or {}).get("estado")
-    if est in ("LIQUIDEZ", "ACECHO") and ver in ("ENTRAR POCO A POCO", "MANTENER / VIGILAR"):
-        ver, vcol, nota = "ESPERAR", OPER_A, f"CENTINELA en {est}: régimen defensivo, nada de entradas nuevas"
-    elif est == "TRANSICION" and ver == "ENTRAR POCO A POCO":
-        ver, vcol, nota = "MANTENER / VIGILAR", OPER_B, "CENTINELA en TRANSICIÓN (zona gris): mantener lo que funciona, no abrir nada nuevo"
-    elif est == "DISTRIBUCION" and ver == "ENTRAR POCO A POCO":
-        ver, nota = "ENTRAR SOLO MANGA PEQUEÑA", "CENTINELA en DISTRIBUCIÓN: tamaño pequeño y stop"
+    # v8.5: sin rebajas ni vetos. La nota describe cómo está el índice; ni ella ni el Centinela dicen qué hacer
+    # (medido 2021-26: con nota 0-3 el índice subió +5,1 % a 60 sesiones; con 8-10, +1,7 %). El plan está en «Hoy».
     return sc, ver, vcol, nota
 
 
@@ -19112,6 +19132,8 @@ def _op_pct_txt(v):
 def _op_vcol(ver):
     if not ver:
         return OPER_G
+    if ver in OPER_VERED_VIEJO:
+        return OPER_VERED_VIEJO[ver]
     if "MANGA" in ver:
         return OPER_V
     return next((c for mn, t, c in OPER_VERED if t == ver), OPER_G)
@@ -19156,8 +19178,7 @@ def _op_html(op):
                          "suele traer más volatilidad la semana y media previa")
         else:
             datos.append(f"<span style='color:#9FB0C8'>Vencimiento de {esc(v['que'])}: {lbl} ({cuando})</span>")
-    datos.append(("<b style='color:#2FD08A'>Cierre de viernes: este es el que decide</b>" if ctx.get("decide")
-                  else "<span style='color:#F4B740'>Entre semana: observación. Se decide con el cierre del viernes</span>"))
+    datos.append("<span style='color:#9FB0C8'>Esto describe; el plan de caídas está en «Hoy» y actúa con el cierre del día</span>")
     cx = []
     ce = ctx.get("centinela") or {}
     if ce:
@@ -19211,10 +19232,9 @@ def _op_html(op):
                                f"<div style='font-size:11px;letter-spacing:.08em;color:#9FB0C8;margin-bottom:6px'>{tit}</div>"
                                + "".join(f"<div style='font-size:12.5px;line-height:1.55'>{l}</div>" for l in lines) + "</div>")
     h.append("<div class='panel full'><h2>🧭 Operativa índices — ¿en qué índice estar?</h2>"
-             "<div class='note'>Lo imprescindible para decidir entre <b>SPY, QQQ, DIA, IWM, RSP</b> (el S&amp;P igual ponderado) <b>y MAGS</b> (las 7 Magníficas), en una pantalla. "
-             "Cada índice pasa el mismo examen de 5 puntos (verde 2, ámbar 1, rojo 0): <b>8–10</b> entrar poco a poco · "
-             "<b>6–7</b> mantener / vigilar · <b>4–5</b> esperar · <b>0–3</b> no tocar. Ordena lo que ya calcula el terminal; "
-             "<b>no está probado que acierte</b>: es un checklist, no una predicción. No es asesoramiento.</div>"
+             "<div class='note'>Cómo están <b>SPY, QQQ, DIA, IWM, RSP</b> (el S&amp;P igual ponderado) <b>y MAGS</b> (las 7 Magníficas), en una pantalla. "
+             "Cada índice pasa el mismo examen de 5 puntos (verde 2, ámbar 1, rojo 0): <b>8–10</b> nota alta · "
+             "<b>6–7</b> media · <b>4–5</b> floja · <b>0–3</b> baja. <b>Describe, no dice qué hacer.</b> " + HOY_NOTA_AVISO + " No es asesoramiento.</div>"
              "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px'>"
              + caja("DATOS", datos) + caja("CONTEXTO", cx) + caja("AMPLITUD DEL MERCADO", am) + "</div></div>")
     # ---- 2) ranking + cambios desde ayer ----
@@ -19263,7 +19283,7 @@ def _op_html(op):
                   + (f"<span style='color:{OPER_R}'>frenan:</span> {fmt(p3['frenan'])}" if p3.get("frenan") else "")
                   + "</div>")
         gt = ("<div style='margin-top:8px;padding:7px 9px;background:#0E1626;border-radius:8px;font-size:12px;line-height:1.5'>"
-              "<b>Qué tiene que pasar para mejorar:</b><br>" + "<br>".join("· " + esc(g) for g in r["gatillos"]) + "</div>") if r["gatillos"] else ""
+              "<b>Qué tendría que pasar para que suba la nota:</b><br>" + "<br>".join("· " + esc(g) for g in r["gatillos"]) + "</div>") if r["gatillos"] else ""
         ex = (f"<div style='margin-top:6px;font-size:12px;color:#9FB0C8'>{esc(r['extra'])}</div>") if r.get("extra") else ""
         nt = (f"<div style='margin-top:6px;font-size:12px;color:{OPER_A}'>{esc(r['nota'])}</div>") if r.get("nota") else ""
         _mm = [(m, ((m.get("idx") or {}).get(r["sym"]) or {})) for m in (op.get("memoria") or [])]
@@ -19289,7 +19309,7 @@ def _op_html(op):
              "<div class='note' style='margin-top:8px'>Tendencia: medias de 50 y 200 sesiones. Dinero: CMF de 20 sesiones con la regla del anillo "
              "(+0,05 / −0,05) y los tramos (hace 3, 2 y 1 semana, hoy). Composición: la barra del Detector de suelos. Fuerza: cuadrante del RRG "
              "semanal frente al SPY (el SPY, su impulso propio). Amplitud: % de las acciones del propio índice sobre su media de 50 "
-             "(en el IWM, sus ETFs de pequeñas por sector). Sin tendencia o sin dinero a favor no se entra aunque el resto sume.</div></div>")
+             "(en el IWM, sus ETFs de pequeñas por sector).</div></div>")
     # ---- 3b) v7.8: ¿se igualan los indices? (backtest) ----
     try:
         h.append(_conv_html(op.get("conv")))
@@ -19930,6 +19950,10 @@ def nucleo_satelite(orden, motores, centinela, decide, prev_sat):
         return None
 
 
+NS_MOSTRAR = False   # v8.5: la regla núcleo-satélite (satélite según la nota y el Centinela) ya no se enseña: era una orden
+                     # hecha con dos medidas que, al comprobarlas, no anticipan nada. Se sigue calculando para el historial.
+
+
 def _mot_html(mot, ns):
     if not mot or not mot.get("idx"):
         return ""
@@ -19965,7 +19989,7 @@ def _mot_html(mot, ns):
             f"<div><b>5 sesiones {pc(m.get('real5'))}</b> — lo explican: {top(m['ap5'])}</div>"
             f"<div style='color:#9FB0C8;font-size:11.5px'>Peso defensivo {m['def']:.0f}% · crecimiento {m['cre']:.0f}%</div></div>")
     h.append("<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px'>" + "".join(cards) + "</div>")
-    if ns:
+    if NS_MOSTRAR and ns:
         prop, act = ns.get("propuesto"), ns.get("actual")
         if ns.get("decide"):
             linea = (f"<b>Cierre de viernes:</b> satélite → <b style='color:#2FD08A'>{esc(prop)}</b>"
@@ -19981,9 +20005,8 @@ def _mot_html(mot, ns):
     h.append("<div class='note' style='margin-top:8px'><b>Cómo se lee:</b> «lo explican» = cuánto ha aportado cada sector al índice "
              "(su peso en el índice × lo que se ha movido), en puntos. Un sector puede subir un 2% y aportar casi nada si pesa poco. "
              "<b>Viento sectorial</b> = % del peso del índice en sectores con dinero entrando menos el de los que tienen dinero saliendo "
-             "(de −100 a +100). En el Russell se mide con sus ETFs de pequeñas por sector. La regla de núcleo y satélite es una regla fija "
-             "para no perseguir sectores; el backtest de convergencia mostró que los cuatro a partes iguales rinden como rotar. "
-             "No es asesoramiento.</div></div>")
+             "(de −100 a +100). En el Russell se mide con sus ETFs de pequeñas por sector. El backtest de convergencia mostró que "
+             "los cuatro índices a partes iguales rinden como rotar entre ellos. No es asesoramiento.</div></div>")
     return "".join(h)
 
 
@@ -22961,7 +22984,7 @@ def _estr_html(e):
              f"<div class='note'>Lo importante: {esc(sx['control'])}. O sea, no es solo «comprar porque ha caído». Es la mejor pista de "
              "todas las que hemos medido, pero no está demostrada (t≈2 y se eligió entre 5 variantes). Dice <b>cuándo</b> entrar en el "
              "mercado, no en qué ETF: tras ella subieron los cuatro parecido. Ha fallado en las caídas largas (2008, 2020, 2018): "
-             "hasta −30 % del SPY después en 2020. Entrar por tramos.</div></div>")
+             "hasta −30 % del SPY después en 2020.</div></div>")
     st = ESTR_EMP_ESTUDIO
     if emp and emp.get("hace", 99) <= 20:
         _cuando = "HOY" if emp["hoy"] else (f"hace {emp['hace']} sesiones ({emp['fecha']})")
@@ -23042,7 +23065,7 @@ def _estr_plan_html(pl):
         fil.append(f"<tr><td><b>{esc(f['sym'])}</b></td><td class='r'>{f['ref']:.2f}</td><td class='r'>{f['min_pct']:+.1f}%</td>"
                    f"<td>{tr}</td><td class='r'>{f['n_hechos']} de 4</td><td class='r' style='color:{col}'>{f['va_medio']:+.1f}%</td></tr>")
     return ("<div style='margin-top:10px;padding:10px 12px;border:1px solid #B980FF55;border-radius:10px'>"
-            f"<div style='font-weight:700'>📋 Plan de tramos desde la VENTA EXTREMA del {esc(pl['inicio'])}</div>"
+            f"<div style='font-weight:700'>📋 Estudio en papel (no es el plan): tramos desde la VENTA EXTREMA del {esc(pl['inicio'])}</div>"
             "<div class='note'>Lo que se ha probado (2004–2026, SPY y RSP): un tramo el primer día y otro solo si el índice cae un −3, −6 y −9 % "
             "desde ese cierre; se revisa a las 60 sesiones. Gana algo menos de media que entrar todo el primer día (+2,6 % frente a +5,2 % "
             "a 60 sesiones, porque los tramos que no se tocan se quedan en liquidez), pero el peor caso baja de −7 % a −3 %. Esperar a que "
@@ -23106,7 +23129,8 @@ def compute_plan_spy(daily, amp, estr):
         c = d["Close"].dropna()
         if len(c) < 260:
             return None
-        mx = c.rolling(252, min_periods=60).max()
+        _hh = d["High"].reindex(c.index).fillna(c) if "High" in d.columns else c   # v8.5: un solo máximo, el de velas
+        mx = _hh.rolling(252, min_periods=60).max()
         fecha = str(c.index[-1].date())
         px, pico = float(c.iloc[-1]), float(mx.iloc[-1])
         dd = (px / pico - 1.0) * 100.0
@@ -23202,24 +23226,22 @@ def _plan_spy_html(p):
         k = f"{nv['niv']:g}"
         t = toc.get(k)
         falta = (nv["px"] / p["px"] - 1) * 100.0
-        accion = ("700 € · completo si &lt;5 % en mínimos, si no la mitad" if i == 0 else
-                  "650 €" if i == 1 else "650 € (o antes, si salta VENTA EXTREMA)")
         est = (f"<b style='color:#2FD08A'>✔ tocado el {esc(t['fecha'])}</b>" + (f" · {t['nl_pct']:.1f}% en mínimos" if t.get("nl_pct") is not None else "")
                if t else f"<span style='color:#9FB0C8'>falta {falta:+.1f}%</span>")
-        fil.append(f"<tr><td><b>Tramo {i + 1}</b></td><td class='r'>−{nv['niv']:g}%</td><td class='r'><b>{nv['px']:.2f}</b></td>"
-                   f"<td class='r'>{'' if nv.get('qqq') is None else '%.0f' % nv['qqq']}</td><td>{accion}</td><td>{est}</td></tr>")
+        fil.append(f"<tr><td class='r'>−{nv['niv']:g}%</td><td class='r'><b>{nv['px']:.2f}</b></td>"
+                   f"<td class='r'>{'' if nv.get('qqq') is None else '%.0f' % nv['qqq']}</td><td>{est}</td></tr>")
     nl_txt = ("sin dato" if nl is None else
               f"<b style='color:{'#2FD08A' if nl < PLANSPY_NL else '#F4607A'}'>{nl:.1f}%</b> "
-              + ("(por debajo del 5 %: si toca −5 %, tramo completo)" if nl < PLANSPY_NL else "(5 % o más: si toca −5 %, solo medio tramo)"))
-    h = ["<div class='panel full'><h2>🎯 Plan SPY −5 / −7,5 / −10 %: comprar las caídas por tramos</h2>",
+              + ("(por debajo del 5 %: en el pasado, las caídas solían pararse antes)" if nl < PLANSPY_NL else "(5 % o más: en el pasado, las caídas solían seguir)"))
+    h = ["<div class='panel full'><h2>📚 Estudio: el SPY en −5 / −7,5 / −10 % (referencia; el plan son las balas de «Hoy»)</h2>",
          f"<div style='font-size:15px;margin:6px 0'>SPY <b>{p['px']:.2f}</b> · a <b style='color:{'#F4607A' if p['dd'] <= -5 else '#F4B740' if p['dd'] <= -2.5 else '#9FB0C8'}'>{p['dd']:+.1f}%</b> "
          f"de su máximo ({p['pico']:.2f}) · media de 200 {p['ma200']:.2f} · cierre {esc(p['fecha'])}"
          + (f" · QQQ {q['px']:.2f} ({q['dd']:+.1f}%, se mueve {q['beta']:.2f} veces el SPY)" if q else "") + "</div>",
          f"<div style='font-size:13px;margin-bottom:6px'>Acciones del S&amp;P en mínimos de 52 semanas hoy: {nl_txt}</div>",
-         "<table style='width:100%'><tr><th>Tramo</th><th class='r'>caída</th><th class='r'>SPY</th><th class='r'>QQQ aprox.</th><th>con 2.000 €</th><th>estado</th></tr>"
+         "<table style='width:100%'><tr><th class='r'>caída</th><th class='r'>SPY</th><th class='r'>QQQ aprox.</th><th>estado</th></tr>"
          + "".join(fil) + "</table>"]
     if p.get("ve_hoy"):
-        h.append("<div style='margin-top:6px;color:#B980FF'><b>🟣 VENTA EXTREMA activa:</b> adelanta el tramo que toque.</div>")
+        h.append("<div style='margin-top:6px;color:#B980FF'><b>🟣 VENTA EXTREMA activa</b> (se ve en el termómetro de «Hoy»).</div>")
     h.append("<div class='note' style='margin-top:8px'><b>Lo medido (SPY 1995–2026, cierres diarios):</b> desde un −3 %, el "
              f"{E['desde3_a5']} % de las veces siguió hasta el −5 %. Tocando el −5 % con el SPY sobre su media de 200 ({E['n5_200']} veces): "
              f"siguió hasta el −10 % el {E['p10']} % y hasta el −20 % el {E['p20']} %; cayó de mediana {E['extra']} % más; a 60 sesiones "
@@ -23228,18 +23250,18 @@ def _plan_spy_html(p):
              f"<b>El filtro:</b> con menos del 5 % de acciones en mínimos ese día ({E['nl_bajo'][4]} casos) siguió hasta el −10 % el "
              f"{E['nl_bajo'][0]} % (1995–2010) y el {E['nl_bajo'][1]} % (2011–2026), +{E['nl_bajo'][2]} / +{E['nl_bajo'][3]} % a 60 sesiones; "
              f"con un 5 % o más ({E['nl_alto'][4]} casos), el {E['nl_alto'][0]} % y el {E['nl_alto'][1]} %, +{E['nl_alto'][2]} / +{E['nl_alto'][3]} %. "
-             "Pocos casos y elegido entre 13 medidas: pista, no garantía. <b>Salida:</b> cuando el SPY recupere su máximo; revisar a las 60 sesiones "
-             "(el x2 pierde en lateral). <b>Freno:</b> con el SPY en −20 % no se compra más; con el Nasdaq a −25 % de su máximo, fuera del x2. "
+             "Pocos casos y elegido entre 13 medidas: pista, no garantía. Desde la v8.5 el máximo es el de velas, el mismo que en «Hoy». "
              "El QQQ aproximado usa su beta de 250 sesiones. No es asesoramiento.</div></div>")
     return "".join(h)
 
 
 # ======================================================================
-# v8.4.2 — 🚦 SEMÁFORO DE ENTRADA EN CAÍDAS (SPY, RSP, DIA, QQQ, IWM, MAGS) Y PÁNICO AGUDO
-#   El plan de capital: cada ETF compra en SU nivel bueno (SPY/RSP/DIA −5 %, QQQ/IWM/MAGS −10 %) y en
-#   los siguientes, con el tamaño que dice el semáforo DEL DÍA QUE TOCA:
+# v8.4.2 — DETECTOR DE CAÍDAS (SPY, RSP, DIA, QQQ, IWM, MAGS) Y PÁNICO AGUDO
+#   v8.5: ya NO es un plan de compra por ETF ni se llama «semáforo» (así se llamaba también al Centinela). Es el
+#   motor de la pestaña «Hoy»: niveles tocados de cada índice, pánico, rendición y salidas. El plan son las 4 balas.
+#   Se siguen guardando los «avisos del día» de cada toque (campo av: 0, 1 o 2) porque se midieron:
 #     avisos: ≥ 5 % de acciones del S&P en mínimos de 52 semanas · VIX ≥ 25
-#     VERDE (0) tramo completo · ÁMBAR (1) medio · ROJO (2) un cuarto
+#     con 0 avisos siguió cayendo 1 de 46 veces · con 1, 17 de 35 · con 2, 15 de 28
 #   PÁNICO AGUDO (estudio del 3-nov-2026 con los historiales de CBOE): VIX9D/VIX o VIX/VIX3M > 1,10 y el
 #   VIX todavía a menos de un 5 % de su máximo de 5 días. En ámbar/rojo, con pánico agudo siguió cayendo
 #   hasta el siguiente nivel el 65 % (26 casos 2011–2026), sin él el 37 % (27). En verde no cambia nada.
@@ -23248,7 +23270,7 @@ def _plan_spy_html(p):
 #   Solo informa. No es asesoramiento.
 # ======================================================================
 SEM_ETF = (("SPY", 5.0, (10.0, 20.0), "x3"), ("RSP", 5.0, (10.0, 20.0), "x3"), ("DIA", 5.0, (10.0, 20.0), "x3"),
-           ("QQQ", 10.0, (20.0,), "x3"), ("IWM", 10.0, (20.0,), "x2 como mucho"), ("MAGS", 10.0, (20.0,), "x1 (sin historial)"))
+           ("QQQ", 10.0, (20.0, 30.0), "x3"), ("IWM", 10.0, (20.0,), "x2 como mucho"), ("MAGS", 10.0, (20.0,), "x1 (sin historial)"))
 SEM_NL = 5.0
 SEM_VIX = 25.0
 SEM_REARME = 0.5
@@ -23262,8 +23284,7 @@ SEM_ESTUDIO = {"verde": (1, 46), "ambar": (17, 35), "rojo": (15, 28), "pan_si": 
                "pan_m5": (61, 41), "pan_m10": (75, 30)}
 
 # v8.4.2 — 🧭 DETECTOR DE CAÍDAS: todo lo estudiado en un solo panel (5/6-nov-2026)
-SEM_CAPITAL = 4000.0          # capital del plan (1R = capital / 6). Cámbialo si tu cuenta es otra.
-SEM_FED_PROXIMA = "2026-12-09"  # próxima decisión de la Fed (actualizar a mano tras cada reunión)
+# v8.5: fuera SEM_CAPITAL (el único importe del plan es BALA_EUR) y SEM_FED_PROXIMA (la Fed sale de ESTC_FOMC).
 SEM_REND_NL = 20.0            # RENDICIÓN TOTAL: ≥ 20 % de acciones del S&P en mínimos de 52 semanas…
 SEM_REND_SECT = 6             # … y ≥ 6 de los 8 sectores fuera de tecnología sacando dinero (CMF < −0,05)…
 SEM_PAN_FUERA = 1.0           # «se va el pánico»: tras VIX/VIX3M ≥ 1,10, el primer cierre con VIX/VIX3M < 1,0
@@ -23388,10 +23409,12 @@ def _sem_reconstruir(c, h, niv):
     return e
 
 
-def _det_ciclo(c, sym):
-    """Tiempo desde el máximo de 52 semanas (cierres), tipo de caída y estadística histórica de la casilla."""
+def _det_ciclo(c, sym, h=None):
+    """Tiempo desde el máximo de 52 semanas, tipo de caída y estadística histórica de la casilla.
+    v8.5: un solo máximo, el de 52 semanas con máximos de vela (h), igual que la tabla de caídas. La rejilla histórica
+    se midió con máximos de cierre: la diferencia son décimas."""
     try:
-        w = c.iloc[-252:]
+        w = (c if h is None else h.reindex(c.index).fillna(c)).iloc[-252:]
         m = float(w.max())
         t = int(len(w) - 1 - int(np.where(w.values == m)[0][-1]))
         ddc = (float(c.iloc[-1]) / m - 1) * 100.0
@@ -23418,10 +23441,6 @@ def _det_ciclo(c, sym):
     except Exception as _dege:
         _deg("detector:ciclo", _dege)
         return None
-
-
-def _det_euros(frac):
-    return SEM_CAPITAL / 6.0 * frac
 
 
 def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
@@ -23474,8 +23493,13 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
             e = e or {}
             if dd > -SEM_REARME:
                 if e.get("activo") and e.get("tocados") and (fch == fecha_ref or fecha_ref is None):
-                    salidas.append({"sym": sym, "px": px, "tramos": sorted(e["tocados"].keys(), key=float)})
-                e = {"activo": False}
+                    _tr = sorted(e["tocados"].keys(), key=float)
+                    salidas.append({"sym": sym, "px": px, "tramos": _tr})
+                    e = {"activo": False, "salida": {"fecha": fch, "px": round(px, 2), "tramos": _tr}}
+                elif not e.get("activo") and (e.get("salida") or {}).get("fecha") == fch:
+                    salidas.append({"sym": sym, "px": px, "tramos": e["salida"].get("tramos") or []})   # v8.5: repetir el build el mismo día no borra la salida
+                else:
+                    e = {"activo": False}
             if dd <= -niv[0] and not e.get("activo"):
                 e = {"activo": True, "inicio": fch, "pico": round(pico, 2), "tocados": {}}
             hoy = []
@@ -23490,9 +23514,13 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
                         if fch == fecha_ref or fecha_ref is None:
                             nuevos.append({"sym": sym, "niv": n, "px": px, "tamano": tx, "frac": fr, "bueno": n == bueno})
                             hoy.append(n)
+                    elif k in e["tocados"] and e["tocados"][k].get("fecha") == fch and (fch == fecha_ref or fecha_ref is None):
+                        _t0 = e["tocados"][k]          # v8.5: ya grabado en otra ejecución de HOY: sigue siendo «nuevo hoy»
+                        nuevos.append({"sym": sym, "niv": n, "px": px, "tamano": _t0.get("tamano"), "frac": _t0.get("frac"), "bueno": n == bueno})
+                        hoy.append(n)
             eps[sym] = e
             filas.append({"sym": sym, "px": px, "pico": pico, "dd": dd, "fecha": fch, "veh": veh, "activo": bool(e.get("activo")),
-                          "inicio": e.get("inicio"), "hoy": hoy, "ciclo": _det_ciclo(c, sym),
+                          "inicio": e.get("inicio"), "hoy": hoy, "ciclo": _det_ciclo(c, sym, h),
                           "niveles": [{"niv": n, "px": pico * (1 - n / 100.0), "bueno": n == bueno,
                                        "toc": (e.get("tocados") or {}).get(f"{n:g}")} for n in niv],
                           "prox": next((n for n in niv if dd > -n), None)})
@@ -23523,10 +23551,14 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
             elif mer.get("panico_desde") and not mer.get("panico_se_fue") and t3 is not None and t3 < SEM_PAN_FUERA:
                 mer["panico_se_fue"] = fecha_ref
                 eventos.append("se_va")
+            elif fecha_ref and mer.get("panico_se_fue") == fecha_ref:
+                eventos.append("se_va")            # v8.5: repetir el build el mismo día no borra la señal
             rend_hoy = (nl is not None and nl >= SEM_REND_NL and sect_sale is not None and sect_sale >= SEM_REND_SECT
                         and t3 is not None and t3 >= SEM_PAN_EST)
             if rend_hoy and not mer.get("rendicion"):
                 mer["rendicion"] = fecha_ref
+                eventos.append("rendicion")
+            elif fecha_ref and mer.get("rendicion") == fecha_ref:
                 eventos.append("rendicion")
         panico_vivo = bool(mer.get("panico_desde") and not mer.get("panico_se_fue"))
         rend = {"hoy": bool(nl is not None and nl >= SEM_REND_NL and sect_sale is not None and sect_sale >= SEM_REND_SECT
@@ -23550,204 +23582,590 @@ def compute_semaforo(daily, amp, vix_respaldo=None, estr=None):
         out = {"fecha": fecha_ref, "nl": nl, "vix": vix, "av": av, "avisos": (a1, a2), "panico": pan,
                "agudo": agudo, "frac": frac, "tamano": txt, "filas": filas, "nuevos": nuevos, "salidas": salidas,
                "mercado": mer, "panico_vivo": panico_vivo, "eventos": eventos, "rendicion": rend}
-        out["con_reserva"] = [f["sym"] for f in filas if _det_con_reserva(f)]
-        for f in filas:
-            f["que"] = _det_que_hacer(f, out)
         return out
     except Exception as _dege:
         _deg("semaforo", _dege)
         return None
 
 
-def _det_frac_toc(t):
-    """v8.4.2b — Qué parte del tramo se compró al tocar un nivel (1 = completo). Los toques grabados por versiones
-    anteriores no guardan 'frac': se deduce del texto del tamaño (¼R / ½R)."""
+# ======================================================================
+# v8.5 — PESTAÑA «HOY»: UN SOLO PLAN (LAS 4 BALAS DE LA RESERVA) Y UN SOLO MÁXIMO
+#   Revisión del 10-nov-2026: la primera pestaña tenía 15 paneles, cuatro planes de compra con dinero y niveles
+#   distintos, dos «semáforos» con el mismo nombre y dos máximos del SPY; y la nota 0-10 daba órdenes que, medidas
+#   (2021-26), iban al revés. Desde aquí:
+#     · «Hoy» = 5 bloques: datos · qué toca hoy · tabla de caídas · termómetro del miedo · agenda.
+#     · El ÚNICO sitio con instrucciones es «Qué toca hoy», y de UN solo plan: las 4 balas de la reserva.
+#         Bala 1  se va el pánico (VIX/VIX3M ≥ 1,10 y luego < 1,0)  → mitad Nasdaq x3 + mitad S&P x3
+#         Bala 2  SPY −10 %                                           → mitad S&P x3 + mitad Dow x3
+#         Bala 3  QQQ −20 %  con rendición total → entera en Nasdaq x3; sin ella → media en Nasdaq x2 y la otra
+#                 media pasa a la bala 4
+#         Bala 4  bajista (SPY −20 % o QQQ −30 %, lo primero) → Nasdaq x2 + S&P x2 (Russell x2 en vez del S&P si
+#                 el IWM tocó antes su −20 %)
+#       Venta: cada índice, al recuperar su máximo. Las señales actúan con el cierre del día en que saltan (así se
+#       midieron); «se decide el viernes» queda solo para lo semanal.
+#     · Un solo máximo para todo: el de 52 semanas con máximos de vela (el del detector).
+#   Memoria en balas_estado.json. Los importes son configuración del plan (BALA_EUR), no posiciones.
+#   Solo informa. No es asesoramiento.
+# ======================================================================
+BALA_EUR = 500.0              # importe de cada bala del plan (configuración; cámbialo si tu plan es otro)
+BALAS_FILE = os.path.join(SEGUIMIENTO_DIR, "balas_estado.json")
+# Datos de EE. UU. con fecha (bls.gov, consultado el 11-nov-2026). Si la lista se acaba, avisa SALUD DEL BUILD.
+HOY_DATOS = [("2026-12-04", "Empleo de EE. UU."), ("2026-12-10", "IPC de EE. UU."),
+             ("2027-01-08", "Empleo de EE. UU."), ("2027-01-13", "IPC de EE. UU."),
+             ("2027-02-05", "Empleo de EE. UU."), ("2027-02-11", "IPC de EE. UU."),
+             ("2027-03-05", "Empleo de EE. UU."), ("2027-03-10", "IPC de EE. UU."),
+             ("2027-04-02", "Empleo de EE. UU."), ("2027-04-13", "IPC de EE. UU."),
+             ("2027-05-07", "Empleo de EE. UU."), ("2027-05-12", "IPC de EE. UU."),
+             ("2027-06-04", "Empleo de EE. UU."), ("2027-06-10", "IPC de EE. UU."),
+             ("2027-07-02", "Empleo de EE. UU."), ("2027-07-14", "IPC de EE. UU."),
+             ("2027-08-06", "Empleo de EE. UU."), ("2027-08-11", "IPC de EE. UU."),
+             ("2027-09-03", "Empleo de EE. UU."), ("2027-09-14", "IPC de EE. UU."),
+             ("2027-10-08", "Empleo de EE. UU."), ("2027-10-14", "IPC de EE. UU."),
+             ("2027-11-05", "Empleo de EE. UU."), ("2027-11-10", "IPC de EE. UU."),
+             ("2027-12-03", "Empleo de EE. UU."), ("2027-12-10", "IPC de EE. UU.")]
+HOY_CONTROL_SES = 21          # control del mes: 21 sesiones después de que el SPY toque su −5 % (estudio del 7-nov-2026)
+HOY_NOTA_AVISO = ("Medido con la nota de los 5 índices de 2021 a 2026: los días con nota 0–3 el índice subió de media un "
+                  "+5,1 % a 60 sesiones; con nota 8–10, un +1,7 %. La nota describe cómo está el índice; no dice qué hacer.")
+
+
+def _eur(x):
     try:
-        if t.get("frac") is not None:
-            return float(t["frac"])
-        tx = str(t.get("tamano") or "")
-        return 0.25 if "¼" in tx else (0.5 if "½" in tx else 1.0)
+        return f"{float(x):,.0f} €".replace(",", ".")
     except Exception:
-        return 1.0
+        return "—"
 
 
-def _det_con_reserva(f):
-    """v8.4.2b — True si en esta caída algún nivel se compró pequeño (por pánico o semáforo) y quedó reserva guardada."""
-    return bool(f.get("activo")) and any(n.get("toc") and _det_frac_toc(n["toc"]) < 1 for n in f.get("niveles") or [])
+def _dm(f):
+    """'2026-11-09' -> '09-11'."""
+    f = str(f or "")
+    return (f[8:10] + "-" + f[5:7]) if len(f) >= 10 else f
 
 
-def _det_que_hacer(f, s):
-    """Instrucción clara para un ETF según el plan y el estado del mercado."""
+def _n2(x, dec=2):
+    """Número con coma decimal."""
     try:
-        lin = []
-        sym = f["sym"]
-        if any(x["sym"] == sym for x in s.get("salidas") or []):
-            return ["<b style='color:#2FD08A'>SALIDA HOY: ha recuperado su máximo → vende sus tramos.</b>"]
-        if not f["activo"]:
-            b = f["niveles"][0]
-            return [f"Sin caída abierta. Su nivel bueno es −{b['niv']:g}% en {b['px']:.2f} (falta {(b['px'] / f['px'] - 1) * 100:+.1f}%)."]
-        hechos = [n for n in f["niveles"] if n["toc"]]
-        _r = s.get("rendicion") or {}
-        rend_ok = bool(_r.get("hoy") or _r.get("fecha"))
-        rend_aqui = bool(rend_ok and sym in ("QQQ", "IWM", "MAGS") and any(x >= 20 for x in (f["hoy"] or [])))
-        if rend_aqui:
-            lin.append("<b style='color:#2FD08A'>HOY toca −20 % CON RENDICIÓN TOTAL → entra con la reserva completa de este ETF "
-                       "(así fueron las V de 2018, 2020 y 2025).</b>")
-        elif f["hoy"]:
-            for n in f["niveles"]:
-                if n["niv"] in f["hoy"]:
-                    fr = n["toc"].get("frac") or 1.0
-                    lin.append(f"<b>HOY toca −{n['niv']:g}% → {esc(n['toc'].get('tamano', ''))} (≈ {_det_euros(fr):,.0f} € con {SEM_CAPITAL:,.0f} €).</b>".replace(",", "."))
-        if hechos:
-            lin.append("Comprado en esta caída: " + ", ".join(f"−{n['niv']:g}% el {n['toc']['fecha'][8:10]}-{n['toc']['fecha'][5:7]}" for n in hechos) + ".")
-        prox = next((n for n in f["niveles"] if not n["toc"]), None)
-        if rend_aqui:
-            pass
-        elif s.get("panico_vivo") and _det_con_reserva(f):
-            lin.append("Hay pánico: guarda la reserva. " + (f"<b>½ cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0) y <b>½ en el siguiente nivel (−{prox['niv']:g}% en {prox['px']:.2f})</b>."
-                                                          if prox else "Lo que te quede, <b>cuando se vaya el pánico</b> (VIX/VIX3M &lt; 1,0)."))
+        return f"{float(x):.{dec}f}".replace(".", ",")
+    except Exception:
+        return "—"
+
+
+def _pct(x, dec=1):
+    try:
+        return f"{float(x):+.{dec}f}".replace(".", ",").replace("-", "−") + " %"
+    except Exception:
+        return "—"
+
+
+def compute_balas(s):
+    """Estado de las 4 balas de la reserva a partir del detector de caídas (s = compute_semaforo).
+    Cada bala se usa UNA vez por caída. Guarda la memoria en balas_estado.json (y un historial de caídas cerradas)."""
+    try:
+        if not s or not s.get("filas"):
+            return None
+        fecha = s.get("fecha")
+        F = {f["sym"]: f for f in s["filas"]}
+        mer = s.get("mercado") or {}
+        rend = s.get("rendicion") or {}
+        pan = s.get("panico") or {}
+        t3 = pan.get("t3")
+        st = {}
+        try:
+            if os.path.exists(BALAS_FILE):
+                with open(BALAS_FILE, "r", encoding="utf-8") as fh:
+                    st = json.load(fh) or {}
+        except Exception as _dege:
+            _deg("balas:leer", _dege)
+            st = {}
+        hay = any(f.get("activo") for f in s["filas"])
+        inicio = min((f["inicio"] for f in s["filas"] if f.get("activo") and f.get("inicio")), default=None)
+        hist = list(st.get("historia") or [])
+        mem = dict(st.get("balas") or {}) if (st.get("activo") and hay) else {}
+        if not hay and st.get("activo") and st.get("balas"):
+            hist.append({"inicio": st.get("inicio"), "fin": fecha, "balas": st.get("balas")})
+
+        def toc(sym, niv):
+            for n in (F.get(sym) or {}).get("niveles") or []:
+                if abs(n["niv"] - niv) < 1e-9:
+                    return n.get("toc")
+            return None
+
+        def nivel(sym, niv):
+            f = F.get(sym)
+            if not f or not f.get("pico") or not f.get("px"):
+                return None, None
+            p = f["pico"] * (1 - niv / 100.0)
+            return p, (p / f["px"] - 1) * 100.0
+
+        def foto():
+            return {k: round(float(F[k]["px"]), 2) for k in ("SPY", "QQQ", "DIA", "IWM") if k in F}
+
+        if hay:
+            if "1" not in mem and mer.get("panico_se_fue"):
+                mem["1"] = {"fecha": mer["panico_se_fue"], "motivo": "se va el pánico"}
+                if mer["panico_se_fue"] == fecha:
+                    mem["1"].update({"px": foto(), "t3": (round(t3, 3) if t3 is not None else None)})
+            t = toc("SPY", 10.0)
+            if "2" not in mem and t:
+                mem["2"] = {"fecha": t["fecha"], "motivo": "SPY −10 %"}
+                if t["fecha"] == fecha:
+                    mem["2"]["px"] = foto()
+            t = toc("QQQ", 20.0)
+            if "3" not in mem and t:
+                con = bool(t["fecha"] == fecha and rend.get("hoy")) or bool(mer.get("rendicion") and str(mer["rendicion"]) <= str(t["fecha"]))
+                mem["3"] = {"fecha": t["fecha"], "motivo": "QQQ −20 %", "rendicion": con}
+                if t["fecha"] == fecha:
+                    mem["3"]["px"] = foto()
+            cand = sorted([x for x in ((toc("SPY", 20.0), "SPY −20 %"), (toc("QQQ", 30.0), "QQQ −30 %")) if x[0]],
+                          key=lambda x: str(x[0].get("fecha")))
+            if "4" not in mem and cand:
+                t, mot = cand[0]
+                ti = toc("IWM", 20.0)
+                mem["4"] = {"fecha": t["fecha"], "motivo": mot, "russell": bool(ti and str(ti.get("fecha")) <= str(t["fecha"]))}
+                if t["fecha"] == fecha:
+                    mem["4"]["px"] = foto()
+        hoy = sorted(int(k) for k, v in mem.items() if v.get("fecha") == fecha)
+
+        # ── lo que se enseña de cada bala ─────────────────────────────────
+        med = _eur(BALA_EUR / 2)
+        p2, f2 = nivel("SPY", 10.0)
+        p3, f3 = nivel("QQQ", 20.0)
+        p4s, f4s = nivel("SPY", 20.0)
+        p4q, f4q = nivel("QQQ", 30.0)
+        ti = toc("IWM", 20.0)
+        pi, fi = nivel("IWM", 20.0)
+        rend_txt = ("rendición total hoy: " + ("SÍ" if rend.get("hoy") else "no")
+                    + f" (acciones en mínimos {_n2(rend.get('nl') or 0, 1)} % de {SEM_REND_NL:g}; sectores sacando dinero "
+                    + f"{rend.get('sect_sale') if rend.get('sect_sale') is not None else '—'} de {SEM_REND_SECT}; "
+                    + f"VIX/VIX3M {_n2(t3) if t3 is not None else '—'} de {_n2(SEM_PAN_EST)})")
+        balas = []
+
+        def add(n, cond, compra, falta, extra=None):
+            m = mem.get(str(n))
+            est = "hoy" if (m and m.get("fecha") == fecha) else ("dada" if m else ("reserva" if not hay else "pendiente"))
+            balas.append({"n": n, "cond": cond, "estado": est, "fecha": (m or {}).get("fecha"), "compra": compra,
+                          "falta": falta, "extra": extra})
+
+        # Bala 1
+        if not hay:
+            falta1 = "No hay ninguna caída abierta."
         elif s.get("panico_vivo"):
-            lin.append("Hay pánico, pero en este ETF no tienes reserva guardada (compraste tramo completo o aún no tocó nivel). "
-                       + (f"Si toca el siguiente nivel (−{prox['niv']:g}% en {prox['px']:.2f}) con pánico, compra pequeño y guarda el resto."
-                          if prox else "Mantener hasta que recupere su máximo."))
-        elif "se_va" in (s.get("eventos") or []) and _det_con_reserva(f):
-            lin.append("<b style='color:#2FD08A'>HOY SE VA EL PÁNICO → compra la ½ de reserva guardada para este ETF.</b>")
-        elif "se_va" in (s.get("eventos") or []):
-            lin.append("Hoy se va el pánico, pero en este ETF no tienes reserva guardada: no hay que comprar nada extra. "
-                       + (f"Siguiente tramo: −{prox['niv']:g}% en {prox['px']:.2f}." if prox else ""))
-        elif prox:
-            lin.append(f"Siguiente tramo: −{prox['niv']:g}% en {prox['px']:.2f} (falta {(prox['px'] / f['px'] - 1) * 100:+.1f}%), con el semáforo de ese día.")
+            falta1 = (f"Pánico vivo desde el {_dm(mer.get('panico_desde'))}. VIX/VIX3M hoy {_n2(t3) if t3 is not None else '—'}: "
+                      f"salta el primer cierre por debajo de {_n2(SEM_PAN_FUERA)}.")
         else:
-            lin.append("Todos sus niveles comprados: mantener hasta que recupere su máximo.")
-        if prox and prox["niv"] >= 20 and sym in ("QQQ", "IWM", "MAGS"):
-            r = s.get("rendicion") or {}
-            lin.append("En su −20 %: " + ("<b style='color:#2FD08A'>hay RENDICIÓN TOTAL → reserva completa (V probable)</b>" if r.get("hoy") or r.get("fecha")
-                                         else "si NO hay rendición total (mercado tranquilo), entra con la mitad y mejor x2 que x3 (patrón 2000/2008/2022)") + ".")
-        cy = f.get("ciclo") or {}
-        if not prox:
-            pass
-        elif cy.get("tipo") == "RÁPIDA":
-            lin.append("Caída RÁPIDA: en el pasado solía seguir; no adelantes tramos.")
-        elif cy.get("tipo") == "LARGA":
-            lin.append("Caída LARGA (más de 3 meses): riesgo de mercado bajista; reserva para niveles hondos.")
-        lin.append("Venta: cuando recupere su máximo.")
-        return lin
+            falta1 = (f"En esta caída aún no ha habido pánico (hace falta un cierre con VIX/VIX3M en {_n2(SEM_PAN_EST)} o más "
+                      f"y después otro por debajo de {_n2(SEM_PAN_FUERA)}). Hoy {_n2(t3) if t3 is not None else '—'}.")
+        add(1, f"Se va el pánico: el VIX/VIX3M cierra por debajo de {_n2(SEM_PAN_FUERA)} después de haber estado en {_n2(SEM_PAN_EST)} o más",
+            f"{med} en Nasdaq x3 + {med} en S&amp;P x3", falta1)
+        # Bala 2
+        add(2, "El SPY cierra un 10 % por debajo de su máximo",
+            f"{med} en S&amp;P x3 + {med} en Dow x3",
+            (f"SPY −10 % = {_n2(p2)} (falta {_pct(f2)})." if p2 else "sin dato del SPY"))
+        # Bala 3
+        m3 = mem.get("3")
+        if m3 and m3.get("rendicion"):
+            c3 = f"CON rendición total → entera: {_eur(BALA_EUR)} en Nasdaq x3"
+        elif m3:
+            c3 = f"SIN rendición total → media bala: {med} en Nasdaq x2. La otra media ({med}) pasa a la bala 4"
+        else:
+            c3 = (f"Con rendición total: {_eur(BALA_EUR)} en Nasdaq x3. Sin ella: {med} en Nasdaq x2 y la otra media pasa a la bala 4")
+        add(3, "El QQQ cierra un 20 % por debajo de su máximo (mirando si hay rendición total)", c3,
+            (f"QQQ −20 % = {_n2(p3)} (falta {_pct(f3)})." if p3 else "sin dato del QQQ"), rend_txt)
+        # Bala 4
+        m4 = mem.get("4")
+        e4 = BALA_EUR + (BALA_EUR / 2 if (m3 and not m3.get("rendicion")) else 0.0)
+        russ = bool((m4 or {}).get("russell")) if m4 else bool(ti)
+        c4 = (f"{_eur(e4 / 2)} en Nasdaq x2 + {_eur(e4 / 2)} en " + ("Russell x2 (el Russell tocó antes su −20 %)" if russ else "S&amp;P x2")
+              + ("" if (m3 or m4) else f" ({_eur(BALA_EUR * 1.5)} en total si la bala 3 llega sin rendición)"))
+        x4 = None if (m4 or ti or not pi) else f"Si el Russell (IWM) toca antes su −20 % ({_n2(pi)}, falta {_pct(fi)}), el S&amp;P x2 se cambia por Russell x2."
+        add(4, "Mercado bajista: el SPY cierra un 20 % bajo su máximo o el QQQ un 30 % (lo primero que llegue)", c4,
+            ((f"SPY −20 % = {_n2(p4s)} (falta {_pct(f4s)})" if p4s else "") + (" · " if p4s and p4q else "")
+             + (f"QQQ −30 % = {_n2(p4q)} (falta {_pct(f4q)})." if p4q else "")), x4)
+
+        out = {"fecha": fecha, "hay": hay, "inicio": inicio, "balas": balas, "hoy": hoy, "mem": mem,
+               "salidas": list(s.get("salidas") or [])}
+        nuevo = {"activo": hay, "inicio": inicio, "balas": mem, "ultimo": fecha, "historia": hist[-30:],
+                 "avisado": st.get("avisado")}
+        out["_estado"] = nuevo
+        if not VIAJE_A:
+            try:
+                guardar_json_seguro(BALAS_FILE, nuevo, indent=0)
+            except Exception as _dege:
+                _deg("balas:guardar", _dege)
+        return out
     except Exception as _dege:
-        _deg("detector:que", _dege)
-        return []
-
-
-def semaforo_aviso(s):
-    """Telegram: niveles nuevos, salidas, «se va el pánico» y rendición total (o None si no hay nada nuevo)."""
-    if not s or not (s.get("nuevos") or s.get("salidas") or s.get("eventos")):
+        _deg("balas", _dege)
         return None
-    col = ("VERDE", "ÁMBAR", "ROJO")[min(s["av"], 2)]
-    lin = [f"🧭 DETECTOR DE CAÍDAS · cierre {s['fecha']} · semáforo {col}" + (" · PÁNICO AGUDO" if s["agudo"] else "")]
-    _r = s.get("rendicion") or {}
-    for n in s.get("nuevos") or []:
-        if (_r.get("hoy") or _r.get("fecha")) and n["sym"] in ("QQQ", "IWM", "MAGS") and n["niv"] >= 20:
-            lin.append(f"➤ {n['sym']} toca −{n['niv']:g}% ({n['px']:.2f}) CON RENDICIÓN TOTAL → reserva completa de este ETF")
-            continue
-        lin.append(f"➤ {n['sym']} toca −{n['niv']:g}% ({n['px']:.2f})" + (" — su NIVEL BUENO" if n["bueno"] else "")
-                   + f" → {n['tamano']} (≈ {_det_euros(n.get('frac') or 1):.0f} €)")
-    for x in s.get("salidas") or []:
-        lin.append(f"✅ SALIDA: {x['sym']} recupera su máximo ({x['px']:.2f}) → vende sus tramos")
-    if "se_va" in (s.get("eventos") or []):
-        _cr = s.get("con_reserva") or []
-        lin.append("🟢 SE VA EL PÁNICO (VIX por debajo del VIX a 3 meses): "
-                   + (f"compra la ½ de reserva guardada en {', '.join(_cr)}. " if _cr else "no tienes reserva guardada en ningún ETF: nada extra que comprar. ")
-                   + f"Histórico: tras irse el pánico cayó de mediana {SEM_OPT['seva'][0]:.1f}% y ganó {SEM_OPT['seva'][1]:+.1f}% a 120 sesiones.")
-    if "rendicion" in (s.get("eventos") or []):
-        r = s.get("rendicion") or {}
-        lin.append(f"🔥 RENDICIÓN TOTAL: {r.get('nl', 0):.0f}% de acciones en mínimos, {r.get('sect_sale')} sectores sacando dinero, VIX invertido. "
-                   "Así llegaron los suelos en V de 2018, 2020 y 2025: si el QQQ está en su −20 %, reserva completa.")
-    nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
-    lin.append((f"Mínimos 52 sem.: {nl:.1f}%" if nl is not None else "Mínimos 52 sem.: sin dato") + (f" · VIX {vx:.1f}" if vx is not None else "")
-               + (f" · VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else ""))
-    lin.append("Vehículo: SPY/RSP/DIA/QQQ x3 · IWM x2 como mucho · MAGS x1. No es asesoramiento.")
-    return "\n".join(lin)
 
 
-def _semaforo_html(s):
-    if not s or not s.get("filas"):
-        return ""
-    E = SEM_ESTUDIO
-    O = SEM_OPT
-    av = s["av"]
-    colh = ("#2FD08A", "#F4B740", "#F4607A")[min(av, 2)]
-    nomh = ("VERDE", "ÁMBAR", "ROJO")[min(av, 2)]
-    nl, vx, p = s.get("nl"), s.get("vix"), s.get("panico") or {}
-    a1, a2 = s.get("avisos") or (False, False)
-    r = s.get("rendicion") or {}
-    m = s.get("mercado") or {}
+def _nivel_es_bala(sym, niv):
+    """Niveles de la tabla que SON una bala del plan: SPY −10 (bala 2), QQQ −20 (bala 3), SPY −20 y QQQ −30 (bala 4)."""
+    return {("SPY", 10): 2, ("QQQ", 20): 3, ("SPY", 20): 4, ("QQQ", 30): 4}.get((sym, int(round(float(niv)))))
+
+
+def balas_aviso(b, s):
+    """Telegram del plan (o None si hoy no hay nada nuevo): bala que toca, venta, rendición o nivel tocado.
+    Una sola vez por día y contenido: si el build se repite el mismo día con lo mismo, no se reenvía."""
     try:
-        dfed = (dt.date.fromisoformat(SEM_FED_PROXIMA) - dt.date.fromisoformat(s["fecha"])).days
+        if not b or not s:
+            return None
+        ev = s.get("eventos") or []
+        nuevos = s.get("nuevos") or []
+        if not (b.get("hoy") or b.get("salidas") or nuevos or "rendicion" in ev):
+            return None
+        firma = (f"{b.get('fecha')}|b{','.join(str(x) for x in b.get('hoy') or [])}|s{','.join(x['sym'] for x in b.get('salidas') or [])}"
+                 f"|n{','.join(x['sym'] + format(x['niv'], 'g') for x in nuevos)}|r{int('rendicion' in ev)}")
+        est = b.get("_estado") or {}
+        if est.get("avisado") == firma:
+            return None
+        pan = s.get("panico") or {}
+        lin = [f"🧭 PLAN DE CAÍDAS · cierre {b.get('fecha')}"]
+        por_n = {x["n"]: x for x in b.get("balas") or []}
+        for n in b.get("hoy") or []:
+            x = por_n.get(n) or {}
+            lin.append(f"🎯 HOY TOCA LA BALA {n}: {_sin_html(x.get('compra', ''))}. Motivo: {_sin_html(x.get('cond', ''))}. "
+                       "Se actúa con este cierre (así se midió), no se espera al viernes.")
+        for x in b.get("salidas") or []:
+            lin.append(f"✅ VENTA: {x['sym']} recupera su máximo ({_n2(x['px'])}) → sale lo comprado en esta caída en ese índice.")
+        if "rendicion" in ev:
+            r = s.get("rendicion") or {}
+            lin.append(f"🔥 RENDICIÓN TOTAL: {_n2(r.get('nl') or 0, 0)} % de acciones en mínimos, {r.get('sect_sale')} sectores sacando dinero "
+                       "y VIX invertido. Así llegaron los suelos en V de 2018, 2020 y 2025 (cuenta para la bala 3).")
+        for n in nuevos:
+            _nb = _nivel_es_bala(n["sym"], n["niv"])
+            lin.append(f"ℹ️ {n['sym']} toca −{n['niv']:g} % desde su máximo ({_n2(n['px'])}). "
+                       + (f"Es el nivel de la bala {_nb}" if _nb else "Es un nivel de la tabla, no una bala")
+                       + (" (pone en marcha el control del mes)" if n["sym"] == "SPY" and abs(n["niv"] - 5) < 1e-9 else "") + ".")
+        res = []
+        for x in b.get("balas") or []:
+            if x["estado"] in ("hoy", "dada"):
+                res.append(f"{x['n']} dada el {_dm(x['fecha'])}")
+            elif x["estado"] == "reserva":
+                res.append(f"{x['n']} en reserva")
+            else:
+                res.append(f"{x['n']} pendiente ({_sin_html(x.get('falta') or '').rstrip('.')})")
+        lin.append("Balas: " + " · ".join(res))
+        nl, vx = s.get("nl"), s.get("vix")
+        lin.append("Miedo: " + (f"VIX {_n2(vx, 1)}" if vx is not None else "VIX sin dato")
+                   + (f" · VIX/VIX3M {_n2(pan['t3'])}" if pan.get("t3") else "")
+                   + (f" · acciones en mínimos {_n2(nl, 1)} %" if nl is not None else ""))
+        lin.append("No es asesoramiento.")
+        est["avisado"] = firma
+        if not VIAJE_A:
+            try:
+                guardar_json_seguro(BALAS_FILE, est, indent=0)
+            except Exception as _dege:
+                _deg("balas:avisado", _dege)
+        return "\n".join(lin)
+    except Exception as _dege:
+        _deg("balas:aviso", _dege)
+        return None
+
+
+def _sin_html(t):
+    try:
+        import re as _re
+        return _re.sub(r"<[^>]+>", "", str(t)).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
     except Exception:
-        dfed = None
-    def card(tit, val, col, sub):
-        return (f"<div style='flex:1;min-width:170px;border:1px solid #223049;border-radius:8px;padding:8px 10px'>"
-                f"<div style='font-size:11px;color:#9FB0C8'>{tit}</div><div style='font-size:16px;font-weight:800;color:{col}'>{val}</div>"
-                f"<div style='font-size:11px;color:#9FB0C8'>{sub}</div></div>")
-    if s.get("panico_vivo"):
-        pv, pc, ps = "🔥 PÁNICO", "#F4607A", f"desde el {esc(str(m.get('panico_desde'))[5:])} · VIX/VIX3M {p.get('t3') or 0:.2f} (se va bajo {SEM_PAN_FUERA:.2f})"
-    elif "se_va" in (s.get("eventos") or []):
-        pv, pc, ps = "🟢 SE VA HOY", "#2FD08A", (f"VIX/VIX3M {p.get('t3') or 0:.2f}: compra la ½ guardada en {', '.join(s.get('con_reserva') or [])}"
-                                                 if s.get("con_reserva") else f"VIX/VIX3M {p.get('t3') or 0:.2f}: sin reserva guardada")
-    elif m.get("panico_se_fue"):
-        pv, pc, ps = "Se fue", "#2FD08A", f"el {esc(str(m.get('panico_se_fue'))[5:])}"
-    else:
-        pv, pc, ps = "Sin pánico", "#2FD08A", (f"VIX/VIX3M {p['t3']:.2f}" if p.get("t3") else "sin dato")
-    cards = "".join([
-        card("Semáforo de hoy", f"● {nomh}", colh, ("⚠ " if a1 else "") + (f"mínimos {nl:.1f}%" if nl is not None else "mínimos sin dato")
-             + " · " + ("⚠ " if a2 else "") + (f"VIX {vx:.1f}" if vx is not None else "VIX sin dato")),
-        card("Si un ETF toca nivel hoy", {1.0: "1R completo", 0.5: "½R", 0.25: "¼R"}.get(s.get("frac"), "–") + (" y guarda" if s.get("agudo") and av > 0 else ""), colh, f"1R ≈ {SEM_CAPITAL / 6:,.0f} € con {SEM_CAPITAL:,.0f} €".replace(",", ".")),
-        card("Pánico del VIX", pv, pc, ps),
-        card("Rendición total", "SÍ 🔥" if r.get("hoy") else ("hubo el " + esc(str(r['fecha'])[5:]) if r.get("fecha") else "NO"),
-             "#2FD08A" if (r.get("hoy") or r.get("fecha")) else "#9FB0C8",
-             f"mínimos {r.get('nl') or 0:.0f}% (≥{SEM_REND_NL:g}) · sectores {r.get('sect_sale') if r.get('sect_sale') is not None else '–'}/8 (≥{SEM_REND_SECT}) · VIX inv."),
-        card("Próxima Fed", esc(SEM_FED_PROXIMA[8:10] + "-" + SEM_FED_PROXIMA[5:7]), "#4CC2E0", (f"faltan {dfed} días" if dfed is not None else "") + " · subir = peor; pausar = mejor"),
-    ])
-    fil = []
-    for f in s["filas"]:
-        ddc = "#F4607A" if f["activo"] else "#F4B740" if f["dd"] <= -2.5 else "#9FB0C8"
-        cy = f.get("ciclo") or {}
-        tcol = {"RÁPIDA": "#F4607A", "LARGA": "#B48CFF", "MADURA": "#2FD08A", "CORRECCIÓN": "#F4B740"}.get(cy.get("tipo"), "#9FB0C8")
-        hs = cy.get("hist")
-        ciclo_txt = (f"<b style='color:{tcol}'>{esc(cy.get('tipo', ''))}</b><br><span style='font-size:11px;color:#9FB0C8'>{cy.get('t', 0)} ses. desde el máx. ({esc(str(cy.get('max_fecha', ''))[8:10] + '-' + str(cy.get('max_fecha', ''))[5:7])})"
-                     + (f"<br>histórico: {hs['ex']:+.1f}% más (mediana), ≥10 % más el {hs['p10']:.0f}%, a 60 ses. {hs['f60']:+.1f}% · {hs['n']} caídas" if hs else "")
-                     + "</span>") if cy else ""
-        cel = []
-        for n in f["niveles"]:
-            t = n["toc"]
-            falta = (n["px"] / f["px"] - 1) * 100.0
-            _tav = t.get("av") if t else None
-            _tcol = "#4CC2E0" if _tav is None else ("#2FD08A", "#F4B740", "#F4607A")[min(_tav, 2)]
-            et = (f"<b style='color:{_tcol}'>✔ {esc(t['fecha'][8:10] + '-' + t['fecha'][5:7])}</b>" + (" 🔥" if t.get("agudo") else "")
-                  if t else f"<span style='color:#9FB0C8'>{falta:+.1f}%</span>")
-            cel.append(f"<td class='r'>{'<b>' if n['bueno'] else ''}−{n['niv']:g}% {n['px']:.2f}{'</b>' if n['bueno'] else ''}<br>{et}</td>")
-        cel += ["<td></td>"] * (3 - len(f["niveles"]))
-        que = "<br>".join(f.get("que") or [])
-        fil.append(f"<tr><td><b>{f['sym']}</b><br><span style='font-size:11px;color:#9FB0C8'>{esc(f['veh'])}</span></td>"
-                   f"<td class='r'>{f['px']:.2f}<br><b style='color:{ddc}'>{f['dd']:+.1f}%</b></td><td>{ciclo_txt}</td>"
-                   + "".join(cel) + f"<td style='font-size:12px;min-width:260px'>{que}</td></tr>")
-    h = ["<div class='panel full'><h2>🧭 Detector de caídas · SPY · RSP · DIA · QQQ · IWM · MAGS</h2>",
-         f"<div style='display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px'>{cards}</div>",
-         "<div style='overflow-x:auto'><table style='width:100%'><tr><th>ETF</th><th class='r'>cierre · desde máx.</th><th>tipo de caída (tiempo)</th>"
-         "<th class='r'>nivel bueno</th><th class='r'>siguiente</th><th class='r'>siguiente</th><th>qué hacer</th></tr>" + "".join(fil) + "</table></div>"]
-    h.append("<div class='note' style='margin-top:8px'><b>Cómo funciona (todo medido 2004-2026):</b> "
-             f"1) <b>Nivel bueno</b> de cada ETF (SPY/RSP/DIA −5 %, QQQ/IWM/MAGS −10 %) y siguientes; cada nivel se compra una vez por caída. "
-             f"2) <b>Tamaño</b> según el semáforo DE ESE DÍA: verde tramo completo (siguió cayendo {E['verde'][0]} de {E['verde'][1]}), ámbar medio "
-             f"({E['ambar'][0]} de {E['ambar'][1]}), rojo un cuarto ({E['rojo'][0]} de {E['rojo'][1]}); con <b>pánico agudo</b> en ámbar/rojo, un cuarto "
-             f"(siguió el {E['pan_si'][0]} %). 3) <b>Con pánico, la reserva espera</b>: comprar en el nivel con pánico cayó después {O['nivel'][0]:.1f}% "
-             f"(mediana) y perdió a 120 sesiones el {O['nivel'][2]} %; en el siguiente nivel {O['sig'][1]:+.1f}% a 120; cuando <b>se va el pánico</b> "
-             f"(VIX/VIX3M vuelve bajo 1,0) cae después solo {O['seva'][0]:.1f}% y gana {O['seva'][1]:+.1f}%. Reserva ½ al irse el pánico + ½ en el siguiente "
-             f"nivel. 4) En el <b>−20 % del QQQ</b>: las V (2018, 2020, 2025) llegaron con <b>rendición total</b> (≥20-25 % en mínimos, 6-7 sectores "
-             "sacando dinero, VIX invertido); 2000, 2008 y 2022 con el mercado tranquilo. 5) <b>Tipo de caída</b> por tiempo: RÁPIDA (−12 % en ≤1 mes) "
-             "solía seguir; MADURA (1-3 meses, −10/−20 %) la mejor zona; LARGA (&gt;3 meses en −12 %) riesgo bajista. El tiempo NO mejora la entrada "
-             "como filtro: es contexto. 6) <b>Venta</b> al recuperar el máximo. 7) La Fed manda en el fondo del mercado: subir tipos en la caída fue "
-             "2000/2022; parar o bajar, las V. DIX, GEX, VVIX y SKEW no aportaron. ✔ = comprado ese día (color del semáforo; 🔥 con pánico; azul = "
-             "antes del detector). Euros con el capital del plan (SEM_CAPITAL). No es asesoramiento.</div></div>")
+        return str(t)
+
+
+def _hoy_control_mes(s):
+    """Control del mes: 21 sesiones después de que el SPY toque su −5 %. Medido el 7-nov-2026 (S&P 1927-2026, 122 caídas):
+    si ese día sigue entre −5 y −10 %, luego llegó al −10 % el 57 %; si ya volvió por encima del −5 %, el 9 %."""
+    try:
+        f = next((x for x in (s or {}).get("filas") or [] if x["sym"] == "SPY"), None)
+        if not f or not f.get("activo"):
+            return None
+        t5 = next((n.get("toc") for n in f["niveles"] if abs(n["niv"] - 5.0) < 1e-9), None)
+        if not t5 or not t5.get("fecha"):
+            return None
+        d = dt.date.fromisoformat(t5["fecha"])
+        k = 0
+        while k < HOY_CONTROL_SES:
+            d += dt.timedelta(days=1)
+            if _es_sesion(d):
+                k += 1
+        hoy = dt.date.fromisoformat(s["fecha"])
+        quedan, x = 0, hoy
+        while x < d:
+            x += dt.timedelta(days=1)
+            if _es_sesion(x):
+                quedan += 1
+        return {"fecha": d, "quedan": quedan, "n5": f["pico"] * 0.95, "dd": f["dd"], "tocado": t5["fecha"]}
+    except Exception as _dege:
+        _deg("hoy:control", _dege)
+        return None
+
+
+def _hoy_agenda(hoy, agenda, s):
+    """Citas con fecha para el bloque 5: Fed, datos de EE. UU., vencimientos y el control del mes. Sin consejos."""
+    ev = []
+    try:
+        prox = [f for f in ESTC_FOMC if dt.date.fromisoformat(f) >= hoy]
+        if prox:
+            ev.append({"fecha": dt.date.fromisoformat(prox[0]), "que": "Decisión de tipos de la Fed", "tipo": "fed"})
+        else:
+            _avisar("agenda", "la lista de reuniones de la Fed (ESTC_FOMC) se ha quedado sin fechas futuras: actualízala", nivel="info")
+        fut = [(dt.date.fromisoformat(f), t) for f, t in HOY_DATOS if dt.date.fromisoformat(f) >= hoy]
+        if len(fut) < 2:
+            _avisar("agenda", "la lista de datos de EE. UU. (HOY_DATOS) se queda sin fechas: actualízala con bls.gov", nivel="info")
+        vistos = set()
+        for f, t in fut:
+            if t not in vistos and (f - hoy).days <= 45:
+                vistos.add(t)
+                ev.append({"fecha": f, "que": t, "tipo": "dato"})
+        for f, t in ESTC_EVENTOS:
+            d = dt.date.fromisoformat(f)
+            if 0 <= (d - hoy).days <= 45:
+                ev.append({"fecha": d, "que": t, "tipo": "evento"})
+        v = {}
+        for e in agenda or []:
+            if e.get("tipo") in ("opex", "vix") and e["tipo"] not in v and e.get("dias", 99) >= 0:
+                v[e["tipo"]] = 1
+                ev.append({"fecha": e["fecha"], "que": e["que"], "tipo": e["tipo"]})
+        c = _hoy_control_mes(s)
+        if c and c["quedan"] > 0:
+            ev.append({"fecha": c["fecha"], "tipo": "control",
+                       "que": (f"Control del mes tras el −5 % del SPY (tocado el {_dm(c['tocado'])}): si ese día el SPY cierra por encima de "
+                               f"{_n2(c['n5'])}, corrección normal (solo el 9 % siguió hasta el −10 %); si sigue por debajo, el 57 %")})
+        elif c:
+            ev.append({"fecha": hoy, "tipo": "control",
+                       "que": ("Control del mes (ya pasó): el SPY " + ("está POR ENCIMA de su −5 % → corrección normal" if c["dd"] > -5
+                                                                       else "sigue ATASCADO bajo su −5 % → en el pasado llegó al −10 % el 57 % de las veces"))})
+        for e in ev:
+            e["dias"] = (e["fecha"] - hoy).days
+        ev.sort(key=lambda e: (e["fecha"], e["tipo"]))
+    except Exception as _dege:
+        _deg("hoy:agenda", _dege)
+    return ev
+
+
+def _hoy_html(operativa, rachas=None, estc=None):
+    """La primera pestaña (v8.5): 5 bloques y nada más. Si falta algo, ese bloque lo dice y el resto sale igual."""
+    op = operativa or {}
+    s = op.get("semaforo") or {}
+    b = op.get("balas") or {}
+    ctx = op.get("ctx") or {}
+    h = []
+    V, A, R, G = "#2FD08A", "#F4B740", "#F4607A", "#9FB0C8"
+    try:
+        hoy_d = pd.Timestamp(ctx.get("cierre") or s.get("fecha") or dt.date.today()).date()
+    except Exception:
+        hoy_d = dt.date.today()
+    # ── 1) DATOS ────────────────────────────────────────────────────────
+    try:
+        fr = ctx.get("frescura") or {}
+        dl = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy_d.weekday()]
+        it = [f"<b>Cierre real:</b> {dl} {hoy_d.day}/{hoy_d.month}" + (f" · SPY {_n2(ctx['spy'])}" if ctx.get("spy") else "")
+              + " <span style='color:#5E708A'>· terminal v8.5</span>"]
+        if fr.get("faltan") and BENCH in fr.get("faltan", []):
+            it.append(f"<b style='color:{R}'>⚠ Yahoo no ha dado el cierre del {esc(fr.get('esperado'))}: todo va con el día anterior</b>")
+        elif fr.get("horario"):
+            it.append(f"<span style='color:{A}'>{len(fr['horario'])} series con el último día rehecho con velas de 1 hora (puede variar unos céntimos)</span>")
+        else:
+            it.append(f"<span style='color:{V}'>datos al día</span>")
+        pan = s.get("panico") or {}
+        if s and not pan.get("completo"):
+            it.append(f"<span style='color:{A}'>⚠ sin VIX a 9 días ni a 3 meses hoy: el pánico no se puede medir</span>")
+        if not s:
+            it.append(f"<b style='color:{R}'>⚠ el detector de caídas no se ha calculado hoy</b>")
+        try:
+            _nsb = len(SALUD_BUILD)
+            if _nsb:
+                it.append(f"<span style='color:{G}'>{_nsb} avisos en Salud del build (pestaña PRO)</span>")
+        except Exception:
+            pass
+        h.append("<div class='panel full' style='padding:9px 14px'><div style='display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12.5px;align-items:center'>"
+                 "<b style='color:#4CC2E0'>① DATOS</b>" + "".join(f"<span>{x}</span>" for x in it) + "</div></div>")
+    except Exception as _dege:
+        _deg("hoy:datos", _dege)
+    # ── 2) QUÉ TOCA HOY ─────────────────────────────────────────────────
+    try:
+        if not b or not b.get("balas"):
+            h.append("<div class='panel full'><h2>② Qué toca hoy</h2><div class='note'>Hoy no se ha podido calcular el plan "
+                     "(mira Salud del build en la pestaña PRO). No des nada por supuesto.</div></div>")
+        else:
+            toca = [x for x in b["balas"] if x["estado"] == "hoy"]
+            sal = b.get("salidas") or []
+            if toca or sal:
+                tit = " · ".join([f"HOY TOCA LA BALA {x['n']}" for x in toca] + [f"VENTA HOY: {esc(x['sym'])}" for x in sal])
+                sub = " ".join([f"Bala {x['n']}: {x['compra']}." for x in toca]
+                               + [f"{esc(x['sym'])} ha recuperado su máximo ({_n2(x['px'])}): sale lo comprado en esta caída en ese índice." for x in sal])
+                cab = (f"<div style='font-size:19px;font-weight:800;color:{V}'>🎯 {tit}</div>"
+                       f"<div style='font-size:14px;margin-top:4px'>{sub}</div>"
+                       "<div style='font-size:12.5px;color:#9FB0C8;margin-top:3px'>Se actúa con este cierre (así se midió); no se espera al viernes.</div>")
+                borde = V
+            else:
+                pend = [x for x in b["balas"] if x["estado"] == "pendiente"]
+                cab = ("<div style='font-size:19px;font-weight:800'>Hoy no toca nada</div>"
+                       + (f"<div style='font-size:13.5px;margin-top:4px;color:#C9D4E5'>Lo siguiente: bala {pend[0]['n']} — {pend[0]['falta']}</div>" if pend
+                          else ("<div style='font-size:13.5px;margin-top:4px;color:#C9D4E5'>No hay ninguna caída abierta: la reserva espera.</div>" if not b.get("hay")
+                                else "<div style='font-size:13.5px;margin-top:4px;color:#C9D4E5'>Las cuatro balas ya han dado señal en esta caída: queda esperar a que cada índice recupere su máximo.</div>")))
+                borde = "#24344F"
+            cards = []
+            for x in b["balas"]:
+                if x["estado"] == "hoy":
+                    ec, et = V, "TOCA HOY"
+                elif x["estado"] == "dada":
+                    ec, et = "#4CC2E0", f"señal dada el {_dm(x['fecha'])}"
+                elif x["estado"] == "reserva":
+                    ec, et = G, "en reserva (sin caída abierta)"
+                else:
+                    ec, et = A, "pendiente"
+                cards.append(
+                    f"<div style='background:#0A0E17;border:1px solid {ec}66;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5'>"
+                    f"<div style='display:flex;justify-content:space-between;gap:8px;align-items:baseline'><b style='font-size:15px'>Bala {x['n']}</b>"
+                    f"<b style='color:{ec}'>{et}</b></div>"
+                    f"<div style='color:#9FB0C8'>{x['cond']}.</div>"
+                    f"<div style='margin-top:4px'><b>Qué se compra:</b> {x['compra']}.</div>"
+                    + ("" if x["estado"] in ("hoy", "dada") else f"<div style='margin-top:4px;color:#C9D4E5'>{x['falta']}</div>")
+                    + (f"<div style='margin-top:3px;color:#9FB0C8;font-size:11.5px'>{x['extra']}</div>" if x.get("extra") and x["estado"] not in ("hoy", "dada") else "")
+                    + "</div>")
+            ab = [f for f in s.get("filas") or [] if f.get("activo")]
+            venta = ("<div style='margin-top:8px;font-size:12.5px'><b>Venta:</b> cada índice, cuando recupere su máximo → "
+                     + (" · ".join(f"{esc(f['sym'])} {_n2(f['pico'])} (falta {_pct((f['pico'] / f['px'] - 1) * 100)})" for f in ab) if ab
+                        else "ahora no hay ningún índice con caída abierta") + ".</div>")
+            h.append(f"<div class='panel full' style='border-color:{borde}'><h2>② Qué toca hoy</h2>"
+                     f"<div style='padding:10px 12px;border-left:4px solid {borde if borde == V else '#4CC2E0'};background:rgba(76,194,224,.06);margin-bottom:10px'>{cab}</div>"
+                     "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px'>" + "".join(cards) + "</div>"
+                     + venta +
+                     "<div class='note' style='margin-top:8px'>Este es el <b>único plan</b> y el único sitio de la terminal que dice qué hacer: las 4 balas de la "
+                     "reserva, cada una una sola vez por caída. Los niveles de la tabla de abajo (−5 %, −10 %…) son información, no compras. "
+                     f"Importe de cada bala: {_eur(BALA_EUR)} (se cambia en <code>BALA_EUR</code>). Los x3 y x2 no recuperan como el índice si la caída "
+                     "se alarga (en 2008 el x3 del S&amp;P seguía en −59 % el día que el índice recuperó). No es asesoramiento.</div></div>")
+    except Exception as _dege:
+        _deg("hoy:balas", _dege)
+    # ── 3) TABLA DE CAÍDAS ──────────────────────────────────────────────
+    try:
+        fil = []
+        for f in s.get("filas") or []:
+            cy = f.get("ciclo") or {}
+            ddc = R if f["dd"] <= -10 else A if f["dd"] <= -2.5 else G
+            toc = [n for n in f["niveles"] if n.get("toc")]
+            toc_t = (" · ".join(f"−{n['niv']:g} % el {_dm(n['toc']['fecha'])}" for n in toc) if toc else "<span style='color:#5E708A'>ninguno</span>")
+            sig = next((n for n in f["niveles"] if not n.get("toc")), None)
+            sig_t = (f"−{sig['niv']:g} % = <b>{_n2(sig['px'])}</b> <span style='color:#9FB0C8'>(falta {_pct((sig['px'] / f['px'] - 1) * 100)})</span>" if sig
+                     else "<span style='color:#5E708A'>todos tocados</span>")
+            tcol = {"RÁPIDA": R, "LARGA": "#B48CFF", "MADURA": V, "CORRECCIÓN": A}.get(cy.get("tipo"), G)
+            fil.append(f"<tr><td class='se-l'><b>{esc(f['sym'])}</b></td><td class='r'>{_n2(f['px'])}</td>"
+                       f"<td class='r'><b style='color:{ddc}'>{_pct(f['dd'])}</b></td>"
+                       f"<td class='r'>{_n2(f['pico'])}<br><span style='font-size:11px;color:#9FB0C8'>{_dm(cy.get('max_fecha'))}</span></td>"
+                       f"<td class='se-l'>{toc_t}</td><td class='se-l'>{sig_t}</td>"
+                       f"<td class='r'>{cy.get('t', '—')}</td><td class='se-l'><b style='color:{tcol}'>{esc({'SIN CAÍDA': 'leve'}.get(cy.get('tipo'), cy.get('tipo') or '—'))}</b></td></tr>")
+        if fil:
+            h.append("<div class='panel full'><h2>③ Las caídas de los 6 índices</h2>"
+                     "<div class='scrollx'><table class='se' style='white-space:nowrap'><tr><th class='se-l'>índice</th><th class='r'>cierre</th>"
+                     "<th class='r'>desde su máximo</th><th class='r'>máximo (fecha)</th><th class='se-l'>niveles tocados en esta caída</th>"
+                     "<th class='se-l'>siguiente nivel</th><th class='r'>sesiones desde el máximo</th><th class='se-l'>tipo de caída</th></tr>"
+                     + "".join(fil) + "</table></div>"
+                     "<div class='note' style='margin-top:6px'>Un solo máximo para todo: el más alto de las últimas 52 semanas con máximos de vela. "
+                     "Una caída se da por cerrada cuando el índice vuelve a menos de un 0,5 % de ese máximo. <b>Tipo de caída:</b> RÁPIDA (−12 % o más en un mes o menos) "
+                     "solía seguir; MADURA (de uno a tres meses, entre −10 y −20 %) ha sido la mejor zona; LARGA (más de tres meses y −12 % o peor) es riesgo de "
+                     "mercado bajista. Es contexto: como filtro para entrar no mejoró.</div></div>")
+    except Exception as _dege:
+        _deg("hoy:tabla", _dege)
+    # ── 4) TERMÓMETRO DEL MIEDO ─────────────────────────────────────────
+    try:
+        if s:
+            pan = s.get("panico") or {}
+            mer = s.get("mercado") or {}
+            r = s.get("rendicion") or {}
+            ev = s.get("eventos") or []
+            e = op.get("estr") or {}
+            sec = e.get("sect") or {}
+            acc = e.get("acc") or {}
+            emp = e.get("empuje")
+            t3, nl, vx = pan.get("t3"), s.get("nl"), s.get("vix")
+
+            def card(tit, val, col, sub):
+                return (f"<div style='flex:1;min-width:190px;border:1px solid #223049;border-radius:8px;padding:8px 10px'>"
+                        f"<div style='font-size:11px;color:#9FB0C8'>{tit}</div><div style='font-size:16px;font-weight:800;color:{col}'>{val}</div>"
+                        f"<div style='font-size:11px;color:#9FB0C8;line-height:1.45'>{sub}</div></div>")
+            if "se_va" in ev:
+                pv, pc, ps = "🟢 SE VA HOY", V, "es la señal de la bala 1"
+            elif s.get("panico_vivo"):
+                pv, pc, ps = "🔥 PÁNICO", R, f"desde el {_dm(mer.get('panico_desde'))}; se va con un cierre por debajo de {_n2(SEM_PAN_FUERA)}"
+            elif mer.get("panico_se_fue"):
+                pv, pc, ps = "se fue", V, f"el {_dm(mer.get('panico_se_fue'))}; vuelve a contar si cierra en {_n2(SEM_PAN_EST)} o más"
+            else:
+                pv, pc, ps = "normal", G, f"pánico = cierre en {_n2(SEM_PAN_EST)} o más"
+            c1 = card("Miedo en las opciones (VIX frente a VIX a 3 meses)", (f"{_n2(t3)} · " if t3 is not None else "sin dato · ") + pv, pc,
+                      ps + (f" · VIX {_n2(vx, 1)}" if vx is not None else "") + (" · <b style='color:#F4607A'>pánico agudo hoy</b>" if s.get("agudo") else ""))
+            c2 = card("Acciones del S&amp;P en mínimos de un año", (f"{_n2(nl, 1)} %" if nl is not None else "sin dato"),
+                      (G if nl is None else R if nl >= SEM_REND_NL else A if nl >= SEM_NL else V),
+                      f"con {SEM_NL:g} % o más, las caídas solían seguir; {SEM_REND_NL:g} % o más cuenta para la rendición")
+            ex = sec.get("extrema")
+            if ex and ex.get("hoy"):
+                xv, xc, xs = f"{sec.get('sale', '—')} de {sec.get('n', 8)} · VENTA EXTREMA", "#B980FF", f"activa desde el {_dm(ex.get('inicio'))}: suele llegar antes del suelo, mientras aún cae"
+            else:
+                xv, xc = f"{sec.get('sale', '—')} de {sec.get('n', 8)}", (A if (sec.get("sale") or 0) >= 4 else G)
+                xs = (f"VENTA EXTREMA = {ESTR_EXT_SECT} u 8 a la vez" + (f"; la última acabó el {_dm(ex.get('fin'))}" if ex and ex.get("fin") else ""))
+            c3 = card("Sectores sacando dinero (sin tecnología)", xv if sec else "sin dato", xc if sec else G, xs if sec else "")
+            c4 = card("Rendición total", "SÍ 🔥" if r.get("hoy") else ("la hubo el " + _dm(r["fecha"]) if r.get("fecha") else "no"),
+                      V if (r.get("hoy") or r.get("fecha")) else G,
+                      f"mínimos ≥ {SEM_REND_NL:g} % + ≥ {SEM_REND_SECT} sectores sacando dinero + VIX/VIX3M ≥ {_n2(SEM_PAN_EST)}: así llegaron las V de 2018, 2020 y 2025")
+            if emp and emp.get("hoy"):
+                mv, mc_, ms = "🚀 HOY", V, "el dinero vuelve de golpe a muchas acciones"
+            elif emp and emp.get("hace", 99) <= 20:
+                mv, mc_, ms = f"hace {emp['hace']} sesiones", V, f"saltó el {_dm(emp.get('fecha'))}"
+            else:
+                mv, mc_, ms = "no", G, ("último: " + _dm(emp.get("fecha")) if emp and emp.get("fecha") else "sin empuje reciente")
+            c5 = card("Empuje de dinero", mv, mc_, ms + (f" · hoy entra dinero en el {_n2(acc['entra'], 0)} % de las acciones" if acc.get("entra") is not None else ""))
+            h.append("<div class='panel full'><h2>④ Termómetro del miedo</h2>"
+                     f"<div style='display:flex;flex-wrap:wrap;gap:8px'>{c1}{c2}{c3}{c4}{c5}</div>"
+                     "<div class='note' style='margin-top:6px'>Solo lo que ha aguantado al medirlo (2004-2026). Con pánico, comprar en el nivel cayó después un "
+                     f"{_n2(abs(SEM_OPT['nivel'][0]), 1)} % de mediana; cuando el pánico se va, un {_n2(abs(SEM_OPT['seva'][0]), 1)} % y ganó un "
+                     f"{_n2(SEM_OPT['seva'][1], 1)} % a 120 sesiones (unos 15 episodios: pista fuerte, no garantía). El DIX, el GEX, el VVIX, el SKEW y el "
+                     "índice de miedo y codicia no aportaron nada y ya no salen aquí.</div></div>")
+    except Exception as _dege:
+        _deg("hoy:termometro", _dege)
+    # ── 5) AGENDA ───────────────────────────────────────────────────────
+    try:
+        ev = _hoy_agenda(hoy_d, (rachas or {}).get("agenda"), s)
+        if ev:
+            dd_es = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+            fl = []
+            for e in ev[:9]:
+                d = e["dias"]
+                col = R if d <= 1 else (A if d <= 10 else G)
+                cuando = "HOY" if d == 0 else ("mañana" if d == 1 else f"en {d} días")
+                fl.append(f"<div style='display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px'>"
+                          f"<div style='min-width:150px;flex:none'><b style='color:{col}'>{cuando}</b> "
+                          f"<span style='color:#9FB0C8'>{dd_es[e['fecha'].weekday()]} {e['fecha'].day}/{e['fecha'].month}</span></div>"
+                          f"<div>{esc(e['que'])}</div></div>")
+            h.append("<div class='panel full'><h2>⑤ Agenda</h2>" + "".join(fl)
+                     + "<div class='note' style='margin-top:6px'>Solo fechas. La Fed y los datos de empleo e inflación mueven el fondo del mercado "
+                       "(subir tipos en plena caída fue 2000 y 2022; parar o bajar, las V). El detalle de vencimientos, en «Rachas y niveles».</div></div>")
+    except Exception as _dege:
+        _deg("hoy:agenda_html", _dege)
+    if not h:
+        return ("<div class='panel full'><h2>Hoy</h2><div class='note'>Hoy no se ha podido dibujar esta pestaña "
+                "(mira Salud del build en la pestaña PRO).</div></div>")
     return "".join(h)
+
+
+def _caidas_estudio_html():
+    """Detalle: lo medido sobre las caídas (por qué el plan es el que es). Sin importes ni instrucciones."""
+    try:
+        E, O = SEM_ESTUDIO, SEM_OPT
+        return ("<div class='panel full'><h2>📚 Lo medido sobre las caídas (por qué el plan es el que es)</h2>"
+                "<div class='note' style='font-size:12.5px;line-height:1.6'>"
+                f"<b>1) El primer nivel de cada índice</b> (SPY, RSP y DIA −5 %; QQQ, IWM y MAGS −10 %), 109 veces desde 2004: con menos del {SEM_NL:g} % de "
+                f"acciones en mínimos y el VIX por debajo de {SEM_VIX:g}, siguió cayendo hasta el siguiente nivel {E['verde'][0]} de {E['verde'][1]} veces; con uno "
+                f"de los dos avisos, {E['ambar'][0]} de {E['ambar'][1]}; con los dos, {E['rojo'][0]} de {E['rojo'][1]}. Con <b>pánico agudo</b> ese día siguió el "
+                f"{E['pan_si'][0]} % ({E['pan_si'][1]} casos); sin él, el {E['pan_no'][0]} % ({E['pan_no'][1]}). "
+                f"<b>2) Con pánico, esperar:</b> comprar en el nivel con pánico cayó después un {_n2(abs(O['nivel'][0]), 1)} % de mediana y a 120 sesiones perdía el "
+                f"{O['nivel'][2]} % de las veces; en el siguiente nivel ganó un {_n2(O['sig'][1], 1)} %; cuando <b>se va el pánico</b> cayó después solo un "
+                f"{_n2(abs(O['seva'][0]), 1)} % y ganó un {_n2(O['seva'][1], 1)} % (de ahí la bala 1). "
+                "<b>3) El −20 % del QQQ:</b> las V (2018, 2020 y 2025) llegaron con rendición total; 2000, 2008 y 2022, con el mercado tranquilo (de ahí la bala 3). "
+                "<b>4) El tiempo:</b> las caídas rápidas solían seguir y las de más de tres meses fueron los mercados bajistas, pero usar el tiempo como filtro no mejoró la entrada. "
+                "<b>5) Los apalancados</b> no recuperan como el índice si la caída se alarga. "
+                "<b>6) No aportaron:</b> DIX, GEX, VVIX, SKEW, esperar a que «entre dinero» en el ETF (CMF, OBV…), el RRG y la nota de los índices. "
+                "Todo son pistas con pocos episodios (unos 15 con pánico), no garantías. No es asesoramiento.</div></div>")
+    except Exception as _dege:
+        _deg("detalle:estudio", _dege)
+        return ""
+
 
 def guardar_dix(dx):
     """v8.4.1: el DIX y el GEX de cada noche al histórico (antes solo se mostraban)."""
@@ -25424,18 +25842,16 @@ def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=No
         cal_txt = (f"el calendario sopla a favor a partir de la semana del {primera_fav.day}/{primera_fav.month}" if primera_fav
                    else "el calendario no ayuda mucho en las próximas semanas")
         mejor = max((r["score"] for r in orden), default=None)
-        notas = ("" if mejor is None else (f" Ojo: las notas de los índices son flojas (la mejor, {mejor}/10), así que poco tamaño." if mejor <= 4
+        notas = ("" if mejor is None else (f" Las notas de los índices son flojas (la mejor, {mejor}/10)." if mejor <= 4
                                            else f" La mejor nota de índice es {mejor}/10."))
         if est in ("RISK-ON", "REENTRADA"):
-            frase = f"Semáforo en verde y {cal_txt}: se puede estar invertido según la nota de cada índice; el calendario solo suma.{notas}"
+            frase = f"Centinela (régimen del mercado) en verde y {cal_txt}.{notas}"
         elif est == "TRANSICION":
-            frase = f"Semáforo en transición y {cal_txt}. Sin prisas: decide el cierre del viernes.{notas}"
+            frase = f"Centinela (régimen del mercado) en transición y {cal_txt}.{notas}"
         elif est:
-            frase = (f"Semáforo en {esc(est)} y {cal_txt}. <b>Manda el semáforo</b>: si el viernes sigue así, el satélite a liquidez; "
-                     "el calendario favorable solo significa que, cuando el semáforo se ponga verde, el viento acompañará. No es motivo "
-                     "para adelantarse.")
+            frase = f"Centinela (régimen del mercado) en {esc(est)} y {cal_txt}.{notas}"
         else:
-            frase = f"Sin semáforo hoy; {cal_txt}."
+            frase = f"Sin Centinela hoy; {cal_txt}."
         h = ["<div class='panel full' style='border-color:#4CC2E088;background:linear-gradient(180deg,rgba(76,194,224,.07),transparent)'>"
              "<h2>📌 Resumen: cómo estamos y qué viene</h2>"
              f"<div style='font-size:14px;line-height:1.6;margin-bottom:8px;padding:8px 12px;border-left:3px solid #4CC2E0;background:rgba(76,194,224,.06)'>{frase}</div>"]
@@ -25448,7 +25864,7 @@ def _resumen_html(estc=None, operativa=None, centinela=None, dix=None, rachas=No
         if sem:
             h.append("<div style='margin-top:6px'>" + _estc_semanas_html(sem[:5], corto=True) + "</div>")
         h.append("<div class='note' style='margin-top:6px'>Todo el detalle del calendario en la pestaña <b>📅 Estacionalidad</b>. "
-                 "De lunes a jueves es para observar; decide el cierre del viernes. No es asesoramiento.</div></div>")
+                 "Es descripción, no órdenes: el plan de caídas está en «Hoy» y actúa con el cierre del día. No es asesoramiento.</div></div>")
         return "".join(h)
     except Exception as _dege:
         _deg("resumen:html", _dege)
@@ -26470,9 +26886,6 @@ def main():
                     print(f"  🎯 Plan SPY: {_ps['dd']:+.1f}% desde el máximo"
                           + (f" · acciones en mínimos 52s {_ps['nl_pct']:.1f}%" if _ps.get("nl_pct") is not None else "")
                           + (f" · NUEVO nivel tocado: −{max(_ps['nuevos']):g}%" if _ps.get("nuevos") else ""))
-                    _msg_ps = plan_spy_aviso(_ps)
-                    if _msg_ps and not VIAJE_A:
-                        notify(_msg_ps)
             except Exception as _e_ps:
                 _avisar("plan_spy", f"plan SPY no calculado: {_e_ps}")
             # v8.4.2 — 🚦 SEMÁFORO DE ENTRADA (6 ETF) + PÁNICO AGUDO, con aviso por Telegram
@@ -26481,18 +26894,23 @@ def main():
                 _sm = _oper["semaforo"]
                 if _sm:
                     _pp = _sm.get("panico") or {}
-                    print(f"  🚦 Semáforo {('VERDE', 'ÁMBAR', 'ROJO')[min(_sm['av'], 2)]} · "
+                    print(f"  🧭 Detector de caídas · avisos del día {min(_sm['av'], 2)} · "
                           + ("PÁNICO AGUDO" if _sm["agudo"] else "sin pánico agudo")
                           + (f" (VIX9D/VIX {_pp['t9']:.2f}, VIX/VIX3M {_pp['t3']:.2f})" if _pp.get("t9") and _pp.get("t3") else "")
                           + " · " + " ".join(f"{f['sym']} {f['dd']:+.1f}%" for f in _sm["filas"])
                           + (" · NUEVO: " + ", ".join(f"{n['sym']} −{n['niv']:g}%" for n in _sm["nuevos"]) if _sm.get("nuevos") else ""))
-                    _msg_sm = semaforo_aviso(_sm)
+                    _oper["balas"] = compute_balas(_sm)          # v8.5: el único plan (4 balas de la reserva)
+                    _bl = _oper["balas"]
+                    if _bl:
+                        print("  🎯 Balas: " + " · ".join(f"{x['n']} {x['estado']}" for x in _bl["balas"])
+                              + (" · HOY TOCA LA " + ", ".join(str(n) for n in _bl["hoy"]) if _bl.get("hoy") else ""))
+                    _msg_sm = balas_aviso(_bl, _sm)
                     if _msg_sm and not VIAJE_A:
                         notify(_msg_sm)
                     if not _pp.get("completo"):
                         _avisar("semaforo", "VIX9D/VIX3M no descargados: el pánico agudo no se puede medir hoy", nivel="info")
             except Exception as _e_sm:
-                _avisar("semaforo", f"semáforo de entrada no calculado: {_e_sm}")
+                _avisar("semaforo", f"detector de caídas no calculado: {_e_sm}")
             # v8.4.1 — ¿se grabaron hoy las opciones? (llevaban días paradas sin avisar)
             try:
                 if OPCIONES_ON and not VIAJE_A:

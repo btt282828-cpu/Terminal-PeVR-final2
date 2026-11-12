@@ -1482,7 +1482,7 @@
 "idx": {
 "SPY": {
 "score": 4,
-"ver": "ESPERAR",
+"ver": "NOTA FLOJA",
 "p": [
 "a",
 "r",
@@ -1494,7 +1494,7 @@
 },
 "QQQ": {
 "score": 2,
-"ver": "NO TOCAR",
+"ver": "NOTA BAJA",
 "p": [
 "a",
 "r",
@@ -1506,7 +1506,7 @@
 },
 "DIA": {
 "score": 7,
-"ver": "ESPERAR",
+"ver": "NOTA MEDIA",
 "p": [
 "v",
 "a",
@@ -1518,7 +1518,7 @@
 },
 "IWM": {
 "score": 7,
-"ver": "ESPERAR",
+"ver": "NOTA MEDIA",
 "p": [
 "v",
 "v",
@@ -1530,7 +1530,7 @@
 },
 "RSP": {
 "score": 10,
-"ver": "ESPERAR",
+"ver": "NOTA ALTA",
 "p": [
 "v",
 "v",
@@ -1542,7 +1542,7 @@
 },
 "MAGS": {
 "score": 3,
-"ver": "NO TOCAR",
+"ver": "NOTA BAJA",
 "p": [
 "a",
 "r",

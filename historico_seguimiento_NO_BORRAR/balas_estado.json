@@ -1,0 +1,13 @@
+{
+"activo": true,
+"inicio": "2026-09-16",
+"balas": {
+"1": {
+"fecha": "2026-11-09",
+"motivo": "se va el pánico"
+}
+},
+"ultimo": "2026-11-11",
+"historia": [],
+"avisado": null
+}

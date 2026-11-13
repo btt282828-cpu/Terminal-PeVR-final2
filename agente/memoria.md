@@ -14,6 +14,8 @@
 
 - 11-nov-2026 (revisado): Pe subió la terminal v8.5 (cambia pestaña «Hoy», plan único de 4 balas, notas en vez de órdenes: ESPERAR→NOTA FLOJA, NO TOCAR→NOTA BAJA; señales del plan actúan con el cierre del día). Bala 1 = «se va el pánico» 9-nov. Sin señales nuevas. Control del mes 7-dic.
 
+- 12-nov-2026: sin señales nuevas. SPY −3,1 %, QQQ −9,8 %, IWM −8,5 %, RSP −1,5 %, VIX 18,7; dinero MIXTO; centinela ACECHO. Control del mes 7-dic: SPY 2,0 % sobre 742,54. Vigilante todo verde (avisos viejos sin cambios).
+
 ## Problemas abiertos
 - (11-nov) 7 acciones de SECTOR_STOCKS sin datos (antes 6). PCR de SIL y FXI fuera de banda. Build de opciones parcial (01:41 NY).
 - (11-nov) RESUELTA/retirada: lo de «SE VA EL PÁNICO» en senales_wire.json no era fallo: el histórico (git) nunca la guardó en ese archivo. Duda menor: el marcador no mide esa señal.

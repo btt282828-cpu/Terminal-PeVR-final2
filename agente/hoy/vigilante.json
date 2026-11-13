@@ -1,125 +1,124 @@
 {
- "fecha_mercado_esperada": "2026-11-11",
+ "fecha_mercado_esperada": "2026-11-12",
  "rojo": [],
- "ambar": [
-  "aviso NUEVO en SALUD DEL BUILD → options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre"
+ "ambar": [],
+ "verde": [
+  "Todo grabado y sin avisos nuevos"
  ],
- "verde": [],
  "archivos": {
   "semaforo_estado.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
    "elementos": 4,
    "elementos_antes": 4
   },
   "estructura_estado.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
-   "elementos": 10,
+   "elementos": 11,
    "elementos_antes": 10
   },
   "dix_estado.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
-   "elementos": 9,
+   "elementos": 10,
    "elementos_antes": 9
   },
   "amplitud_estado.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
-   "elementos": 34,
+   "elementos": 35,
    "elementos_antes": 34
   },
   "operativa_indices.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
-   "elementos": 22,
+   "elementos": 23,
    "elementos_antes": 22
   },
   "centinela_estado.json": {
-   "ultima_fecha": "2026-11-12",
+   "ultima_fecha": "2026-11-13",
    "sesiones_de_retraso": 0,
-   "elementos": 43,
+   "elementos": 44,
    "elementos_antes": 43
   },
   "options_iv.json": {
-   "ultima_fecha": "2026-11-12",
+   "ultima_fecha": "2026-11-13",
    "sesiones_de_retraso": 0,
-   "elementos": 2172,
+   "elementos": 2234,
    "elementos_antes": 2172
   },
   "senales_wire.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
-   "elementos": 1051,
+   "elementos": 1072,
    "elementos_antes": 1051
   },
   "despertares.json": {
    "ultima_fecha": "2026-11-09",
-   "sesiones_de_retraso": 2,
+   "sesiones_de_retraso": 3,
    "elementos": 33,
    "elementos_antes": 33
   },
   "senales_contrarias.json": {
    "ultima_fecha": "2026-11-10",
-   "sesiones_de_retraso": 1,
-   "elementos": 41,
+   "sesiones_de_retraso": 2,
+   "elementos": 42,
    "elementos_antes": 41
   },
   "track_record.json": {
    "ultima_fecha": "2026-11-06",
-   "sesiones_de_retraso": 3,
+   "sesiones_de_retraso": 4,
    "elementos": 11,
    "elementos_antes": 11
   },
   "plan_spy_estado.json": {
-   "ultima_fecha": "2026-11-11",
+   "ultima_fecha": "2026-11-12",
    "sesiones_de_retraso": 0,
    "elementos": 5,
    "elementos_antes": 5
   },
   "historiales/dix_gex.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/cboe_vix.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/cboe_vix9d.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/cboe_vix3m.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/cboe_vvix.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/cboe_skew.csv": {
    "ultima_fecha": "2026-11-10",
-   "dias": 1
+   "dias": 2
   },
   "historiales/universo": {
    "ultima_fecha": "2026-11-03",
-   "dias": 8
+   "dias": 9
   }
  },
- "salud_build_ultima": "2026-11-12 06:49 UTC",
+ "salud_build_ultima": "2026-11-13 02:54 UTC",
  "avisos_hoy": [
   "datos.DRAM: ETF joven: 33 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
   "datos.NCLD: ETF joven: 15 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
-  "options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre",
-  "options.iv: IV descartada por no plausible en 51 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): SPY 3%/22r, TAN 6%/45r, ICLN 142%/32r, FAN 117%/23r, LIT 5%/30r, ARKK 6%/55",
-  "options.pcr: put/call fuera de banda plausible [0.29-3.5] en 2 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: SIL (OI 0.20), FXI (OI 0.12)",
-  "options.fuente: Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 71 por Yahoo",
-  "acciones: 7 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
+  "options.iv: IV descartada por no plausible en 2 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): FAN 119%/21r, HYDR 220%/54r",
+  "options.pcr: put/call fuera de banda plausible [0.29-3.5] en 13 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: TAN (vol 0.26), LIT (OI 0.19), ARKX (OI 0.22",
+  "options.fuente: Yahoo no dio cadena en todos los ETF: 1 por CBOE (retraso 15 min) y 63 por Yahoo",
+  "acciones: 6 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
   "valida.CL=F: yahoo: cierres <= 0 o serie vacia — fuente descartada, se prueba la siguiente"
  ],
- "avisos_nuevos": [
-  "options: build a las 01:41 NY (sesion USA no cerrada): volumen de opciones PARCIAL — el PCR-vol de hoy es provisional; fiate mas del PCR-OI (T-1). El build 'bueno' es el del cierre"
- ],
- "avisos_resueltos": []
+ "avisos_nuevos": [],
+ "avisos_resueltos": [
+  "options"
+ ]
 }

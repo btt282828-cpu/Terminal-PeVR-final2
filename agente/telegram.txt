@@ -1,8 +1,8 @@
-🤖 Compañero · jueves 12-nov-2026
-🟢 Sistema: todo grabado, sin avisos nuevos.
-📊 Terminal: SPY −3,1 % y QQQ −9,8 % desde máximo, casi sin cambio; pero IWM (−8,5 %) y RSP (−1,5 %) cayeron más. VIX 18,7, dinero mixto, centinela ACECHO.
-🎯 Plan: ninguna señal ha saltado. Lo más cercano: control del mes el 7-dic (SPY 2,0 % sobre la línea de 742,54, colchón algo menor). SPY −10 % falta −7,1 %; QQQ −20 % falta −11,3 %.
-🧾 Marcador: sin cambios; todo orientativo (menos de 30 casos).
-🔬 Hoy he probado: nada (día de repaso).
-💡 Propuesta: ninguna.
-🙋 Necesito de ti: nada. Hoy se observa, se actúa el viernes al cierre.
+🤖 Compañero · vie 13-11
+🟠 Sistema: terminal OK. Arreglé un fallo mío: el marcador medía con precios parados en el 2-nov (por eso «no cambiaba»). Además, el cable de señales solo guarda 60 sesiones.
+📊 Terminal: semana de rebote: SPY +2,6 %, QQQ +3,6 %, VIX 25,6→19,3. Hoy SPY −3,5 % y QQQ −10,9 % de máximos; dinero mixto, centinela ACECHO.
+🎯 Plan: hoy no salta ninguna (la única de la semana: «se va el pánico», lunes 9). La más cercana: control del mes, 7-dic; SPY a 1,6 % de la línea 742,54.
+🧾 Marcador (ya con precios al día): GIRO↑ llega a 30 casos y «va al revés», pero es el rendimiento de sus activos (neto −0,4 pts, t −0,2). Nada demostrado.
+🔬 Hoy he probado: ¿«se va el pánico» es mejor entrada que un viernes cualquiera? No (36 casos 2009-22: −1,5 pts, t −1,2).
+💡 Propuesta: cambiar 2 líneas de rotacion.py (3023 y 16176) para que el cable guarde más de 60 sesiones.
+🙋 Necesito de ti: decidir esa propuesta. Siguen: Telegram de la terminal, I-003, ACECHO/DISTRIBUCIÓN.

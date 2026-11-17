@@ -6556,5 +6556,101 @@
 "tag": "EARLY",
 "sym": "DRIV",
 "dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "RÉGIMEN",
+"sym": "MERCADO",
+"dir": 0
+},
+{
+"date": "2026-11-16",
+"tag": "CAPITUL",
+"sym": "REMX",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "CAPITUL",
+"sym": "IBIT",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "CAPITUL",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "GRADUADO",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "GRADUADO",
+"sym": "IWM",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "GRADUADO",
+"sym": "ITA",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "GRADUADO",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "GIRO",
+"sym": "ICLN",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "0/3",
+"sym": "FXI",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "SUELO",
+"sym": "FXI",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "SUELO",
+"sym": "URA",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "SUELO",
+"sym": "XME",
+"dir": 0
+},
+{
+"date": "2026-11-16",
+"tag": "EARLY",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-16",
+"tag": "EARLY",
+"sym": "NCLD",
+"dir": 1
 }
 ]

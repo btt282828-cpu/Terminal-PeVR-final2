@@ -213,5 +213,23 @@
 "IWM": 277.54,
 "RSP": 221.16
 }
+},
+{
+"date": "2026-11-16",
+"sect_entra": 3,
+"sect_sale": 1,
+"tec": -0.194,
+"acc_entra": 43.6,
+"acc_sale": 27.9,
+"n_acc": 659,
+"lectura": "MIXTO",
+"empuje": false,
+"extrema": false,
+"px": {
+"SPY": 739.95,
+"QQQ": 661.75,
+"IWM": 272.94,
+"RSP": 218.93
+}
 }
 ]

@@ -1,18 +1,18 @@
 {
  "caidas": {
-  "fecha": "2026-11-13",
+  "fecha": "2026-11-16",
   "dd": {
-   "SPY": -3.49,
-   "RSP": -1.36,
-   "DIA": -4.0,
-   "QQQ": -10.88,
-   "IWM": -8.82,
-   "MAGS": -8.14
+   "SPY": -5.33,
+   "RSP": -2.35,
+   "DIA": -5.37,
+   "QQQ": -13.25,
+   "IWM": -10.33,
+   "MAGS": -10.48
   },
-  "vix": 19.3,
+  "vix": 22.91,
   "agudo": false,
-  "en_minimos": 2.4,
-  "vix_vix3m": 0.936,
+  "en_minimos": 5.85,
+  "vix_vix3m": 0.995,
   "panico_vivo": false,
   "panico_desde": "2026-11-05",
   "panico_se_fue": "2026-11-09",
@@ -25,23 +25,23 @@
   ],
   "QQQ": [
    "NOTA BAJA",
-   2
+   1
   ],
   "DIA": [
    "NOTA MEDIA",
-   7
+   6
   ],
   "IWM": [
-   "NOTA MEDIA",
-   6
+   "NOTA FLOJA",
+   4
   ],
   "RSP": [
    "NOTA ALTA",
-   10
+   8
   ],
   "MAGS": [
-   "NOTA FLOJA",
-   5
+   "NOTA BAJA",
+   3
   ]
  },
  "dinero": {
@@ -62,23 +62,23 @@
   },
   {
    "senal": "SPY −10 %",
-   "estado": "en 703,46; le falta un -6,7 % (hoy 754,34)"
+   "estado": "en 703,46; le falta un -4,9 % (hoy 739,96)"
   },
   {
    "senal": "QQQ −20 %",
-   "estado": "en 610,29; le falta un -10,2 % (hoy 679,86) · rendición total: no (en mínimos 2,4 % de 20; sectores sacando dinero 1 de 6; VIX/VIX3M 0,94 de 1,10)"
+   "estado": "en 610,29; le falta un -7,8 % (hoy 661,78) · rendición total: no (en mínimos 5,8 % de 20; sectores sacando dinero 1 de 6; VIX/VIX3M 0,99 de 1,10)"
   },
   {
    "senal": "Bajista: SPY −20 %",
-   "estado": "en 625,30; le falta un -17,1 % (hoy 754,34)"
+   "estado": "en 625,30; le falta un -15,5 % (hoy 739,96)"
   },
   {
    "senal": "Bajista: QQQ −30 %",
-   "estado": "en 534,00; le falta un -21,5 % (hoy 679,86)"
+   "estado": "en 534,00; le falta un -19,3 % (hoy 661,78)"
   },
   {
    "senal": "Control del mes tras el −5 % del SPY",
-   "estado": "el 2026-12-07; faltan 15 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
+   "estado": "el 2026-12-07; faltan 14 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
   }
  ]
 }

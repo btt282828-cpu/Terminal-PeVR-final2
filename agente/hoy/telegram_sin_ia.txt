@@ -1,15 +1,15 @@
-🤖 Compañero (sin IA) · lun 16-11
-🟠 Sistema: aviso NUEVO en SALUD DEL BUILD → pesos: QQQ: la cartera oficial de Invesco no respondió (V
-📉 Caídas: SPY -5,3 %, DIA -5,4 %, QQQ -13,2 %, IWM -10,3 %, MAGS -10,5 % · VIX 22,9
-🚦 Índices: SPY NOTA FLOJA, QQQ NOTA BAJA, DIA NOTA MEDIA, IWM NOTA FLOJA, RSP NOTA ALTA, MAGS NOTA BAJA
-🧩 Dinero: MIXTO (entran 3 sectores, salen 1) · centinela ACECHO
+🤖 Compañero (sin IA) · mar 17-11
+🟢 Sistema: todo grabado, sin avisos nuevos
+📉 Caídas: SPY -6,3 %, RSP -3,8 %, DIA -6,9 %, QQQ -13,9 %, IWM -11,6 %, MAGS -11,2 % · VIX 25,5
+🚦 Índices: SPY NOTA BAJA, QQQ NOTA BAJA, DIA NOTA FLOJA, IWM NOTA BAJA, RSP NOTA MEDIA, MAGS NOTA BAJA
+🧩 Dinero: MIXTO (entran 1 sectores, salen 2) · centinela LIQUIDEZ
 🎯 Plan SPY: tocados −5 %
 🎯 Se va el pánico: el pánico se fue el 2026-11-09
-🎯 SPY −10 %: en 703,46; le falta un -4,9 % (hoy 739,96)
-🎯 QQQ −20 %: en 610,29; le falta un -7,8 % (hoy 661,78) · rendición total: no (en mínimos 5,8 % de 20; sectores sacando dinero 1 de 6; VIX/VIX3M 0,99 de 1,10)
-🎯 Bajista: SPY −20 %: en 625,30; le falta un -15,5 % (hoy 739,96)
-🎯 Bajista: QQQ −30 %: en 534,00; le falta un -19,3 % (hoy 661,78)
-🎯 Control del mes tras el −5 % del SPY: el 2026-12-07; faltan 14 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)
+🎯 SPY −10 %: en 703,46; le falta un -4,0 % (hoy 732,46)
+🎯 QQQ −20 %: en 610,29; le falta un -7,1 % (hoy 656,98) · rendición total: no (en mínimos 6,5 % de 20; sectores sacando dinero 2 de 6; VIX/VIX3M 1,02 de 1,10)
+🎯 Bajista: SPY −20 %: en 625,30; le falta un -14,6 % (hoy 732,46)
+🎯 Bajista: QQQ −30 %: en 534,00; le falta un -18,7 % (hoy 656,98)
+🎯 Control del mes tras el −5 % del SPY: el 2026-12-07; faltan 13 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)
 🧾 Marcador (≥30 casos): GIRO↑ acierta 30 % (IC 17–48)
 🧺 Cesta semanal: mejor que el SPY 4 de 11 semanas
-📡 Cable: 14 señales
+📡 Cable: 18 señales · RÉGIMEN SPY

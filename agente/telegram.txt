@@ -1,8 +1,8 @@
-🤖 Compañero · lunes 16-nov-2026
-🟠 Sistema: terminal OK. Solo falló la web de Invesco (pesos del QQQ); se usaron los del día 12. Inofensivo. Mi arreglo del marcador había desaparecido y lo he vuelto a poner.
-📊 Terminal: día de caída: SPY −1,9 % (−5,3 % del máximo), QQQ −13,3 %, VIX 22,9. Dinero MIXTO, centinela ACECHO, sin pánico agudo.
-🎯 Plan: ninguna señal salta hoy. Lo más cerca: SPY −10 % (falta −4,9 %) y QQQ −20 % (falta −7,8 %, sin rendición total). Control del mes (7-dic): el SPY ya está por debajo de su línea (739,96 < 742,54).
-🧾 Marcador: GIRO↑ llega a 30 casos y va al revés, pero sin ventaja sobre lo que ya hacía el activo. Nada demostrado.
-🔬 Hoy he probado: nada (lunes). I-005 el viernes.
-💡 Propuesta: sigue pendiente lo del cable de 60 sesiones (informe del viernes).
-🙋 Necesito de ti: nada urgente.
+🤖 Compañero · martes 17-nov
+🟢 Sistema: la terminal salió bien, sin avisos nuevos. (El marcador sale con precios viejos cada mañana: mi arreglo lo borra la máquina; hoy lo he parcheado aparte.)
+📊 Terminal: sigue la caída: SPY −1,0 % hoy (−6,3 % del máximo), QQQ −13,9 %, VIX 25,5. El centinela pasó de ACECHO a LIQUIDEZ (el estado más defensivo) y RSP bajó de ALTA a MEDIA. Sin pánico fuerte (VIX/VIX3M 1,02).
+🎯 Plan: ninguna señal salta hoy. La más cercana: SPY −10 % (falta −4,0 %). QQQ −20 % falta −7,1 %, sin rendición total. Control del mes 7-dic: SPY está 1,4 % por debajo de la línea.
+🧾 Marcador: con control de azar GIRO↑/GIRO↓ no aportan nada sobre el activo; EARLY y SUELO destacan (+4), pero es azar probable.
+🔬 Hoy he probado: nada (día de repaso).
+💡 Propuesta: cambiar tú la línea 206 de agente/preparar.py (detalle en el informe).
+🙋 Necesito de ti: eso y decidir lo del cable de 60 sesiones antes del 2-dic.

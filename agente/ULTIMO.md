@@ -1,43 +1,40 @@
-# Informe del compañero — 2026-11-16 (lunes, modo diario)
+# Informe del compañero — 2026-11-17 (martes, modo diario)
 ## En una frase
-Hoy el mercado ha caído con fuerza (SPY −1,9 %, QQQ −2,7 %, VIX de 19,3 a 22,9) y el SPY ya está a −5,3 % de su máximo, pero no salta ninguna señal del plan. Además, mi arreglo del marcador del viernes había desaparecido y lo he vuelto a poner.
+El mercado ha seguido cayendo (SPY −1,0 % en el día, ya −6,3 % de su máximo; QQQ −13,9 %; VIX 25,5) y el centinela ha pasado de ACECHO a **LIQUIDEZ**, pero no salta ninguna señal del plan. Además, mi arreglo del marcador ha vuelto a desaparecer: es la máquina quien lo borra.
 
 ## 1. ¿Funciona todo? (vigilante)
-La terminal salió bien y todos los archivos están al día. Solo un aviso 🟠 nuevo: **la web de Invesco (los pesos del QQQ) devolvió un error 406** y la terminal usó los pesos guardados del 12-nov. Es inofensivo: los pesos de un ETF cambian muy poco en 2 días. Si se repite varios días, habría que mirarlo.
-Sin cambios de fondo desde el viernes: opciones, `universo_close` parado desde el 3-nov, etc. (no los repito).
+La terminal salió bien (🟢): todo grabado y sin avisos nuevos. Siguen los avisos de siempre (opciones: IV de FAN descartada, put/call raro en 14 ETF, 6 acciones sin datos, petróleo CL=F sin cierre válido, pesos del QQQ de Invesco con error 406 → se usan los del 12-nov, `universo_close` parado desde el 3-nov). Nada que cambie nada para ti.
 
-**Fallo mío (mi arreglo había desaparecido):** el viernes arreglé `agente/preparar.py` (el marcador pedía los precios a Yahoo con una fecha con hora y la librería devolvía una tabla vacía sin avisar). Esta mañana el arreglo no estaba: el marcador volvía a medir con precios parados hacia el 2-nov. Lo he vuelto a poner (2 cambios de una línea: fecha sin hora y «repo» si Yahoo viene vacío) y he regenerado los datos: ahora los precios llegan al 16-nov. **Hay que comprobar mañana que sigue puesto** (`grep -n strftime agente/preparar.py`). Si desaparece otra vez, es que la máquina lo restaura desde otra copia, y te lo tendré que decir a ti.
+**Mi arreglo del marcador, perdido otra vez.** El marcador pedía precios a Yahoo con una fecha con hora y se quedaba con precios viejos (esta mañana: GIRO↑ con 10 casos en vez de 30). El lunes lo arreglé; hoy el archivo `agente/preparar.py` estaba otra vez como antes. Ya sé por qué: el flujo (`agente.yml`, línea 224) **restaura `preparar.py` desde una copia fija antes de guardar**, así que cualquier cambio mío se deshace por diseño. Hoy lo he vuelto a parchear solo para esta mañana y he regenerado el resumen (precios de Yahoo al 17-nov), pero mañana volverá a salir congelado. Solución real (la tienes que hacer tú o dejármela hacer): cambiar en `agente/preparar.py`, línea 206, `start=str(desde)` por `start=pd.Timestamp(desde).strftime("%Y-%m-%d")` y subirlo tú.
 
 ## 2. Señales del plan (lo que ha cambiado)
 Ninguna ha saltado hoy.
-1. **Se va el pánico:** saltó el 9-nov. Hoy VIX/VIX3M 0,995 (el viernes 0,94): sube hacia 1,0 pero el pánico vivo exige ≥ 1,10, así que **no** hay pánico nuevo. Tampoco pánico agudo.
-2. **SPY −10 %:** línea 703,46; hoy 739,96; falta −4,9 %. SPY a −5,3 % del máximo (viernes −3,5 %).
-3. **QQQ −20 %:** línea 610,29; hoy 661,78; falta −7,8 %. QQQ a −13,3 % (viernes −10,9 %). Rendición total: NO (5,8 % de 20 en mínimos; 1 de 6 sectores sacando dinero; VIX/VIX3M 0,99 de 1,10).
-4. **Bajista:** SPY −20 % (625,30) falta −15,5 %; QQQ −30 % (534,00) falta −19,3 %.
-5. **Control del mes:** 7-dic, faltan 14 sesiones. **SPY cierra hoy en 739,96, por debajo de la línea 742,54** (el viernes estaba un 1,6 % por encima). Si el 7-dic siguiera así (entre −5 y −10 %), el histórico 1927-2026 dice −10 % luego el 57 % de las veces (N = 122 caídas de ese tipo, frecuencia histórica, no predicción). Faltan 3 semanas: hoy es solo una foto.
+1. **Se va el pánico:** saltó el 9-nov. Hoy VIX/VIX3M 1,02 (ayer 0,995): sube, pero el «pánico vivo» exige ≥ 1,10; no hay pánico nuevo ni agudo.
+2. **SPY −10 %:** línea 703,46; hoy 732,46; falta −4,0 % (ayer −4,9 %). SPY a −6,3 % del máximo (ayer −5,3 %).
+3. **QQQ −20 %:** línea 610,29; hoy 656,98; falta −7,1 % (ayer −7,8 %). QQQ a −13,9 %. Rendición total: NO (6,5 % de 20 acciones del S&P en mínimos; 2 de 6 sectores sacando dinero; VIX/VIX3M 1,02 de 1,10). Se acerca, pero falta mucho en las tres condiciones.
+4. **Bajista:** SPY −20 % (625,30) falta −14,6 %; QQQ −30 % (534,00) falta −18,7 %.
+5. **Control del mes:** 7-dic, faltan 13 sesiones. SPY cierra en 732,46, un 1,4 % por debajo de la línea 742,54 (ayer 0,3 % por debajo). Si el 7-dic siguiera entre −5 y −10 %, el histórico 1927-2026 da −10 % después el 57 % de las veces (N = 122 caídas de ese tipo; frecuencia histórica, no predicción). Hoy solo es una foto.
 
 ## 3. Qué dice hoy la terminal
-VIX 22,9. Dinero MIXTO (entran 3 sectores, sale 1; sin EMPUJE ni VENTA EXTREMA). Centinela ACECHO. Notas: SPY FLOJA (4), QQQ BAJA (1; el viernes 2), DIA MEDIA (6), IWM FLOJA (4), RSP ALTA (8), MAGS BAJA (3). Caídas desde máximo: IWM −10,3 %, MAGS −10,5 %, DIA −5,4 %, RSP −2,4 %.
-Lo que se puede pasar por alto (hoy son dos):
-- **La caída de hoy no se parece a la del susto del 5-nov:** entonces hubo pánico agudo; hoy el VIX9D (23,15) está casi igual que el VIX (22,9) y el VIX3M (23,02): las tres curvas casi planas, sin el pánico de corto plazo disparado. Dicho claro: ha bajado el mercado, pero el miedo no se ha desbordado todavía. Y el dinero no «se va» de forma generalizada (1 sector saliendo de 6). Eso no dice qué hará mañana.
-- **Sigue siendo una caída de tecnología:** RSP (S&P a partes iguales) saca ALTA (8) y está a solo −2,4 %, mientras el QQQ saca 1 y está a −13,3 %. Lo ya estudiado: repartir entre índices ayudó cuando la caída la lideró un sector (2000, 2022), no en una crisis de todo el sistema (2008). Hoy el mercado amplio aún no muestra crisis general.
-- Pequeña rareza (sin importancia para el plan): el aviso de «PLAN SPY» usa como máximo 779,09 y el detector de caídas usa 781,6 aprox. (por eso el SPY sale −5,0 % en uno y −5,3 % en otro). Tiene pinta de máximo de cierre contra máximo intradía; no lo he comprobado.
+VIX 25,5 (ayer 22,9). Dinero MIXTO (entra 1 sector, salen 2); sin EMPUJE ni VENTA EXTREMA. Notas: SPY BAJA (3), QQQ BAJA (2), DIA FLOJA (4), IWM BAJA (2), **RSP MEDIA (6; ayer ALTA 8)**, MAGS BAJA (3). Caídas desde máximo: IWM −11,6 %, MAGS −11,2 %, DIA −6,9 %, RSP −3,8 %.
+Cosas que se pueden pasar por alto (dos):
+- **El centinela pasó de ACECHO a LIQUIDEZ** (el estado más defensivo del ciclo; en el código, línea ~10804 de `rotacion.py`). Ayer te decía que el mercado amplio aún aguantaba; hoy lo amplio también se debilita (RSP de ALTA a MEDIA, de −2,4 % a −3,8 %). Por la jerarquía del sistema, el centinela pesa más que cualquier otro panel. Ojo a la fecha: el centinela guarda este estado con fecha 18-nov (sale con un día de adelanto, el fallo de fechas que ya conocíamos); el estado es el del cierre del 17.
+- **Sigue sin ser un pánico de verdad:** VIX/VIX3M 1,02. El 5-nov, con el mismo SPY a −6,2 %, sí hubo pánico agudo. Hoy cae más despacio y con el miedo contenido; no sé qué hará mañana. Sin tendencia al pánico no hay «rendición» (condición del bala 3).
+Pequeña rareza que sigo sin comprobar: el PLAN SPY usa como máximo 779,09 y el detector 781,6 (por eso −5,x % en uno y −6,3 % en otro; parece máximo de cierre frente a intradía).
 
-## 4. Marcador (qué señales van funcionando con datos nuevos)
-Con los precios ya al día (hasta el 16-nov), todo sigue «orientativo»; las cifras solo se pueden comparar con las del viernes 13-nov:
-- **GIRO↑** llega a **30 casos** (acierto 30 %, IC 17–48 %, exceso −5,1 puntos frente al SPY, t −2,2): el script lo etiqueta «VA AL REVÉS». **GIRO↓**: 27 casos, 70 % (IC 52–84 %), exceso +6,9 (t 3,1).
-- **Control de azar** (mismo activo, mismas fechas, `estudios/control_azar_marcador.py`): GIRO↑ −0,35 puntos (t −0,2) y GIRO↓ +0,7 (t 0,3). Es decir, no hay señal por encima de lo que ya hacía el activo; las dos marcan los mismos valores (semis, plata) que rindieron peor que el SPY. CLÍMAX −0,4, FLOW +0,8, NOCTURNO +0,4, 0/3 +1,1, CAPITUL +1,2, GRADUADO +1,9: nada (|t| < 1,1).
-- **EARLY** (+4,2 puntos, t 2,25, n 13) y **SUELO** (+4,3, t 2,2, n 12) salen algo por encima, pero con 10 señales mirándose a la vez es normal que dos así salgan por azar, y con n < 15 no se puede decir nada. Anotadas, no tomadas en serio. (El viernes EARLY y SUELO llevaban +4,2 y ~0.)
-- **I-001 (GIRO):** GIRO↑ ya tiene 30; GIRO↓ lleva 27 (25 con línea base) y hay 21 en espera. Lo cerraré cuando GIRO↓ llegue a 30. Adelanto: el control de azar ya dice que no hay señal por encima del activo.
-- Cable de hoy: CAPITUL (REMX, IBIT, DRIV), GRADUADO (DRAM, IWM, ITA, ITB), GIRO ICLN↑, 0/3 y SUELO FXI↑, SUELO URA↑, EARLY (DRAM, HYDR, NCLD). Muchos son alcistas tras una caída: cuentan como un episodio cada uno, y con el mercado cayendo hoy sus próximos 20 días dependerán de lo que haga el mercado. Cesta semanal: 11 semanas, −0,65 % de media frente a SPY −0,27 %; mejor 4 de 11 (IC 15–65 %); sin semana nueva hasta el viernes.
+## 4. Marcador (con precios al día; todo orientativo)
+- **GIRO↑** 30 casos: acierto 30 % (IC 17–48 %), exceso −5,1 puntos frente al SPY (t −2,2). **GIRO↓** 29 casos: 72 % (IC 54–85 %), exceso +7,5 (t 3,5). Pero con el **control de azar** (mismo activo, mismas fechas; `estudios/control_azar_marcador.py`): GIRO↑ −0,1 pts (t −0,05) y GIRO↓ +0,5 (t 0,2). Es decir, **no hay señal por encima de lo que ya hacía el activo** (semis y plata, que rindieron peor/mejor que el SPY).
+- Resto del control de azar (n 11-23): 0/3 +1,1, CAPITUL +0,7, CLÍMAX −0,8, FLOW +1,2, GRADUADO +1,9, NOCTURNO +0,5; todos |t| < 1,3: nada. **SUELO +4,6 (t 2,5, n 13) y EARLY +4,2 (t 2,2, n 13)**: con 10 señales mirándose a la vez, dos así salen por azar; no se toman en serio.
+- Cesta semanal sin semana nueva hasta el viernes (11 semanas: −0,65 % de media frente al SPY −0,27 %; mejor 4 de 11).
+- Cable de hoy: RÉGIMEN SPY↓, CAPITUL (REMX, TAN, IBIT), GRADUADO (KRE, DRAM, IWM, ITA), GIRO↓ (STX, LRCX, KLAC), 0/3 y SUELO FXI↑, SUELO URA↑, EARLY (DRAM, HYDR, NCLD), SENT SPY↑. Casi todas son alcistas tras una caída: con el mercado cayendo, lo que hagan dependerá del mercado.
 
 ## 5. Investigación (solo viernes)
-Hoy no se investiga. Toca I-005 el viernes 20-nov («se va el pánico» frente a comprar con el pánico aún vivo), salvo que me pidas otra cosa.
+Hoy no se investiga. El viernes 20-nov toca I-005 («se va el pánico» frente a comprar con el pánico aún vivo).
 
 ## 6. Propuestas para Pe
-1. **(Repetida del viernes, sigue pendiente de tu respuesta)** El cable de señales solo guarda 60 sesiones (`rotacion.py` línea 3023) y empezará a borrar días viejos hacia el 2-dic; además el 9-nov se guardó con fecha 10-nov. Me gustaría que decidieras si lo cambias tú. Si no, reconstruyo el cable desde git antes de cualquier cálculo. Qué la desmentiría: que el tope no exista (lo verifiqué el viernes: hoy hay 50 fechas en el cable).
-2. Nada más hoy.
+1. **Arreglar `agente/preparar.py` tú mismo** (línea 206, ver arriba), porque yo no puedo hacer que persista. Qué la desmentiría: que el marcador de mañana ya salga con GIRO↑ en 30 casos sin tocar nada.
+2. **(Repetida, pendiente)** El cable de señales solo guarda 60 sesiones (`rotacion.py` línea 3023); hacia el 2-dic empezará a borrar días maduros. Si no lo cambias, reconstruyo el cable desde git antes de cualquier cálculo.
 
 ## 7. Lo que necesito de Pe
-- Que me confirmes si quieres que siga tocando `agente/preparar.py` (el arreglo del viernes se perdió, no sé cómo; lo he rehecho).
-- Lo de arriba sobre el cable de 60 sesiones, cuando te venga bien (no es urgente hasta el 2-dic).
+- Subir el arreglo de `preparar.py` (o decirme que no te importa el marcador congelado cada mañana).
+- Decidir lo del cable de 60 sesiones antes del 2-dic.

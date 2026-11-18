@@ -1788,5 +1788,83 @@
 }
 },
 "sat": "LIQUIDEZ"
+},
+{
+"date": "2026-11-17",
+"idx": {
+"SPY": {
+"score": 3,
+"ver": "NOTA BAJA",
+"p": [
+"a",
+"r",
+"a",
+"r",
+"a"
+],
+"px": 732.44
+},
+"QQQ": {
+"score": 2,
+"ver": "NOTA BAJA",
+"p": [
+"r",
+"r",
+"a",
+"r",
+"a"
+],
+"px": 656.95
+},
+"DIA": {
+"score": 4,
+"ver": "NOTA FLOJA",
+"p": [
+"a",
+"r",
+"a",
+"a",
+"a"
+],
+"px": 507.31
+},
+"IWM": {
+"score": 2,
+"ver": "NOTA BAJA",
+"p": [
+"r",
+"a",
+"r",
+"a",
+"r"
+],
+"px": 269.05
+},
+"RSP": {
+"score": 6,
+"ver": "NOTA MEDIA",
+"p": [
+"a",
+"a",
+"a",
+"v",
+"a"
+],
+"px": 215.76
+},
+"MAGS": {
+"score": 3,
+"ver": "NOTA BAJA",
+"p": [
+"r",
+"r",
+"a",
+"a",
+"a"
+],
+"px": 66.42
+}
+},
+"sat": "LIQUIDEZ"
 }
 ]

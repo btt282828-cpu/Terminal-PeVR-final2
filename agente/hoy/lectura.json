@@ -1,18 +1,18 @@
 {
  "caidas": {
-  "fecha": "2026-11-17",
+  "fecha": "2026-11-18",
   "dd": {
-   "SPY": -6.29,
-   "RSP": -3.76,
-   "DIA": -6.9,
-   "QQQ": -13.88,
-   "IWM": -11.61,
-   "MAGS": -11.17
+   "SPY": -6.58,
+   "RSP": -3.91,
+   "DIA": -7.93,
+   "QQQ": -13.55,
+   "IWM": -11.26,
+   "MAGS": -10.63
   },
-  "vix": 25.46,
+  "vix": 24.56,
   "agudo": false,
-  "en_minimos": 6.45,
-  "vix_vix3m": 1.019,
+  "en_minimos": 6.76,
+  "vix_vix3m": 1.011,
   "panico_vivo": false,
   "panico_desde": "2026-11-05",
   "panico_se_fue": "2026-11-09",
@@ -28,8 +28,8 @@
    2
   ],
   "DIA": [
-   "NOTA FLOJA",
-   4
+   "NOTA BAJA",
+   2
   ],
   "IWM": [
    "NOTA BAJA",
@@ -46,8 +46,8 @@
  },
  "dinero": {
   "lectura": "MIXTO",
-  "sect_entra": 1,
-  "sect_sale": 2,
+  "sect_entra": 2,
+  "sect_sale": 3,
   "empuje": false,
   "extrema": false
  },
@@ -62,23 +62,23 @@
   },
   {
    "senal": "SPY −10 %",
-   "estado": "en 703,46; le falta un -4,0 % (hoy 732,46)"
+   "estado": "en 703,46; le falta un -3,7 % (hoy 730,19)"
   },
   {
    "senal": "QQQ −20 %",
-   "estado": "en 610,29; le falta un -7,1 % (hoy 656,98) · rendición total: no (en mínimos 6,5 % de 20; sectores sacando dinero 2 de 6; VIX/VIX3M 1,02 de 1,10)"
+   "estado": "en 610,29; le falta un -7,5 % (hoy 659,49) · rendición total: no (en mínimos 6,8 % de 20; sectores sacando dinero 3 de 6; VIX/VIX3M 1,01 de 1,10)"
   },
   {
    "senal": "Bajista: SPY −20 %",
-   "estado": "en 625,30; le falta un -14,6 % (hoy 732,46)"
+   "estado": "en 625,30; le falta un -14,4 % (hoy 730,19)"
   },
   {
    "senal": "Bajista: QQQ −30 %",
-   "estado": "en 534,00; le falta un -18,7 % (hoy 656,98)"
+   "estado": "en 534,00; le falta un -19,0 % (hoy 659,49)"
   },
   {
    "senal": "Control del mes tras el −5 % del SPY",
-   "estado": "el 2026-12-07; faltan 13 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
+   "estado": "el 2026-12-07; faltan 12 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
   }
  ]
 }

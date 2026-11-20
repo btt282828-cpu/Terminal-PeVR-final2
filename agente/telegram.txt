@@ -1,8 +1,8 @@
-🤖 Compañero · miércoles 18-nov
-🟢 Sistema: la terminal salió bien. Solo el marcador sale congelado cada mañana (la máquina deshace mi arreglo); hoy lo reparé a mano.
-📊 Terminal: SPY −6,6 % del máximo, QQQ −13,6 %, VIX 24,6. Centinela en LIQUIDEZ (lo más defensivo). Dinero mixto, sin pánico.
-🎯 Plan: ninguna señal salta. Más cercana: SPY −10 % (faltan 3,7 %). QQQ −20 % faltan 7,5 % y no hay rendición. Control del mes: 7-dic.
-🧾 Marcador: GIRO↓ 28 casos; contra el azar justo no aporta nada por encima del activo.
-🔬 Hoy he probado: nada (día de repaso).
-💡 Propuesta: subir tú el arreglo de agente/preparar.py (línea 206) y decidir lo del cable de 60 fechas antes del 2-dic.
-🙋 Necesito de ti: eso, nada más.
+🤖 Compañero · jueves 19-nov-2026
+🟠 Sistema: terminal bien; solo un aviso menor (un ETF pequeño con cierre rehecho, sin importancia). El marcador sale congelado por la máquina (4.º día): lo he reparado a mano.
+📊 Terminal: caída fuerte. SPY −8,4 % desde su máximo (−2 % hoy), QQQ −15,4 %, VIX 28,4. Los 6 sectores sacan dinero, centinela LIQUIDEZ; el RSP (S&P a partes iguales) toca hoy su −5 %.
+🎯 Plan: ninguna ha saltado. La más cercana: SPY −10 % (le falta −1,7 %). QQQ −20 % a −5,4 %, sin rendición total (VIX/VIX3M 1,05 de 1,10). Control del mes: 7-dic.
+🧾 Marcador: GIRO↓ 73 % y GIRO↑ al revés, pero frente al azar del propio activo no hay señal; nada sobrevive.
+🔬 Hoy he probado: nada (repaso diario).
+💡 Propuesta: subir tú el arreglo de preparar.py (el marcador sale mal cada mañana).
+🙋 Necesito de ti: decidir lo del cable de 60 fechas antes del 2-dic.

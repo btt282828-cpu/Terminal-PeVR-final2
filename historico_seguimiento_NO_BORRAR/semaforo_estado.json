@@ -17,7 +17,21 @@
 }
 },
 "RSP": {
-"activo": false
+"activo": true,
+"inicio": "2026-11-19",
+"pico": 224.2,
+"tocados": {
+"5": {
+"fecha": "2026-11-19",
+"px": 211.63,
+"av": 2,
+"agudo": false,
+"frac": 0.25,
+"nl": 9.1,
+"vix": 28.44,
+"tamano": "un cuarto (¼R)"
+}
+}
 },
 "DIA": {
 "activo": true,
@@ -347,7 +361,28 @@
 "IWM": -11.26,
 "MAGS": -10.63
 }
+},
+{
+"date": "2026-11-19",
+"nl": 9.15,
+"vix": 28.44,
+"t9": 1.029,
+"t3": 1.052,
+"rel_pico": 1.0,
+"sect_sale": 6,
+"av": 2,
+"agudo": false,
+"panico_vivo": false,
+"eventos": [],
+"dd": {
+"SPY": -8.41,
+"RSP": -5.61,
+"DIA": -9.93,
+"QQQ": -15.44,
+"IWM": -13.2,
+"MAGS": -12.98
+}
 }
 ],
-"ultimo": "2026-11-18"
+"ultimo": "2026-11-19"
 }

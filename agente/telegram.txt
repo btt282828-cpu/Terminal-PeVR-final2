@@ -1,8 +1,8 @@
-🤖 Compañero · jueves 19-nov-2026
-🟠 Sistema: terminal bien; solo un aviso menor (un ETF pequeño con cierre rehecho, sin importancia). El marcador sale congelado por la máquina (4.º día): lo he reparado a mano.
-📊 Terminal: caída fuerte. SPY −8,4 % desde su máximo (−2 % hoy), QQQ −15,4 %, VIX 28,4. Los 6 sectores sacan dinero, centinela LIQUIDEZ; el RSP (S&P a partes iguales) toca hoy su −5 %.
-🎯 Plan: ninguna ha saltado. La más cercana: SPY −10 % (le falta −1,7 %). QQQ −20 % a −5,4 %, sin rendición total (VIX/VIX3M 1,05 de 1,10). Control del mes: 7-dic.
-🧾 Marcador: GIRO↓ 73 % y GIRO↑ al revés, pero frente al azar del propio activo no hay señal; nada sobrevive.
-🔬 Hoy he probado: nada (repaso diario).
-💡 Propuesta: subir tú el arreglo de preparar.py (el marcador sale mal cada mañana).
-🙋 Necesito de ti: decidir lo del cable de 60 fechas antes del 2-dic.
+🤖 Compañero · vie 20-nov · 🎯 Con el cierre del viernes SALTARON: SPY −10 % (bala 2) y QQQ −20 % SIN rendición total (bala 3)
+🟢 Sistema: todo grabado, sin avisos nuevos.
+📊 Terminal: SPY −11,8 % (−3,6 % en el día), QQQ −20,2 % (−5,7 %), VIX 35,9. Pánico vivo nuevo desde el viernes (VIX/VIX3M 1,16; se va si cierra bajo 1,0). Dinero: VENTA EXTREMA; centinela LIQUIDEZ.
+🎯 Plan: rendición total cumple 2 de 3 (falta amplitud: 13,2 % de acciones en mínimos, hace falta 20 %; ayer 9,2 %). Bajista: SPY −20 % a −9,3 %, QQQ −30 % a −12,2 %, Russell −20 % a −5,1 %.
+🧾 Marcador: GIRO↑ y GIRO↓ ya con +30 casos; con control de azar no tienen señal propia (I-001 cerrada).
+🔬 Hoy he probado: I-005, esperar «se va el pánico» frente a entrar con el pánico vivo: no mejora (2009-18: −2,5 pts a 60 sesiones; 2019-22 sin datos suficientes).
+💡 Propuesta: decidir dos reglas del plan de balas (rendición posterior al toque; segundo «se va el pánico»).
+🙋 Necesito de ti: contestar eso y decidir el cable de 60 fechas antes del 2-dic. Ojo: jueves 26 EE. UU. cerrado y viernes 27 media sesión.

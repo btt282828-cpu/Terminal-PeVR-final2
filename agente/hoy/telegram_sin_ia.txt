@@ -1,15 +1,16 @@
-🤖 Compañero (sin IA) · jue 19-11
-🟠 Sistema: aviso NUEVO en SALUD DEL BUILD → frescura: SDOG: cierre del 2026-11-19 rehecho con barras 
-📉 Caídas: SPY -8,4 %, RSP -5,6 %, DIA -9,9 %, QQQ -15,4 %, IWM -13,2 %, MAGS -13,0 % · VIX 28,4
-🚦 Índices: SPY NOTA BAJA, QQQ NOTA BAJA, DIA NOTA BAJA, IWM NOTA BAJA, RSP NOTA FLOJA, MAGS NOTA BAJA
-🧩 Dinero: SALE DE TODO (entran 0 sectores, salen 6) · centinela LIQUIDEZ
-🎯 Plan SPY: tocados −5 %, −7.5 %
-🎯 Se va el pánico: el pánico se fue el 2026-11-09
-🎯 SPY −10 %: en 703,46; le falta un -1,7 % (hoy 715,89)
-🎯 QQQ −20 %: en 610,29; le falta un -5,4 % (hoy 645,07) · rendición total: no (en mínimos 9,2 % de 20; sectores sacando dinero 6 de 6; VIX/VIX3M 1,05 de 1,10)
-🎯 Bajista: SPY −20 %: en 625,30; le falta un -12,7 % (hoy 715,89)
-🎯 Bajista: QQQ −30 %: en 534,00; le falta un -17,2 % (hoy 645,07)
-🎯 Control del mes tras el −5 % del SPY: el 2026-12-07; faltan 11 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)
-🧾 Marcador (≥30 casos): GIRO↓ acierta 73 % (IC 56–86); GIRO↑ acierta 28 % (IC 16–45)
-🧺 Cesta semanal: mejor que el SPY 4 de 11 semanas
-📡 Cable: 20 señales · NIVEL RSP
+🤖 Compañero (sin IA) · vie 20-11
+🟢 Sistema: todo grabado, sin avisos nuevos
+📉 Caídas: SPY -11,8 %, RSP -7,5 %, DIA -11,6 %, QQQ -20,2 %, IWM -15,7 %, MAGS -17,5 % · VIX 35,9
+🔥 Pánico vivo desde el 20-11: se va cuando VIX/VIX3M baje de 1,0 (hoy 1,16)
+🚦 Índices: SPY NOTA BAJA, QQQ NOTA BAJA, DIA NOTA BAJA, IWM NOTA BAJA, RSP NOTA BAJA, MAGS NOTA BAJA
+🧩 Dinero: VENTA EXTREMA (entran 0 sectores, salen 7) · VENTA EXTREMA · centinela LIQUIDEZ
+🎯 Plan SPY: tocados −5 %, −7.5 %, −10 %
+🎯 Se va el pánico: pánico vivo desde el 2026-11-20; se va con VIX/VIX3M < 1,0 (hoy 1,16; con el VIX a 3 meses quieto, VIX < 30,9, hoy 35,9)
+🎯 SPY −10 %: TOCADO
+🎯 QQQ −20 %: TOCADO · rendición total: no (en mínimos 13,2 % de 20; sectores sacando dinero 7 de 6; VIX/VIX3M 1,16 de 1,10)
+🎯 Bajista: SPY −20 %: en 625,30; le falta un -9,3 % (hoy 689,78)
+🎯 Bajista: QQQ −30 %: en 534,00; le falta un -12,2 % (hoy 608,46)
+🎯 Control del mes tras el −5 % del SPY: el 2026-12-07; faltan 10 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)
+🧾 Marcador (≥30 casos): GIRO↓ acierta 74 % (IC 57–86); GIRO↑ acierta 26 % (IC 15–43)
+🧺 Cesta semanal: mejor que el SPY 5 de 12 semanas
+📡 Cable: 18 señales · NIVEL SPY, NIVEL DIA, NIVEL QQQ, PÁNICO SPY

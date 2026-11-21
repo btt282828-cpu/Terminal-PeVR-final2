@@ -1,21 +1,21 @@
 {
  "caidas": {
-  "fecha": "2026-11-19",
+  "fecha": "2026-11-20",
   "dd": {
-   "SPY": -8.41,
-   "RSP": -5.61,
-   "DIA": -9.93,
-   "QQQ": -15.44,
-   "IWM": -13.2,
-   "MAGS": -12.98
+   "SPY": -11.75,
+   "RSP": -7.48,
+   "DIA": -11.62,
+   "QQQ": -20.24,
+   "IWM": -15.7,
+   "MAGS": -17.54
   },
-  "vix": 28.44,
-  "agudo": false,
-  "en_minimos": 9.15,
-  "vix_vix3m": 1.052,
-  "panico_vivo": false,
-  "panico_desde": "2026-11-05",
-  "panico_se_fue": "2026-11-09",
+  "vix": 35.89,
+  "agudo": true,
+  "en_minimos": 13.19,
+  "vix_vix3m": 1.16,
+  "panico_vivo": true,
+  "panico_desde": "2026-11-20",
+  "panico_se_fue": null,
   "eventos": []
  },
  "indices": {
@@ -36,8 +36,8 @@
    1
   ],
   "RSP": [
-   "NOTA FLOJA",
-   5
+   "NOTA BAJA",
+   3
   ],
   "MAGS": [
    "NOTA BAJA",
@@ -45,41 +45,42 @@
   ]
  },
  "dinero": {
-  "lectura": "SALE DE TODO",
+  "lectura": "VENTA EXTREMA",
   "sect_entra": 0,
-  "sect_sale": 6,
+  "sect_sale": 7,
   "empuje": false,
-  "extrema": false
+  "extrema": true
  },
  "centinela": "LIQUIDEZ",
  "plan_spy": [
   "5",
-  "7.5"
+  "7.5",
+  "10"
  ],
  "plan": [
   {
    "senal": "Se va el pánico",
-   "estado": "el pánico se fue el 2026-11-09"
+   "estado": "pánico vivo desde el 2026-11-20; se va con VIX/VIX3M < 1,0 (hoy 1,16; con el VIX a 3 meses quieto, VIX < 30,9, hoy 35,9)"
   },
   {
    "senal": "SPY −10 %",
-   "estado": "en 703,46; le falta un -1,7 % (hoy 715,89)"
+   "estado": "TOCADO"
   },
   {
    "senal": "QQQ −20 %",
-   "estado": "en 610,29; le falta un -5,4 % (hoy 645,07) · rendición total: no (en mínimos 9,2 % de 20; sectores sacando dinero 6 de 6; VIX/VIX3M 1,05 de 1,10)"
+   "estado": "TOCADO · rendición total: no (en mínimos 13,2 % de 20; sectores sacando dinero 7 de 6; VIX/VIX3M 1,16 de 1,10)"
   },
   {
    "senal": "Bajista: SPY −20 %",
-   "estado": "en 625,30; le falta un -12,7 % (hoy 715,89)"
+   "estado": "en 625,30; le falta un -9,3 % (hoy 689,78)"
   },
   {
    "senal": "Bajista: QQQ −30 %",
-   "estado": "en 534,00; le falta un -17,2 % (hoy 645,07)"
+   "estado": "en 534,00; le falta un -12,2 % (hoy 608,46)"
   },
   {
    "senal": "Control del mes tras el −5 % del SPY",
-   "estado": "el 2026-12-07; faltan 11 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
+   "estado": "el 2026-12-07; faltan 10 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
   }
  ]
 }

@@ -5,9 +5,30 @@
 "1": {
 "fecha": "2026-11-09",
 "motivo": "se va el pánico"
+},
+"2": {
+"fecha": "2026-11-20",
+"motivo": "SPY −10 %",
+"px": {
+"SPY": 689.81,
+"QQQ": 608.45,
+"DIA": 481.08,
+"IWM": 256.61
 }
 },
-"ultimo": "2026-11-19",
+"3": {
+"fecha": "2026-11-20",
+"motivo": "QQQ −20 %",
+"rendicion": false,
+"px": {
+"SPY": 689.81,
+"QQQ": 608.45,
+"DIA": 481.08,
+"IWM": 256.61
+}
+}
+},
+"ultimo": "2026-11-20",
 "historia": [],
-"avisado": "2026-11-19|b|s|nRSP5|r0"
+"avisado": "2026-11-20|b2,3|s|nSPY10,DIA10,QQQ20|r0"
 }

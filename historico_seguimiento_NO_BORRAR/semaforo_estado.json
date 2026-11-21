@@ -13,6 +13,16 @@
 "nl": 5.2,
 "vix": 28.18,
 "tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
+},
+"10": {
+"fecha": "2026-11-20",
+"px": 689.81,
+"av": 2,
+"agudo": true,
+"frac": 0.25,
+"nl": 13.2,
+"vix": 35.89,
+"tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
 }
 }
 },
@@ -44,6 +54,16 @@
 "av": null,
 "agudo": null,
 "tamano": "(antes de instalar el semáforo)"
+},
+"10": {
+"fecha": "2026-11-20",
+"px": 481.08,
+"av": 2,
+"agudo": true,
+"frac": 0.25,
+"nl": 13.2,
+"vix": 35.89,
+"tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
 }
 }
 },
@@ -60,6 +80,16 @@
 "nl": 2.5,
 "vix": 21.15,
 "tamano": "tramo completo (1R)"
+},
+"20": {
+"fecha": "2026-11-20",
+"px": 608.45,
+"av": 2,
+"agudo": true,
+"frac": 0.25,
+"nl": 13.2,
+"vix": 35.89,
+"tamano": "un cuarto (¼R) y guarda el resto: rojo con pánico agudo"
 }
 }
 },
@@ -95,8 +125,8 @@
 }
 },
 "mercado": {
-"panico_desde": "2026-11-05",
-"panico_se_fue": "2026-11-09"
+"panico_desde": "2026-11-20",
+"panico_se_fue": null
 },
 "log": [
 {
@@ -382,7 +412,28 @@
 "IWM": -13.2,
 "MAGS": -12.98
 }
+},
+{
+"date": "2026-11-20",
+"nl": 13.19,
+"vix": 35.89,
+"t9": 1.135,
+"t3": 1.16,
+"rel_pico": 1.0,
+"sect_sale": 7,
+"av": 2,
+"agudo": true,
+"panico_vivo": true,
+"eventos": [],
+"dd": {
+"SPY": -11.75,
+"RSP": -7.48,
+"DIA": -11.62,
+"QQQ": -20.24,
+"IWM": -15.7,
+"MAGS": -17.54
+}
 }
 ],
-"ultimo": "2026-11-19"
+"ultimo": "2026-11-20"
 }

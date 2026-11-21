@@ -7012,5 +7012,137 @@
 "tag": "SENT",
 "sym": "F&G",
 "dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "CAPITUL",
+"sym": "XLK",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "CAPITUL",
+"sym": "MAGS",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "CAPITUL",
+"sym": "SMH",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "BALA",
+"sym": "MERCADO",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "BALA",
+"sym": "MERCADO",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "NIVEL",
+"sym": "SPY",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "NIVEL",
+"sym": "DIA",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "NIVEL",
+"sym": "QQQ",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "PÁNICO",
+"sym": "MERCADO",
+"dir": -1
+},
+{
+"date": "2026-11-20",
+"tag": "GRADUADO",
+"sym": "KRE",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "GRADUADO",
+"sym": "IWM",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "GRADUADO",
+"sym": "ITA",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "GRADUADO",
+"sym": "ITB",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "GIRO",
+"sym": "INDA",
+"dir": -1
+},
+{
+"date": "2026-11-20",
+"tag": "SUELO",
+"sym": "URA",
+"dir": 0
+},
+{
+"date": "2026-11-20",
+"tag": "SUELO",
+"sym": "EWZ",
+"dir": 0
+},
+{
+"date": "2026-11-20",
+"tag": "SUELO",
+"sym": "XLC",
+"dir": 0
+},
+{
+"date": "2026-11-20",
+"tag": "SUELO",
+"sym": "EWY",
+"dir": 0
+},
+{
+"date": "2026-11-20",
+"tag": "EARLY",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "EARLY",
+"sym": "DRIV",
+"dir": 1
+},
+{
+"date": "2026-11-20",
+"tag": "SENT",
+"sym": "F&G",
+"dir": 1
 }
 ]

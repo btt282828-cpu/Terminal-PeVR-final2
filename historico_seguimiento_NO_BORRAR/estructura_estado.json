@@ -285,5 +285,23 @@
 "IWM": 264.22,
 "RSP": 211.63
 }
+},
+{
+"date": "2026-11-20",
+"sect_entra": 0,
+"sect_sale": 7,
+"tec": -0.128,
+"acc_entra": 14.4,
+"acc_sale": 64.0,
+"n_acc": 659,
+"lectura": "VENTA EXTREMA",
+"empuje": false,
+"extrema": true,
+"px": {
+"SPY": 689.81,
+"QQQ": 608.45,
+"IWM": 256.61,
+"RSP": 207.44
+}
 }
 ]

@@ -54,6 +54,8 @@ INFORMATIVOS = {
     "plan_spy_estado.json": lambda d: d.get("ultimo"),
     "balas_estado.json": lambda d: d.get("ultimo"),
     "bono_estado.json": lambda d: d.get("ultimo"),
+    "plan_rebajas_estado.json": lambda d: d.get("ultimo"),
+    "caida_estado.json": lambda d: max((d.get("dias") or {}).keys(), default=None),
 }
 
 
@@ -130,6 +132,10 @@ def vigilante():
     res = {"fecha_mercado_esperada": str(esperada), "rojo": [], "ambar": [], "verde": [], "archivos": {}}
 
     for nombre, sacar in {**ESENCIALES, **INFORMATIVOS}.items():
+        if nombre in ("plan_rebajas_estado.json", "caida_estado.json") and not (HIST / nombre).exists():
+            res["ambar"].append(f"{nombre} todavía no existe: la terminal v8.7 (Plan de rebajas y pestaña «Caída en curso») "
+                                "aún no ha corrido o no está subida.")
+            continue
         if nombre == "balas_estado.json" and not (HIST / nombre).exists():
             res["ambar"].append("balas_estado.json todavía no existe: la terminal v8.5 (pestaña «Hoy», las 4 balas) aún no ha "
                                 "corrido o no está subida. Hasta entonces las balas se leen del detector de caídas.")

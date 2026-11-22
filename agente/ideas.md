@@ -3,8 +3,6 @@
 Cada idea se apunta ANTES de probarla y no se cambia después de ver resultados.
 Estados: EN COLA · EN CURSO · DESCARTADA · CANDIDATA PARA OBSERVAR · SOLO OBSERVAR (en el marcador).
 
-_(22-nov-2026: este registro se restauró desde git, versión del 20-nov; la subida de `ideas.md` de la mañana del 22-nov traía una versión anterior, sin I-005 ni I-006 y con el contador a 0.)_
-
 ---
 
 ## I-001 · GIRO hacia abajo funciona y GIRO hacia arriba va al revés
@@ -62,23 +60,34 @@ _(22-nov-2026: este registro se restauró desde git, versión del 20-nov; la sub
 - Aviso previo: es una pregunta sobre el S&P (SPY), no sobre el QQQ ni los apalancados; es frecuencia histórica, no predicción.
 - Estado: EN COLA (para el viernes 27-nov-2026).
 
-## I-007 · Volumen en dólares de los ETF apalancados «de compra»: ¿añade algo al pánico agudo y a la rendición total?
-- Apuntada el 22-nov-2026 (sesión semanal del domingo), ANTES de calcular nada (ni siquiera he mirado los volúmenes).
-- De dónde sale: nota de Pe del 9-nov (Topdown Charts: el volumen en dólares de TQQQ, UPRO, SPXL, SSO, QLD, SOXL, TECL y TNA se dispara en las caídas; 2022, abril de 2025 y ahora). Pregunta de Pe: ¿añade algo a lo que ya mide la terminal, o es lo mismo con otro nombre? ¿Separa las V (2020, abril 2025) de las caídas que siguieron (2022)?
-- Datos: Yahoo (yfinance, SIN ajustar) de esos 8 ETF: dólares del día = cierre × volumen; SPY con dividendos y máximos de vela (`datos.ohlc`); VIX y VIX3M de CBOE (`historiales/`, VIX3M desde 18-sep-2009). 2010 → 2026; cada ETF entra cuando tiene 252 días de historia.
-- Pico (regla fijada): S_t = suma de los dólares negociados ese día por los ETF con ≥ 252 días de historia. z_t = (ln S_t − media de ln S en los 252 días anteriores) / desviación típica de ln S en esos mismos 252 días (en logaritmos para que el crecimiento de estos ETF no fabrique falsos picos). **Pico = z_t ≥ 2.**
-- Estado de caída: SPY ≥ 8 % por debajo de su máximo de vela de 252 sesiones (la zona de los escalones del plan).
-- Episodio de pico = el primer día de cada grupo de días con pico separados por menos de 10 sesiones, dentro de una caída.
-- Resultado: rendimiento del SPY (con dividendos) desde el cierre del día del pico a +20 y +60 sesiones, y peor caída posterior en 60 sesiones.
-- Azar justo: días SIN pico (z < 1) del mismo trozo de historia, también en caída, con el SPY a ±2,5 puntos de la caída del episodio y con el mismo estado de miedo (VIX/VIX3M ≥ 1,0 o < 1,0). Exceso del episodio = su rendimiento − la media de sus días parecidos; se promedia por EPISODIOS, no por días.
-- Trozos: aprender 2010-2018; comprobar 2019-2022; caja cerrada 2023-hoy (solo se abre si pasa los dos).
-- La confirma: exceso medio ≥ +1 punto a 60 sesiones (o peor caída posterior ≥ 2 puntos más suave) con el mismo signo en aprender y comprobar, con ≥ 8 episodios en cada trozo.
-- La tumba: diferencia < 1 punto, signo distinto entre trozos, o menos de 8 episodios en algún trozo (entonces «no concluyente»).
-- Variantes máximas: 5. V1 principal (z ≥ 2, caída ≥ 8 %); V2 (z ≥ 3); V3 (pico en cualquiera de los 3 últimos días); V4 (caída ≥ 5 %); V5 (solo días con VIX/VIX3M ≥ 1,0: pico frente a sin pico dentro del pánico).
-- Además, descriptivo (no cuenta como variante): tabla de las caídas del SPY ≥ 10 % desde 2010 con su z máximo, y el valor de hoy (20-nov).
-- Aviso previo: desde 2010 solo hay ~10-12 caídas del SPY de ≥ 8 %: los episodios de pico serán pocos (probablemente < 30). Como mucho «orientativo». Es frecuencia histórica, no predicción.
-- Estado: DESCARTADA (22-nov-2026). Ver estudios/i007.md. Principal V1 (13 episodios; 8 evaluables): aprender −0,7 pts a 60 ses. (N 6, t −0,4), comprobar −0,1 (N 2): ni +1 pt ni ≥ 8 episodios por trozo. V2-V5 tampoco; V4 (caída ≥ 5 %, 21 episodios) −2,4 pts (t −1,7). Hoy z = 2,4 (hay pico). Caja sin abrir para decidir (el script imprime la columna; no se usó).
+---
+
+## I-007 · ¿El bono a 10 años por debajo del 4,5 % (y el MOVE) anticipa subidas de la bolsa?
+- De dónde sale: Pe (13-nov-2026). Cree que un cierre del 10 años de EE. UU. por debajo del 4,5 % sería muy alcista. El 10 años
+  llegó al 5,0-5,3 % en sep-oct de 2026 y estaba hacia el 4,85 % a primeros de noviembre.
+- Datos: FRED DGS10 (diario desde 1962) y ^MOVE de Yahoo (desde 2002 o lo que haya); SPY y QQQ.
+- Reglas exactas (escritas antes de mirar):
+  1. Evento A = primer cierre del DGS10 por debajo de un nivel redondo (4,0 / 4,5 / 5,0 %) tras ≥ 60 sesiones por encima.
+  2. Evento B = el DGS10 baja ≥ 40 pb en 21 sesiones (sin mirar el nivel), con al menos 60 sesiones entre episodios.
+  3. Evento C = el MOVE entra en su 10 % más alto del año (tensión) y Evento D = sale de él.
+- Medida: SPY y QQQ a +20, +60 y +120 sesiones tras cada evento, frente al azar (los mismos días del año en otros años, o 1.000
+  fechas al azar del mismo tramo). Tramos: aprender ≤ 2007, comprobar 2008-2018, caja 2019-hoy.
+- La confirma: el evento gana al azar en los tres tramos con la misma dirección y n ≥ 10 en cada uno.
+- La tumba: diferencia < 1 punto o de signo distinto entre tramos. Ojo: el 4,5 % concreto puede no significar nada; lo que
+  suele importar es la velocidad de la bajada y POR QUÉ baja (si baja por miedo a recesión, la bolsa puede caer a la vez).
+- Variantes máximas: 3 niveles en A, 1 en B, 2 en C/D.
+- Estado: EN COLA (viernes de investigación).
 
 ---
 
-Contador de ideas probadas (cuantas más, más exigente hay que ser): **4** (I-002, I-004, I-005 e I-007; todas descartadas). I-001 se cerró sin probarla como idea propia (control de azar del marcador).
+## I-008 · Calibrar las 3 alarmas de recesión de la terminal v8.7 (Sahm, paro semanal, crédito basura)
+- Apuntada el 21-nov-2026 (Claude, con Pe), sin calcular nada.
+- De dónde sale: la pestaña «🌪️ Caída en curso» enciende ámbar/rojo con umbrales de referencia (Sahm 0,30/0,50; peticiones
+  de paro +10/+20 % sobre su mínimo del año; high yield 4 % / 5 % o +0,75 en un mes) que NO se han medido. La terminal guarda
+  las series de FRED en `historico_seguimiento_NO_BORRAR/historiales/fred_*.csv`.
+- Pregunta: con esas series (desde 1970 Sahm, 1990 paro, 1997 crédito) y las fechas NBER, ¿cuántas veces cada alarma en rojo
+  llegó antes/después del inicio de la recesión y cuántas falsas alarmas dio? ¿Los umbrales son razonables?
+- La confirma: cada alarma roja coincide con ≥ 2 de cada 3 recesiones y da ≤ 1 falsa alarma por década. La tumba: lo contrario.
+- Estado: EN COLA (para un viernes, cuando haya series guardadas).
+
+Contador de ideas probadas (cuantas más, más exigente hay que ser): **3** (I-002, I-004 e I-005; todas descartadas). I-001 se cerró sin probarla como idea propia (control de azar del marcador).

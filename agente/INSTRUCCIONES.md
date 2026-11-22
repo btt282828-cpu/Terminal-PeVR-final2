@@ -41,7 +41,7 @@ a primera hora. Por eso:
 ### La terminal desde la v8.5 (11-nov-2026)
 - La primera pestaña es **«Hoy»**, con 5 bloques: ① datos (¿son de hoy?), ② qué toca hoy (las 4 balas y la venta),
   ③ dónde está cada índice respecto a su máximo, ④ termómetro del miedo, ⑤ agenda. Todo lo demás está en **«Detalle»**.
-- **Hay un solo plan: las 4 balas.** Se quitaron el semáforo de la escalera, el «plan SPY» con euros y el plan en papel de
+- **Hay un solo plan: el Plan de rebajas (desde la v8.7; antes, las 4 balas).** Se quitaron el semáforo de la escalera, el «plan SPY» con euros y el plan en papel de
   la pestaña Estructura (quedan como estudios, sin instrucciones). **Un solo máximo** por índice: el más alto de las velas
   de las últimas 52 semanas (antes había dos números distintos).
 - **La nota 0-10 de cada índice ya no da órdenes.** Las etiquetas son NOTA ALTA / MEDIA / FLOJA / BAJA (en los archivos
@@ -165,21 +165,23 @@ Tu trabajo los martes y jueves es encontrar formas de pasarlo **con más probabi
   cada operación mueve 4-9 veces la cuenta. **Objetivo de Pe: fondearse en 1-3 meses.**
 - **Zona de ruido** (intradía en el Nasdaq, Zarattini 2024): ventaja histórica, desgaste desde 2025; necesita robot a la hora exacta.
 
-## 3b. El plan de Pe en las caídas: las 4 balas (vigílalas cada día; sin cantidades)
-Pe guarda una reserva partida en 4 balas. Cada bala se usa **una vez por caída** y **se actúa con el cierre del día en que
-salta** (no se espera al viernes). La terminal lo enseña en la pestaña «Hoy» y lo guarda en `balas_estado.json`.
-1. **Bala 1 · se va el pánico** (VIX/VIX3M cierra por debajo de 1,0 tras haber estado en 1,10 o más).
-2. **Bala 2 · SPY −10 %** desde su máximo de 52 semanas.
-3. **Bala 3 · QQQ −20 %**, mirando si hay **rendición total** (≥ 20 % de acciones del S&P en mínimos, ≥ 6 sectores sacando
-   dinero y VIX/VIX3M ≥ 1,10). Con rendición fue V (2018, 2020, 2025) y la bala va entera; sin ella (patrón de 2000, 2008,
-   2022) va media y la otra media pasa a la bala 4.
-4. **Bala 4 · bajista:** SPY −20 % o QQQ −30 %, lo primero que llegue.
-- **Venta:** cada ETF cuando su índice recupera el máximo del que cayó.
-- **Control del mes:** 21 sesiones después de que el SPY toque su −5 %, ¿sigue atascado entre −5 y −10 %?
-`agente/hoy/lectura.json` → `plan` y `balas` traen el estado de cada una, ya calculado. En el informe, una línea por bala y
-qué ha cambiado respecto a ayer. **Si alguna salta hoy, va la primera del Telegram: «HOY TOCA LA BALA n» y la frase «se
-actúa con el cierre de hoy»** (sin cantidades de dinero: las pone la terminal). Si una bala saltó ayer y tu mensaje de ayer
-no lo dijo, dilo hoy en la primera línea.
+## 3b. El plan de Pe en las caídas: el PLAN DE REBAJAS (terminal v8.7, 21-nov-2026; vigílalo cada día; sin cantidades)
+Desde la v8.7 hay **un solo plan**: el «🛒 Plan de rebajas». Sustituye a las 4 balas (la terminal las sigue calculando en
+`balas_estado.json`, pero ya no mandan; no las uses para decir qué hacer). Está en `plan_rebajas_estado.json`
+(`agente` = una línea por escalón, ya redactada, sin euros) y en la pestaña «Hoy» (bloque ②) y en «🌪️ Caída en curso».
+- **Escalones** (cada uno, una vez por caída; se actúa con el cierre del día): S&P −10 % x3 · Nasdaq −20 % x3 · S&P −15 % x3 ·
+  Nasdaq −25 % x3 · S&P −20 % x2 · Nasdaq −30 % x2 · Nasdaq −40 % y −50 %: x3 solo si el VIX cierra ≥ 40 ese día; si no, normal.
+- **Paso a normal:** los x3/x2 pasan al ETF normal del mismo índice cuando el índice recupera 1/3 de toda la caída (los x3 del
+  fondo, la mitad).
+- **Nunca en máximos con apalancados** (regla de Pe): cuando el índice vuelve a su máximo, lo que quede apalancado pasa a
+  normal; el normal se queda (no se vende).
+- El máximo de cada caída se queda fijo hasta recuperarlo.
+- Si hoy toca algo (compra, paso a normal o máximo), va la primera del Telegram: «🛒 PLAN DE REBAJAS · …» y «se actúa con el
+  cierre de hoy». Si tocó ayer y tu mensaje de ayer no lo dijo, dilo hoy.
+- **Pestaña «🌪️ Caída en curso»** (`caida_estado.json`): probabilidad de suelo (ciclo + miedo, con márgenes), hasta dónde puede
+  llegar la caída (tramos que suman 100 % y probabilidad de llegar a cada escalón), probabilidad de recesión en ~12 meses
+  (curva de la Fed de Nueva York + Polymarket) con 3 alarmas aparte (Sahm, paro semanal, crédito) y liquidez. Solo informa.
+  Pe no domina la estadística: cuando la cites, dilo como «X de cada 10» y con frases cortas.
 
 ## 4. Tu rutina de cada mañana (en este orden)
 
@@ -331,7 +333,7 @@ caja, y qué resultado en demo la desmentiría. Nunca como ventaja demostrada.
 # Informe del compañero — <fecha de mercado>
 ## En una frase
 ## 1. ¿Funciona todo? (vigilante)
-## 2. Las 4 balas del plan (una línea cada una; lo que ha cambiado)
+## 2. El Plan de rebajas (una línea por escalón; lo que ha cambiado)
 ## 3. Qué dice hoy la terminal
 ## 4. Marcador (qué señales van funcionando con datos nuevos)
 ## 5. Investigación (solo viernes)

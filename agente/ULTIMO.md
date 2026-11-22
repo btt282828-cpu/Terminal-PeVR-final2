@@ -1,66 +1,72 @@
-# Informe del compañero — 2026-11-20 (viernes, modo semanal)
+# Informe del compañero — 2026-11-20 (viernes; repaso semanal rehecho el domingo 22-nov con la terminal v8.7)
 ## En una frase
-Viernes de caída fuerte: el SPY pierde otro 3,6 % en el día (−11,8 % desde su máximo) y el QQQ otro 5,7 % (−20,2 %). Con el cierre del viernes han saltado **a la vez** el SPY −10 % (bala 2) y el QQQ −20 % (bala 3, **SIN rendición total**), y ha empezado un pánico nuevo (VIX 35,9). Además la investigación de esta semana (I-005) sale negativa: no hay datos de que esperar a «se va el pánico» sea mejor que entrar con el pánico vivo.
+Sigue pendiente lo del viernes: el SPY (−11,8 %) y el QQQ (−20,2 %) tocaron a la vez sus escalones (S&P −10 %, Nasdaq −20 %), con VIX 35,9 y pánico vivo; el primer mercado abierto para actuar es el lunes 23. **Ojo: la terminal nueva (v8.7) tiene un fallo: su «plan de rebajas» no calcula el Nasdaq, así que enseña el escalón del S&P pero NO el del Nasdaq, que también ha tocado.**
 
 ## 1. ¿Funciona todo? (vigilante)
-🟢 Todo grabado y sin avisos nuevos. El único aviso del día es el de siempre (un cierre rehecho con barras de 1 hora, céntimos de diferencia). Sigue igual desde hace días: opciones y acciones sin datos, `universo_close` parado desde el 3-nov (17 días; sin consecuencias hoy).
-**Marcador congelado, 5.º día:** la máquina volvió a dejar `agente/preparar.py` sin mi arreglo (lo restaura por diseño). Lo parcheé en sitio y regeneré el resumen: con el arreglo GIRO↑ tiene 34 casos medidos; sin él, 10.
-**Cable de señales:** 54 fechas de 60. Se llena el 1-dic y el 2-dic empieza a borrar días ya maduros (ver propuesta 2).
+Formalmente 🟢 (todo grabado, sin avisos nuevos). Pero al leer la terminal nueva encuentro cosas que el vigilante no ve:
+- 🔴 **El plan de rebajas no calcula el Nasdaq (los 5 escalones del QQQ).** `plan_rebajas_estado.json` solo trae el S&P (3 filas) y nada del QQQ. Causa: `compute_plan_rebajas` (`rotacion.py` línea 24900) lee los precios con `daily.get(sym)`, pero el QQQ no está en `daily` (el detector lo toma de `OPER_QQQ["d"]`, líneas 23052 y 23504); sin dato, el código se salta el QQQ **sin dar ningún aviso**. Lo he comprobado con precios de Yahoo: máximo del QQQ 762,86 (6-oct), línea del −20 % 610,29, cierre del viernes 608,45 → el escalón tocó el 20-nov y la terminal no lo marca. Arreglo (una línea): `d = OPER_QQQ.get("d") if sym == "QQQ" else (daily or {}).get(sym)`. Mismo fallo menor en la línea 24497 (cambio del día del QQQ en «Caída en curso»). No he podido ver la web, solo el código y los archivos.
+- 🟠 **Pestaña «Caída en curso»: la probabilidad de recesión (3 %, «modo NORMAL», 0 alarmas) sale de UNA sola fuente de cinco.** En `caida_estado.json` solo consta el mercado de apuestas; no hay ni una serie de FRED guardada en `historiales/` (curva de tipos, paro, Sahm, crédito). Desde aquí FRED responde bien, así que lo que falla es la descarga en la máquina de GitHub. «0 alarmas» aquí significa «no hay datos», no «todo tranquilo».
+- 🟠 **Subidas de hoy:** (a) tu `agente/ideas.md` subido esta mañana **borró mi registro** (volvió a I-004 «en cola» y contador 0, sin I-005 ni I-006): lo he restaurado desde git; (b) `fondeo/ideas.md` y `herramientas/fondeo.py` están en la raíz del repositorio, no donde los busca mi manual: `agente/fondeo/` no existe y en `agente/herramientas/` solo está `datos.py`. Yo solo puedo escribir dentro de `agente/` y no puedo cambiar `fondeo.py`, así que tienes que moverlos tú (no afecta hoy, que es modo semanal; sí el martes); (c) el `preparar.py` nuevo sigue con el fallo del marcador congelado (6.º día): lo he parcheado en sitio y vuelto a ejecutar (sin el parche GIRO↑ sale con 10 casos en vez de 34).
+- Sigue igual desde hace días: un cierre rehecho con barras de 1 hora (céntimos), IV descartada en 5 ETF, put/call fuera de banda en 15, 6 acciones sin datos, pesos del QQQ de Invesco con error 406 (se usan los del 12-nov), petróleo sin cierre válido, `universo_close` parado desde el 3-nov (sin consecuencias).
+- **Cable de señales:** 54 fechas de 60 (13-ago → 20-nov). Se llena el 1-dic y el 2-dic empieza a borrar días ya maduros (propuesta 2).
 
-## 2. Señales del plan (una línea cada una; lo que ha cambiado)
-**Saltaron con el cierre del viernes 20-nov:**
-- **SPY −10 % (bala 2): TOCADO.** Cierre 689,81; la línea estaba en 703,46.
-- **QQQ −20 % (bala 3): TOCADO.** Cierre 608,45; la línea, en 610,29 (lo cruzó por solo un 0,3 %). **Rendición total: NO.** Cumple 2 de las 3 condiciones: sectores sacando dinero 7 de 8 (sin contar tecnología; hace falta ≥ 6) y VIX/VIX3M 1,16 (hace falta ≥ 1,10). **Le falta la amplitud:** 13,2 % de las acciones del S&P en mínimos de 52 semanas, hace falta 20 % (ayer 9,2 %: sube ~4 puntos por día).
-
-**Sin saltar:**
-- **Se va el pánico (bala 1): no.** Al revés: **pánico vivo nuevo desde hoy** (VIX/VIX3M 1,16; ayer 1,05. VIX 35,9; ayer 28,4). El anterior empezó el 5-nov y se fue el 9-nov. Este se irá con el primer cierre de VIX/VIX3M por debajo de 1,0: hoy habría que bajar 0,16. (Hoy hay también «pánico agudo», que es solo una foto del día y no es lo mismo que «pánico vivo».)
-- **Bajista:** SPY −20 % en 625,30 (falta −9,3 %); QQQ −30 % en 534,00 (falta −12,2 %). El Russell (IWM) está en −15,7 % y su −20 % (243,51) está a −5,1 %: más cerca que el SPY. Si lo toca antes, el propio plan cambia el S&P por Russell en la bala 4.
-- **Control del mes (7-dic, 10 sesiones):** sin cambios de regla, pero el SPY ya está más abajo (−11,8 %) que la franja que mide (−5 a −10 %); solo se aplicaría si para entonces vuelve a esa franja.
+## 2. El plan (la terminal v8.7 dice que el único es el «plan de rebajas»; las 4 balas siguen guardadas)
+**Plan de rebajas (cierre del 20-nov; % del plan, sin importes).** Escalón = línea desde el máximo; «x3/x2» = ETF apalancado. Pasa a normal al recuperar 1/3 de la caída (1/2 los hondos) y todo queda en normal al volver al máximo.
+| Escalón | % plan | Producto | Línea | Estado |
+|---|---|---|---|---|
+| S&P −10 % | 10 | x3 | 703,46 | **TOCADO el 20-nov** (cierre 689,81) |
+| Nasdaq −20 % | 10 | x3 | 610,29 | **TOCADO el 20-nov** (cierre 608,45) · *la terminal no lo muestra (fallo de arriba)* |
+| S&P −15 % | 10 | x3 | 664,38 | falta −3,7 % |
+| Nasdaq −25 % | 15 | x3 | 572,14 | falta −6,0 % |
+| S&P −20 % | 10 | x2 | 625,30 | falta −9,4 % |
+| Nasdaq −30 % | 15 | x2 | 534,00 | falta −12,2 % |
+| Nasdaq −40 % | 15 | x3 solo si el VIX cierra ≥ 40; si no, normal | 457,72 | falta −24,8 % |
+| Nasdaq −50 % | 15 | ídem | 381,43 | falta −37,3 % |
+El VIX está en 35,9: aún por debajo del 40 que pide el plan para los escalones hondos en x3. Si el SPY no bajase más del cierre del viernes, su paso a normal quedaría hacia 720,4 (1/3 de la caída desde 781,62); para el QQQ, hacia 660 (cálculo mío con la misma regla, porque la terminal no lo calcula).
+**Las 4 balas (`balas_estado.json`, siguen guardándose; mi manual aún las trata como el plan):** bala 1 (se va el pánico) dada el 9-nov; **bala 2 (SPY −10 %) y bala 3 (QQQ −20 %, SIN rendición total) saltaron el 20-nov**; bala 4 (SPY −20 % o QQQ −30 %) sin saltar. Rendición total: cumple 2 de 3 (sectores 7 de 8, VIX/VIX3M 1,16); falta la amplitud: 13,2 % de acciones en mínimos, hace falta 20 % (ayer 9,2 %). El plan de rebajas **no usa la rendición** para repartir el escalón del Nasdaq: es una diferencia de diseño entre los dos planes (pregunta para Pe).
+**Pánico:** vivo desde el 20-nov (VIX/VIX3M 1,16; ayer 1,05). Se va con el primer cierre por debajo de 1,0. El plan de rebajas no tiene un escalón de «se va el pánico». **Control del mes (7-dic):** el SPY ya está más abajo (−11,8 %) que la franja que mide (−5 a −10 %); solo se aplicaría si vuelve a ella. Russell (IWM) −15,7 %: su −20 % (243,51) a −5,1 %.
+**Cuándo se actúa:** lo que saltó con el cierre del viernes se actúa con ese cierre; como es fin de semana, el primer mercado abierto es el lunes 23. Jueves 26 EE. UU. cerrado; viernes 27 media sesión (cierra a las 19:00 en Bilbao).
 
 ## 3. Qué dice hoy la terminal
-Caídas desde el máximo de 52 semanas: SPY −11,8 %, DIA −11,6 %, QQQ −20,2 %, IWM −15,7 %, MAGS −17,5 %, RSP −7,5 %. En el día: SPY −3,6 %, QQQ −5,7 %, IWM −2,9 %, RSP −2,0 % (la caída la lidera el Nasdaq). Dinero: **VENTA EXTREMA** (0 sectores entran, 7 salen; salida de dinero en el 64 % de las acciones y entrada en el 14 %). Notas: todas BAJA. Centinela LIQUIDEZ (el más defensivo: por la jerarquía del sistema manda). Semáforo: rojo con pánico agudo en SPY, DIA y QQQ. Otros datos: DIX 38,8 (percentil 1 de su historial) y GEX negativo (−2,2 mil millones) por segundo día seguido; no son señales demostradas.
-**Historia de la casilla de hoy (rejilla de ciclos de la propia terminal; frecuencia histórica, no predicción):** el SPY lleva 33 sesiones desde su máximo del 6-oct y está en −11,8 %: caída «MADURA». En las 15 caídas del S&P de 1950-2025 con esa edad y esa profundidad, la caída extra mediana hasta el suelo fue −4,4 %, el 21 % (unos 3 de 15; intervalo de confianza aproximado 7-45 %) cayó 10 % más y la rentabilidad media a 60 sesiones fue +4,5 % (N = 15: solo orientativo; la terminal no guarda el recuento exacto). El DIA (−11,7 %, N 20) y el IWM (−15,7 %, N 7) tienen casillas parecidas; el QQQ **no tiene casilla con historia** (solo 2 caídas desde 1999 llegaron al −20/−30 % en 22-42 sesiones).
-**Calendario:** el jueves 26 EE. UU. está cerrado (Acción de Gracias) y el viernes 27, el siguiente día de actuar, es media sesión (cierra a las 13:00 de Nueva York = 19:00 en Bilbao), con poco volumen. Esta semana el oro (GLD) ha caído un −9,2 % (más que el SPY) mientras el bono largo (TLT) subía +2,6 %: en esta caída el oro no está haciendo de refugio.
-
+Caídas desde el máximo de 52 semanas: SPY −11,8 %, DIA −11,6 %, QQQ −20,2 %, IWM −15,7 %, MAGS −17,5 %, RSP −7,5 % (la caída la lidera el Nasdaq y los grandes). En el día: SPY −3,6 %, QQQ −5,7 %. VIX 35,9. Dinero: **VENTA EXTREMA** (0 sectores entran, 7 salen). Centinela LIQUIDEZ. Notas de los índices: todas BAJA (solo contexto; medida el 10-nov, la nota va al revés). DIX 38,8 (percentil 1) y GEX negativo por segundo día; no son señales demostradas. Volumen en dólares de los 8 apalancados de compra (tu idea, I-007): hoy hay pico (z 2,4; ver sección 5).
+**Bono y MOVE (dato a vigilar, no una bala):** el 10 años cierra en 4,91 %, a 41 puntos básicos de tu línea del 4,5 % (−4 pb en un mes, −24 pb en 5 sesiones). El MOVE (volatilidad de los bonos) está en 106 (percentil 96 del año): salta el aviso de «tensión» de hoy. El bono largo (TLT) subió +2,6 % en la semana mientras el oro cayó −9,2 %.
+**Pestaña nueva «Caída en curso» (v8.7, solo informa):** suelo 49 % = media de 41 % por el ciclo (caídas parecidas del S&P, 15 casos) y 57 % por el miedo (solo **10 casos**: intervalo de confianza ancho, 31-83 %). Es la frecuencia de caídas parecidas que ya habían hecho suelo, no un pronóstico. Ya había dicho el viernes: casilla «MADURA» del S&P (33 sesiones desde su máximo): extra mediana −4,4 %, el 21 % cae ≥ 10 % más, +4,5 % a 60 sesiones (N 15, orientativo); el QQQ no tiene casilla con historia.
 **Cosas que se pueden pasar por alto (3):**
-1. **La bala 3 queda fijada «SIN rendición» hoy.** El código decide «con o sin rendición» solo el día del toque y lo guarda (`rotacion.py` línea 23714; `balas_estado.json`: bala 3, rendición = false). Si el lunes o el martes la amplitud llega al 20 %, la línea viva dirá «rendición total hoy: SÍ» pero el texto de la bala 3 seguirá diciendo «SIN rendición total → media bala»: dos mensajes contrarios en la misma pestaña. Lo señalo, no lo toco (propuesta 1).
-2. **Segundo pánico en la misma caída:** la bala 1 ya está «dada» el 9-nov (una por caída, línea 23703). Cuando este pánico se vaya, la tarjeta del pánico dirá «SE VA HOY: es la señal de la bala 1» (línea 24084), pero la fila de la bala 1 seguirá «dada el 9-nov». Hay que decidir si esa segunda «se va el pánico» cuenta como bala 1 nueva (propuesta 1). Hoy el semáforo ha vuelto a marcar «guarda el resto» en SPY, DIA y QQQ.
-3. **Etiqueta engañosa en el QQQ:** con −20,2 % tras 33 sesiones, la tabla de caídas lo llama **«CORRECCIÓN»** (línea 23432). No es una señal: es la etiqueta por defecto cuando no encaja en RÁPIDA, MADURA ni LARGA. Un QQQ en −20 % es, en el lenguaje habitual, mercado bajista; no te quedes con la palabra.
+1. **Dos sitios que se contradicen:** el detector y las balas dicen «QQQ −20 % tocado»; el plan de rebajas (la tabla de «Hoy» por el código) no lo tiene. Y al arreglarlo, el escalón saldrá como «comprado el 20-nov», no como «HOY TOCA»: el cartel de hoy solo sale el día del cierre.
+2. **«Recesión 3 %, modo NORMAL, 0 alarmas» con 4 de 5 fuentes sin descargar** (sección 1): con el VIX en 36 no te quedes con «NORMAL».
+3. **Importes en euros en archivos públicos.** El repositorio es público y la terminal v8.7 escribe el importe total del plan en `rotacion.py` (línea 24844) y el importe de la compra de ayer dentro de `plan_rebajas_estado.json` (campo «avisado»). Yo no los copio, pero cualquiera puede leerlos. Mejor guardarlos fuera del repositorio.
 
-## 4. Marcador (precios al día; todo orientativo salvo lo que diga)
-- **GIRO↓** 31 casos a 20 sesiones: acierto 74 % (IC 57–86), exceso +8,5 pts (t 3,9). **GIRO↑** 34 casos: 26 % (IC 15–43), exceso −5,4 (t −2,5): «va al revés». Las dos ya pasan de 30 casos.
-- **Control de azar** (mismo activo, mismas fechas; `estudios/control_azar_marcador.py`): GIRO↑ +0,1 pts netos (t 0,1) y GIRO↓ +0,9 (t 0,4). Lo que se ve es lo que hacían esos activos (semis, plata, temáticos), no la señal. **I-001 queda cerrada: sin señal propia.**
-- **SUELO** +4,8 netos (n 16, t 3,07) y **EARLY** +4,1 (n 15, t 2,3). Nuevo control agrupado por fechas (varias señales el mismo día no son pruebas separadas; `estudios/control_azar_agrupado.py`): SUELO t 2,84 con 10 fechas, EARLY t 1,96 con 11. Con 10 señales mirándose a la vez, el mejor sale por azar con facilidad: sigue sin ser una prueba (n < 30, un solo trimestre, en plena caída). SUELO queda **en vigilancia**: se mira otra vez al llegar a 30 casos.
-- Resto con |t| < 1,7. Las señales del plan ya están en el cable (NIVEL SPY/DIA/QQQ, BALA SPY ×2, PÁNICO SPY): se medirán a 20 sesiones, hacia el 22-dic.
+## 4. Marcador (mismo día de mercado que el viernes: los números no cambian)
+- **GIRO↓** 31 casos a 20 sesiones: acierto 74 % (IC 57–86), exceso +8,5 pts (t 3,9). **GIRO↑** 34 casos: 26 % (IC 15–43), exceso −5,4 (t −2,5): «va al revés». Con el control de azar (mismo activo, mismas fechas) no hay señal propia: GIRO↑ +0,1 pts (t 0,1), GIRO↓ +0,9 (t 0,4). **I-001 cerrada.**
+- **SUELO** (n 16): acierto 56 %, exceso +2,9 (t 1,4); con el control de azar +4,8 netos (t 3,07; agrupado por fechas t 2,84 con 10 fechas) y **EARLY** +4,1 (n 15, t 2,3; por fechas 1,96): sigue en vigilancia, con 10 señales mirándose a la vez el mejor sale bueno por azar. Resto con |t| < 1,8. FLOW 18 casos, 78 %, t 1,7.
+- Filas nuevas por el `preparar.py` actualizado (todas n = 1, no dicen nada): BALA 1 / SE VA EL PÁNICO (9-nov: el SPY perdió −2,3 % en las 5 sesiones siguientes), BALA 2, BALA 3, MOVE. El cable no guardó nunca el «se va el pánico» del 9-nov; ahora el marcador lo reconstruye desde `balas_estado.json`.
+- Señales del plan en el cable (NIVEL SPY/DIA/QQQ, BALA ×2, PÁNICO SPY del 20-nov): se medirán a 20 sesiones, hacia el 22-dic.
 
-## 5. Investigación — I-005 (viernes)
-**«Se va el pánico» frente a comprar con el pánico todavía vivo → DESCARTADA.** La regla la apunté el 13-nov, antes de calcular nada, y no la he cambiado. Mismos episodios que I-004 (36 de 2009-22; 28 con viernes comparables). Rendimiento del SPY a 60 sesiones; «azar» = viernes con VIX/VIX3M ≥ 1,0 y caída del SPY parecida (±2,5 pts):
-
-| Trozo | Episodios | «Se va» menos «pánico vivo» | t |
-|---|---|---|---|
-| aprender (2009-18) | 22 | **−2,5 pts** | −1,9 |
-| comprobar (2019-22) | 6 | +10,8 pts | 2,9 |
-| todos | 28 | +0,4 pts | 0,2 |
-
-- Criterio apuntado: confirma si gana ≥ +1 pt en las dos mitades; tumba si el signo cambia. **Cambia: tumbada.** Peor caída posterior en 60 sesiones: en aprender, −5,1 % tras «se va» frente a −3,8 % entrando con el pánico vivo (peor, no mejor).
-- **Aviso importante:** en 2019-22 el «azar» son solo **3 viernes** (31-ene, 28-feb y 6-mar de 2020: el covid). Esa mitad no puede juzgar nada; 8 de los 36 episodios se quedaron sin viernes comparable. Lo sólido es 2009-18: ahí esperar a «se va» fue 2,5 pts peor, sin llegar a ser significativo (7 de 22 por encima del azar).
-- Variantes miradas: 3 (20, 60 y 120 sesiones). A 20: −0,5 / +11,5; a 120: −3,5 / −0,5 (aprender / comprobar). Caja cerrada 2023+ **sin abrir** (no pasó).
-- **Qué significa:** no hay datos de que esperar a «se va el pánico» mejore la entrada frente a entrar con el pánico vivo. Junto con I-004 (tampoco mejora frente a viernes sin pánico), la pista «se va el pánico = mejor momento» se queda **sin apoyo en el SPY de 2009-22**. No prueba que esperar sea peor, y no mide los apalancados ni 2000/2008 (el VIX3M empieza en 2009). No cambia ningún plan. Ideas probadas: 3 (todas descartadas). Detalle: `estudios/i005.md`.
-- Para la semana que viene dejo apuntada **I-006** (¿importa lo rápido que la caída va del −5 % al −10 %?, solo S&P 1927-2026). No se ha calculado nada.
+## 5. Investigación
+**I-005 (viernes 20-nov, ya cerrada): «se va el pánico» frente a entrar con el pánico vivo → DESCARTADA.** 28 episodios del SPY 2009-22 (60 sesiones): aprender −2,5 pts (t −1,9), comprobar +10,8 (solo 3 viernes de comparación, todos de 2020), todos +0,4 (t 0,2). Signo distinto entre mitades: no hay datos que apoyen esperar a «se va el pánico». No prueba que esperar sea peor. Detalle: `estudios/i005.md`.
+**I-007 (hoy; idea tuya del 9-nov: volumen en dólares de los apalancados de compra) → DESCARTADA: sin ventaja visible, y muy pocos casos para decir más.**
+Regla apuntada antes de calcular (`ideas.md`): *pico* = el volumen en dólares de TQQQ, UPRO, SPXL, SSO, QLD, SOXL, TECL y TNA sumados (en logaritmos) 2 desviaciones por encima de su media de los 252 días anteriores; *caída* = SPY ≥ 8 % bajo su máximo. Se compara cada episodio de pico con días parecidos SIN pico (misma mitad de la historia, caída ±2,5 pts, mismo estado de miedo), contando episodios y no días. SPY a 60 sesiones:
+| Principal (z ≥ 2, caída ≥ 8 %) | Aprender 2010-18 | Comprobar 2019-22 |
+|---|---|---|
+| Exceso de los días con pico | −0,7 pts (N 6, t −0,4) | −0,1 pts (N 2) |
+- Criterio apuntado: confirma con ≥ +1 pt en las dos mitades y ≥ 8 episodios en cada una. No se cumple ni lo uno ni lo otro (13 episodios en total, pero solo 8 con días parecidos suficientes). Las otras 4 variantes (z ≥ 3; pico en cualquiera de los 3 últimos días; caída ≥ 5 %; solo con VIX/VIX3M ≥ 1,0) tampoco muestran ventaja: con caída ≥ 5 % (21 episodios) sale −2,4 pts (t −1,7), es decir, si acaso los días con pico rinden algo peor. El script también calcula la caja 2023-26 (sale en la tabla, 4 episodios en la variante ≥ 5 %); no la uso para decidir.
+- **Lo descriptivo (sin azar, solo para tu pregunta «¿separa las V de las caídas que siguieron?»):** de las 10 caídas del SPY de ≥ 10 % desde 2010, hubo pico en 6 (2010, 2011, 2016, feb-2018, 2020 y 2025) y no en 4 (2015, 4.º trimestre de 2018, 2022 —quedó en z 1,98, a un pelo del umbral— y 2023). El máximo del pico coincidió con el suelo solo en 2018 y 2025; en 2020 el primer pico fue el 27-feb y el suelo el 23-mar, y en 2011 llegó dos meses antes del suelo. En los 5 casos cuyo primer pico llegó con el SPY entre −10 y −12 % (2010, 2011, 2016, 2018 y 2020), 4 siguieron cayendo (−4, −7, −2 y −22 puntos más; 2018 no). Sirve como «ya hay miedo», no como «ya es el suelo». Frecuencia histórica con N = 5-6, no predicción.
+- **Hoy:** z = 2,4 con el SPY en −11,7 %: hay pico, como en esas caídas que acababan de empezar a dar miedo. No lo meto en la terminal: con este tamaño de muestra no aporta nada medible a lo que ya mide la terminal (pánico, rendición).
+- Variantes miradas: 5 (las apuntadas). Ideas probadas: 4 (todas descartadas). Detalle: `estudios/i007.md`. Queda en cola para el viernes 27-nov **I-006** (¿importa lo rápido que la caída va del −5 % al −10 %?).
 
 ## Semana (13 → 20-nov)
 - **Mercado:** SPY 754,37 → 689,81 (−8,6 %); QQQ −10,5 %; IWM −7,5 %; RSP −6,2 %; DIA −8,0 %; oro −9,2 %; bono largo +2,6 %. VIX 19,3 → 35,9; VIX/VIX3M 0,94 → 1,16.
-- **Detector:** SPY de −3,5 % a −11,8 % del máximo; QQQ de −10,9 % a −20,2 %. Dinero: MIXTO → SALE DE TODO → VENTA EXTREMA. Centinela: ACECHO → LIQUIDEZ (desde el 18-nov). Plan: de «ninguna señal» a bala 2 y 3 saltadas.
-- **Marcador:** GIRO↓/GIRO↑ llegan a 30 casos y el control de azar los deja sin señal propia (I-001 cerrada). Nada se ha confirmado.
-- **Cesta semanal:** esta semana −4,7 % frente a SPY −8,6 % (mejor que el SPY por 3,9 pts). En 12 semanas: −0,99 % frente a −0,96 %; mejor que el SPY 5 de 12 (IC 19–68 %). Una semana buena en una caída es lo que se espera de una cesta defensiva; no demuestra nada.
-- **Propuestas pendientes para que decidas** (la 1 es nueva, la 2 lleva desde el 13-nov): ver abajo.
+- **Detector:** SPY de −3,5 % a −11,8 % del máximo; QQQ de −10,9 % a −20,2 %. Dinero: MIXTO → SALE DE TODO → VENTA EXTREMA. Centinela: ACECHO → LIQUIDEZ (18-nov).
+- **Cesta semanal:** −4,7 % frente a SPY −8,6 %. En 12 semanas: −0,99 % frente a −0,96 %; mejor que el SPY 5 de 12 (IC 19–68 %). Una semana buena en una caída es lo esperable de una cesta defensiva; no demuestra nada.
+- **Pendiente de que decidas:** propuestas 1 y 2.
 
 ## 6. Propuestas para Pe
-1. **Decidir dos reglas del plan de balas antes de que se usen** (yo no las toco): (a) ¿la «rendición total» de la bala 3 vale solo el día del toque (como está) o también si llega los días siguientes?; (b) ¿una segunda «se va el pánico» dentro de la misma caída es una bala 1 nueva? Por qué: hoy las dos quedan decididas por el código sin que lo hayas elegido tú (líneas 23714 y 23703 de `rotacion.py`). La desmentiría: que me digas que así lo querías.
-2. **(Repetida, con fecha límite) Ampliar el cable de señales** (`rotacion.py` línea 3023, hoy 60 fechas): el 2-dic empezaría a borrar días maduros y el marcador se recalcula entero desde ese archivo. La desmentiría: que ese archivo no pierda fechas en diciembre. Si no se cambia, reconstruyo el cable desde git antes de cualquier cálculo largo.
+1. **Arreglar el plan de rebajas para que lea el Nasdaq** (una línea, `rotacion.py` 24900; ver sección 1). Por qué: hoy el plan único solo enseña 3 de sus 8 escalones y se salta el que ya tocó en el Nasdaq, sin avisar. Qué lo desmentiría: que en la pestaña «Hoy» (que no puedo ver) ya aparezcan las filas del Nasdaq; entonces el fallo estaría solo en el archivo guardado.
+2. **(Repetida, con fecha límite 2-dic) Ampliar el cable de señales** (`rotacion.py` línea 3023, hoy 60 fechas). Por qué: el marcador se recalcula entero desde ese archivo y el 2-dic empezaría a perder días maduros. Qué lo desmentiría: que ese archivo no pierda fechas en diciembre. Si no se cambia, reconstruyo el cable desde git antes de cualquier cálculo largo.
 
 ## 7. Lo que necesito de Pe
-- Contestar las dos preguntas de la propuesta 1 (cuando puedas; la (a) importa si la amplitud llega al 20 % esta semana).
-- Decidir lo del cable antes del 2-dic.
-- Subir tú el arreglo de `agente/preparar.py` (línea 206: `start=str(desde)` → `start=pd.Timestamp(desde).strftime("%Y-%m-%d")`) o decirme que no importa: sin él el marcador sale congelado cada mañana y lo reparo yo a mano.
-- Nada más. No digo compra ni vende: la terminal marca las balas y tú decides.
+- Decirme **cuál manda: las 4 balas (mi manual, subido hoy a las 08:34) o el plan de rebajas (terminal v8.7)**. Mi manual aún dice «un solo plan: las 4 balas»; la terminal y el `preparar.py` nuevo dicen que el único plan es el de rebajas. Si manda el de rebajas, mis dos preguntas del 20-nov sobre las balas (rendición posterior al toque; segundo «se va el pánico») dejan de tener sentido.
+- Mover `fondeo/ideas.md` a `agente/fondeo/ideas.md` y `herramientas/fondeo.py` a `agente/herramientas/fondeo.py` (el martes los necesito).
+- Subir el arreglo de `agente/preparar.py` (línea 231: `start=str(desde)` → `start=pd.Timestamp(desde).strftime("%Y-%m-%d")`) o decirme que no importa.
+- Decidir lo del cable antes del 2-dic y dónde guardar los importes del plan (sección 3, punto 3).
+- Nada más. No digo compra ni vende: la terminal marca los escalones y tú decides.

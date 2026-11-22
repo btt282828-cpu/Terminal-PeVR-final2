@@ -52,35 +52,52 @@
   "extrema": true
  },
  "centinela": "LIQUIDEZ",
- "plan_spy": [
-  "5",
-  "7.5",
-  "10"
- ],
+ "balas": {
+  "caida_abierta": true,
+  "dia": "2026-11-20",
+  "dadas": {
+   "1": {
+    "fecha": "2026-11-09",
+    "motivo": "se va el pánico"
+   },
+   "2": {
+    "fecha": "2026-11-20",
+    "motivo": "SPY −10 %"
+   },
+   "3": {
+    "fecha": "2026-11-20",
+    "motivo": "QQQ −20 %",
+    "con_rendicion": false
+   }
+  },
+  "hoy": [
+   "2",
+   "3"
+  ]
+ },
+ "bono": {
+  "dia": "2026-11-20",
+  "y10": 4.912,
+  "linea": 4.5,
+  "un_mes_pb": -4.1,
+  "move": 106.3,
+  "move_percentil": 96,
+  "eventos": [
+   "move_tension"
+  ]
+ },
  "plan": [
   {
-   "senal": "Se va el pánico",
-   "estado": "pánico vivo desde el 2026-11-20; se va con VIX/VIX3M < 1,0 (hoy 1,16; con el VIX a 3 meses quieto, VIX < 30,9, hoy 35,9)"
+   "senal": "S&P 500 −10 %",
+   "estado": "HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3"
   },
   {
-   "senal": "SPY −10 %",
-   "estado": "TOCADO"
+   "senal": "S&P 500 −15 %",
+   "estado": "en 664,38 (falta -3,7 %): 10 % del plan en S&P 500 x3"
   },
   {
-   "senal": "QQQ −20 %",
-   "estado": "TOCADO · rendición total: no (en mínimos 13,2 % de 20; sectores sacando dinero 7 de 6; VIX/VIX3M 1,16 de 1,10)"
-  },
-  {
-   "senal": "Bajista: SPY −20 %",
-   "estado": "en 625,30; le falta un -9,3 % (hoy 689,78)"
-  },
-  {
-   "senal": "Bajista: QQQ −30 %",
-   "estado": "en 534,00; le falta un -12,2 % (hoy 608,46)"
-  },
-  {
-   "senal": "Control del mes tras el −5 % del SPY",
-   "estado": "el 2026-12-07; faltan 10 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)"
+   "senal": "S&P 500 −20 %",
+   "estado": "en 625,30 (falta -9,4 %): 10 % del plan en S&P 500 x2"
   }
  ]
 }

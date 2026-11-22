@@ -1,16 +1,13 @@
 # Datos del día — mercado 2026-11-20
-_Generado 2026-11-21 03:29 UTC por agente/preparar.py (sin IA)._
+_Generado 2026-11-22 07:44 UTC por agente/preparar.py (sin IA)._
 
 ## 1. Vigilante
 - 🟢 Todo grabado y sin avisos nuevos
 
 ## Señales del plan de compras en caídas (estado de hoy)
-- **Se va el pánico:** pánico vivo desde el 2026-11-20; se va con VIX/VIX3M < 1,0 (hoy 1,16; con el VIX a 3 meses quieto, VIX < 30,9, hoy 35,9)
-- **SPY −10 %:** TOCADO
-- **QQQ −20 %:** TOCADO · rendición total: no (en mínimos 13,2 % de 20; sectores sacando dinero 7 de 6; VIX/VIX3M 1,16 de 1,10)
-- **Bajista: SPY −20 %:** en 625,30; le falta un -9,3 % (hoy 689,78)
-- **Bajista: QQQ −30 %:** en 534,00; le falta un -12,2 % (hoy 608,46)
-- **Control del mes tras el −5 % del SPY:** el 2026-12-07; faltan 10 sesiones. Ese día: SPY por encima de 742,54 = corrección normal (solo 9 % sigue a −10 %); entre −5 y −10 % = probable −10 % (57 %, 1927-2026)
+- **S&P 500 −10 %:** HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3
+- **S&P 500 −15 %:** en 664,38 (falta -3,7 %): 10 % del plan en S&P 500 x3
+- **S&P 500 −20 %:** en 625,30 (falta -9,4 %): 10 % del plan en S&P 500 x2
 
 ## 2. Marcador fuera de muestra (señales del cable)
 Precios: yahoo. Entrada al cierre de la sesión siguiente a la señal. Una señal repetida en 14 días cuenta una vez. 'acierto' = se movió en la dirección que decía; 'exceso' = frente al SPY en el mismo plazo; IC = intervalo de confianza del 95 % (Wilson).
@@ -30,11 +27,16 @@ Precios: yahoo. Entrada al cierre de la sesión siguiente a la señal. Una seña
 | NIVEL | 7 | 0 (+7 pend.) | 0.91 % / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | PÁNICO | 2 | 0 (+2 pend.) | -2.59 % / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | BALA | 1 | 0 (+1 pend.) | — / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
+| BALA 1 | 1 | 0 (+1 pend.) | -2.33 % / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
+| BALA 2 | 1 | 0 (+1 pend.) | — / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
+| BALA 3 | 1 | 0 (+1 pend.) | — / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
+| MOVE | 1 | 0 (+1 pend.) | — / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | PLAN SPY | 1 | 0 (+1 pend.) | 2.59 % / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | RISK | 1 | 0 (+0 pend.) | — / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | RÉGIMEN | 1 | 1 (+0 pend.) | -1.27 % / -0.2 % | 0.0 % (0.0–79.3) | — (t —) | muy pocos casos: no se puede decir nada |
+| SE VA EL PÁNICO | 1 | 0 (+1 pend.) | -2.33 % / — | — (—–—) | — (t —) | muy pocos casos: no se puede decir nada |
 | SENT | 1 | 1 (+0 pend.) | -0.14 % / -3.46 % | 0.0 % (0.0–79.3) | — (t —) | muy pocos casos: no se puede decir nada |
 
 **Cesta semanal (track_record):** 12 semanas, cesta -0.99 % de media frente a SPY -0.96 %; mejor que el SPY 5 de 12 (IC 19.3–68.0 %).
 
-**Señales del último día (2026-11-20):** CAPITUL XLK↑, CAPITUL MAGS↑, CAPITUL SMH↑, BALA SPY↑, BALA SPY↑, NIVEL SPY↑, NIVEL DIA↑, NIVEL QQQ↑, PÁNICO SPY↓, GRADUADO KRE↑, GRADUADO IWM↑, GRADUADO ITA↑, GRADUADO ITB↑, GIRO INDA↓, EARLY DRAM↑, EARLY HYDR↑, EARLY DRIV↑, SENT SPY↑
+**Señales del último día (2026-11-20):** CAPITUL XLK↑, CAPITUL MAGS↑, CAPITUL SMH↑, BALA SPY↑, BALA SPY↑, MOVE MOVE↓, NIVEL SPY↑, NIVEL DIA↑, NIVEL QQQ↑, PÁNICO SPY↓, GRADUADO KRE↑, GRADUADO IWM↑, GRADUADO ITA↑, GRADUADO ITB↑, GIRO INDA↓, EARLY DRAM↑, EARLY HYDR↑, EARLY DRIV↑, SENT SPY↑, BALA 2 SPY↑, BALA 3 SPY↑

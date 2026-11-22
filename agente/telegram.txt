@@ -1,8 +1,8 @@
-🤖 Compañero · vie 20-nov · 🎯 Con el cierre del viernes SALTARON: SPY −10 % (bala 2) y QQQ −20 % SIN rendición total (bala 3)
-🟢 Sistema: todo grabado, sin avisos nuevos.
-📊 Terminal: SPY −11,8 % (−3,6 % en el día), QQQ −20,2 % (−5,7 %), VIX 35,9. Pánico vivo nuevo desde el viernes (VIX/VIX3M 1,16; se va si cierra bajo 1,0). Dinero: VENTA EXTREMA; centinela LIQUIDEZ.
-🎯 Plan: rendición total cumple 2 de 3 (falta amplitud: 13,2 % de acciones en mínimos, hace falta 20 %; ayer 9,2 %). Bajista: SPY −20 % a −9,3 %, QQQ −30 % a −12,2 %, Russell −20 % a −5,1 %.
-🧾 Marcador: GIRO↑ y GIRO↓ ya con +30 casos; con control de azar no tienen señal propia (I-001 cerrada).
-🔬 Hoy he probado: I-005, esperar «se va el pánico» frente a entrar con el pánico vivo: no mejora (2009-18: −2,5 pts a 60 sesiones; 2019-22 sin datos suficientes).
-💡 Propuesta: decidir dos reglas del plan de balas (rendición posterior al toque; segundo «se va el pánico»).
-🙋 Necesito de ti: contestar eso y decidir el cable de 60 fechas antes del 2-dic. Ojo: jueves 26 EE. UU. cerrado y viernes 27 media sesión.
+🤖 Compañero · dom 22-nov (mercado: vie 20-nov)
+🎯 Sigue pendiente lo del viernes: tocaron S&P −10 % (SPY 689,81) y Nasdaq −20 % (QQQ 608,45), VIX 35,9. Se actúa con ese cierre; primer mercado abierto: el lunes.
+🔴 Sistema: la terminal nueva (v8.7) tiene un fallo: su plan de rebajas no calcula el Nasdaq y NO marca el escalón Nasdaq −20 % que sí tocó (el del S&P sí). Arreglo de una línea (rotacion.py 24900).
+📊 Terminal: pánico vivo (VIX/VIX3M 1,16), dinero VENTA EXTREMA. Siguientes: S&P −15 % en 664,38 (a −3,7 %), Nasdaq −25 % en 572,14 (a −6,0 %). Ojo: «recesión 3 %» sale de 1 fuente de 5.
+🧾 Marcador: sin cambios.
+🔬 Hoy he probado: tu idea del volumen de los apalancados: no añade nada medible (a 60 sesiones −0,7 pts en 2010-18, solo 6 casos). Hoy hay pico (z 2,4): vale como «ya hay miedo», no como «suelo».
+💡 Propuesta: arreglar esa línea; ampliar el cable (60 fechas) antes del 2-dic.
+🙋 Necesito de ti: ¿manda el plan de rebajas o las 4 balas? Mueve tus archivos de fondeo a agente/. Hay importes en euros en archivos públicos.

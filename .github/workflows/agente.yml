@@ -25,10 +25,11 @@ env:
   # "si" = ademas entra la IA (tu compañero). Necesita UNO de estos secretos:
   #        ANTHROPIC_API_KEY (pago por uso, aparte)  o  CLAUDE_CODE_OAUTH_TOKEN (tu suscripcion de Claude).
   USAR_IA: "si"
-  # Lunes a jueves: repaso corto (vigilante, marcador, lectura y "lo que se te pasa"), SIN investigar.
-  # Viernes (la noche del viernes): repaso + investigacion de verdad.
+  # Lunes y miercoles: repaso corto (vigilante, marcador, lectura y "lo que se te pasa"), SIN investigar.
+  # Martes y jueves: sesion de FONDEO (repaso muy corto + buscar como pasar el reto antes y con mas probabilidad).
+  # Viernes (la noche del viernes): repaso + investigacion de verdad de la terminal.
   # Frenos para no comerse tu plan: maximo de pasos del agente (y, solo si usas clave de pago, gasto maximo en dolares).
-  TURNOS_DIA: "40"
+  TURNOS_DIA: "30"
   TURNOS_VIERNES: "100"
   # Cuanto piensa antes de actuar: low, medium, high, xhigh o max (mas = mejor razonamiento y mas gasto).
   ESFUERZO_DIA: "high"
@@ -37,12 +38,24 @@ env:
   TOPE_VIERNES: "4.00"
   # Modelo: "sonnet" (recomendado). "opus" piensa mejor, pero con el plan Pro puede no estar incluido en Claude Code.
   MODELO: "sonnet"
+  # Sesiones de FONDEO: dias de la semana de la fecha de mercado (1 = lunes ... 5 = viernes). Vacio = sin sesiones de fondeo.
+  DIAS_FONDEO: "2 4"
+  TURNOS_FONDEO: "90"
+  ESFUERZO_FONDEO: "high"
+  # El plan de fondeo de Pe (lo lleva el robot PeVR_Fondeo en MT5): activos del minimo + Flujo verde (riesgo entero),
+  # activos de la "caida desde el maximo" (medio riesgo cada uno; vacio = sin caida), riesgo por operacion y cierre del viernes.
+  # Con el se lleva el "reto en la sombra" con datos reales desde FONDEO_SOMBRA_DESDE.
+  FONDEO_ACTIVOS: "spx,nas,eurjpy"
+  FONDEO_CAIDA: "nas,spx"
+  FONDEO_RIESGO: "0.01"
+  FONDEO_VIERNES: "no"   # en el reto se mantiene el fin de semana; "si" = cerrar el viernes
+  FONDEO_SOMBRA_DESDE: "2026-11-09"
   # ─────────────────────────────────────────────────────────────────────────
 
 jobs:
   agente:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Ha trabajado de verdad la terminal?
         id: decide
@@ -112,12 +125,43 @@ jobs:
           FECHA=$(python -c "import json;print(json.load(open('agente/hoy/vigilante.json'))['fecha_mercado_esperada'])" 2>/dev/null || TZ=Europe/Madrid date +%F)
           echo "Fecha de mercado: $FECHA"
           echo "fecha=$FECHA" >> "$GITHUB_OUTPUT"
-          if [ "$(date -d "$FECHA" +%u)" = "5" ]; then echo "modo=semanal" >> "$GITHUB_OUTPUT"; else echo "modo=diario" >> "$GITHUB_OUTPUT"; fi
+          DOW=$(date -d "$FECHA" +%u)
+          if [ "$DOW" = "5" ]; then MODO=semanal
+          elif [ -n "$DIAS_FONDEO" ] && echo " $DIAS_FONDEO " | grep -q " $DOW "; then MODO=fondeo
+          else MODO=diario; fi
+          echo "Modo: $MODO"
+          echo "modo=$MODO" >> "$GITHUB_OUTPUT"
+          echo "mes=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
 
       - name: Datos para investigar (solo la sesion del viernes)
         if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si' && steps.fecha.outputs.modo == 'semanal'
         continue-on-error: true
         run: python agente/herramientas/datos.py --descargar
+
+      - name: Recuperar las velas de 1 minuto guardadas (solo sesiones de fondeo)
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si' && steps.fecha.outputs.modo == 'fondeo'
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/agente/fondeo
+          key: fondeo-${{ steps.fecha.outputs.mes }}
+          restore-keys: fondeo-
+
+      - name: Datos de fondeo, linea base y reto en la sombra (sin IA)
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si' && steps.fecha.outputs.modo == 'fondeo'
+        continue-on-error: true
+        run: |
+          mkdir -p agente/hoy
+          python agente/herramientas/fondeo.py --descargar --activos "$FONDEO_ACTIVOS" --base > agente/hoy/fondeo_base.md
+          head -40 agente/hoy/fondeo_base.md
+
+      - name: Guardar las velas de 1 minuto para la proxima vez
+        if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si' && steps.fecha.outputs.modo == 'fondeo'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/agente/fondeo
+          key: fondeo-${{ steps.fecha.outputs.mes }}
 
       - name: Guardar el resumen del dia (version sin IA)
         if: steps.decide.outputs.toca == 'si' && env.USAR_IA != 'si'
@@ -142,7 +186,7 @@ jobs:
         id: agente
         if: steps.decide.outputs.toca == 'si' && env.USAR_IA == 'si'
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 75
         env:
           # Vale cualquiera de las dos: clave de pago por uso (API) o tu suscripcion de Claude.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -160,6 +204,8 @@ jobs:
           mkdir -p agente/informes agente/estudios /tmp/agente
           if [ "$MODO_HOY" = "semanal" ]; then
             MODO="SEMANAL (repaso completo + investigacion a fondo; datos en /tmp/agente/datos)"; TURNOS="$TURNOS_VIERNES"; TOPE="$TOPE_VIERNES"; ESFUERZO="$ESFUERZO_VIERNES"
+          elif [ "$MODO_HOY" = "fondeo" ]; then
+            MODO="FONDEO (repaso muy corto + investigador de fondeo, punto 6b; velas de 1 minuto en /tmp/agente/fondeo; linea base del plan entero, vigilancia de la caida y reto en la sombra en agente/hoy/fondeo_base.md)"; TURNOS="$TURNOS_FONDEO"; TOPE="$TOPE_VIERNES"; ESFUERZO="$ESFUERZO_FONDEO"
           else
             MODO="DIARIO (repaso, SIN investigar)"; TURNOS="$TURNOS_DIA"; TOPE="$TOPE_DIA"; ESFUERZO="$ESFUERZO_DIA"
           fi
@@ -221,7 +267,7 @@ jobs:
           git checkout -- . ':(exclude)agente' 2>/dev/null || true
           git clean -fdq -e agente/ || true
           # 2) Su manual, su script y las notas de Pe tampoco los puede cambiar.
-          for f in agente/INSTRUCCIONES.md agente/preparar.py agente/herramientas/datos.py agente/notas_de_pe.md agente/.gitignore; do
+          for f in agente/INSTRUCCIONES.md agente/preparar.py agente/herramientas/datos.py agente/herramientas/fondeo.py agente/notas_de_pe.md agente/.gitignore; do
             git checkout -- "$f" 2>/dev/null || true
           done
           # 3) Nada de archivos grandes ni restos de Python.

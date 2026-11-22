@@ -1,0 +1,23 @@
+{
+ "log": [
+  {
+   "date": "2026-11-20",
+   "y10": 4.912,
+   "ch5": -24.2,
+   "ch21": -4.1,
+   "move": 106.3,
+   "move_pct": 96,
+   "eventos": [
+    "move_tension"
+   ]
+  }
+ ],
+ "ultimo": "2026-11-20",
+ "umbral": 4.5,
+ "fuente": "Yahoo",
+ "avisado": {
+  "2026-11-20": [
+   "move_tension"
+  ]
+ }
+}

@@ -7045,6 +7045,12 @@
 },
 {
 "date": "2026-11-20",
+"tag": "MOVE",
+"sym": "MOVE",
+"dir": -1
+},
+{
+"date": "2026-11-20",
 "tag": "NIVEL",
 "sym": "SPY",
 "dir": 1

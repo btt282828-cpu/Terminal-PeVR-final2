@@ -3,6 +3,14 @@
 """
 ROTACION - Smart-Money Flow Terminal (version de escritorio)
 ============================================================
+v8.7 (21-nov-2026) - Pestana "Caida en curso": probabilidad de suelo (ciclo + miedo), probabilidad de recesion
+  (curva NY Fed, Sahm, paro semanal, credito, Polymarket) con el modo de la escalera, y liquidez (Fed neta, credito,
+  repo, dolar, MOVE). caida_estado.json cada noche; series de FRED en historiales/. Solo informa.
+  Y el PLAN DE REBAJAS: una sola tabla como unico plan (sustituye a las 4 balas): escalones del Nasdaq y del S&P con
+  dinero y producto (x3/x2/normal; los hondos del Nasdaq en x3 solo con VIX >= 40), paso a normal al recuperar 1/3
+  de la caida (1/2 los hondos) y venta en el maximo. plan_rebajas_estado.json; Telegram solo cuando toca algo.
+v8.6 (13-nov-2026) - Vigilante del bono a 10 anos de EE. UU. y del MOVE (tarjeta en "Hoy", bono_estado.json,
+  aviso por Telegram y en el cable si el 10 anos cruza BONO_UMBRAL = 4,5 % o el MOVE entra en tension). Solo informa.
 v8.5 (11-nov-2026) - Revision a fondo de la primera pestana:
   * Primera pestana "Hoy" con 5 bloques: datos, que toca hoy, tabla de caidas, termometro del miedo y agenda.
     Todo lo que habia antes pasa a la pestana "Detalle", como descripcion.
@@ -12253,6 +12261,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     html.append(
         "<div class='viewtabs mainbar' style='grid-column:1/-1;position:sticky;top:0;z-index:60;background:var(--bg);padding:8px 0 6px;margin:-4px 0 6px;border-bottom:1px solid var(--line)'>"
         "<button class='viewtab mainview active' onclick=\"mainView('idx',this)\" style='font-size:13px;padding:7px 16px;border-color:#FFB00077;color:#FFB000;font-weight:700'>🧭 Hoy</button>"
+        "<button class='viewtab mainview' onclick=\"mainView('cai',this)\" style='font-size:13px;padding:7px 16px;border-color:#F4607A77;color:#F4607A;font-weight:700'>🌪️ Caída en curso</button>"
         "<button class='viewtab mainview' onclick=\"mainView('det',this)\" style='font-size:13px;padding:7px 16px;border-color:#9FB0C855'>🔎 Detalle</button>"
         "<button class='viewtab mainview' onclick=\"mainView('est',this)\" style='font-size:13px;padding:7px 16px;border-color:#4CC2E077'>📅 Estacionalidad</button>"
         "<button class='viewtab mainview' onclick=\"mainView('rn',this)\" style='font-size:13px;padding:7px 16px;border-color:#F4B74055;color:#F4B740'>🎲 Rachas y niveles</button>"
@@ -12326,6 +12335,13 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
     except Exception as _dege:
         _deg("operativa:html", _dege)
         html.append("<div id='vista-idx' style='display:contents'><div class='panel full'><h2>🧭 Hoy</h2>"
+                    "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
+    # v8.7 — 🌪️ Caída en curso
+    try:
+        html.append("<div id='vista-cai' style='display:none'>" + _caida_html((operativa or {}).get("caida")) + "</div>")
+    except Exception as _dege:
+        _deg("caida:html", _dege)
+        html.append("<div id='vista-cai' style='display:none'><div class='panel full'><h2>🌪️ Caída en curso</h2>"
                     "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     # v7.9 — Rachas y niveles (las ideas del chat, medidas)
     try:
@@ -16102,6 +16118,13 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
             for _bn in (_blw.get("hoy") or []):
                 _bx = next((x for x in _blw.get("balas") or [] if x["n"] == _bn), {})
                 _wadd("#2FD08A", "BALA", f"Hoy toca la bala {_bn}: {_sin_html(_bx.get('cond', ''))}. Se actúa con este cierre — mira «Hoy»", "MERCADO", 1)
+            _bow = (operativa or {}).get("bono") or {}
+            if "bajo_umbral" in (_bow.get("eventos") or []):
+                _wadd("#2FD08A", "BONO", f"El 10 años de EE. UU. cierra en {_bow['y10']:.2f} %, por debajo del {_bow['umbral']:g} % — dato a vigilar, no una bala", "US10Y", 1)
+            if "sobre_umbral" in (_bow.get("eventos") or []):
+                _wadd(AMB, "BONO", f"El 10 años de EE. UU. vuelve por encima del {_bow['umbral']:g} % ({_bow['y10']:.2f} %)", "US10Y", -1)
+            if "move_tension" in (_bow.get("eventos") or []):
+                _wadd(AMB, "MOVE", f"MOVE {_bow['move']:.0f}: los bonos entran en tensión (10 % más alto del año)", "MOVE", -1)
             for _nw in (_smw.get("nuevos") or []):
                 _wadd(("#2FD08A", AMB, "#F4607A")[min(_smw.get("av", 0), 2)], "NIVEL",
                       f"{_nw['sym']} toca −{_nw['niv']:g}% desde su máximo ({_nw['px']:.2f})" + (" — su nivel bueno" if _nw["bueno"] else "")
@@ -17120,6 +17143,7 @@ def build_html(df, rrg, alerts, breadth, risk, regime, buy, avoid, sources, fred
                            "<div class='note'>No se ha podido dibujar hoy.</div></div></div>")
     html.append("<script>function mainView(v,b){var ix=document.getElementById('vista-idx');if(ix)ix.style.display=(v=='idx')?'contents':'none';"
                 "var dt_=document.getElementById('vista-det');if(dt_)dt_.style.display=(v=='det')?'contents':'none';"
+                "var ca=document.getElementById('vista-cai');if(ca)ca.style.display=(v=='cai')?'contents':'none';"
                 "var es=document.getElementById('vista-est');if(es)es.style.display=(v=='est')?'contents':'none';"
                 "var rn=document.getElementById('vista-rn');if(rn)rn.style.display=(v=='rn')?'contents':'none';"
                 "document.getElementById('vista-ctx').style.display=(v=='ctx')?'contents':'none';"
@@ -23656,6 +23680,134 @@ def _pct(x, dec=1):
         return "—"
 
 
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# v8.6 — VIGILANTE DEL BONO A 10 AÑOS DE EE. UU. Y DEL MOVE (13-nov-2026)
+# Pe quiere vigilar el bono a 10 años y el MOVE (la volatilidad de los bonos, el «VIX de los bonos») y un aviso si
+# el 10 años cierra por debajo de BONO_UMBRAL, que él ve como muy alcista. NO está medido como señal (tarea I-004
+# del compañero): la terminal solo informa y avisa una vez; no es una bala ni una orden.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+BONO_UMBRAL = 4.5                 # % — la línea que vigila Pe
+BONO_FILE = os.path.join(SEGUIMIENTO_DIR, "bono_estado.json")
+BONO_TENSION_PCT = 90             # MOVE en el 10 % más alto del último año = bonos nerviosos
+BONO_CALMA_PCT = 30               # MOVE en el 30 % más bajo = bonos tranquilos
+BONO_MES_PB = 20                  # ±20 pb en un mes = el bono baja / sube con fuerza
+
+
+def _bono_serie(s):
+    """Serie diaria limpia (índice de fechas sin hora ni zona)."""
+    s = pd.Series(pd.to_numeric(pd.Series(s).values, errors="coerce"), index=pd.to_datetime([str(x)[:10] for x in pd.Series(s).index]))
+    s = s.dropna().sort_index()
+    return s[~s.index.duplicated(keep="last")]
+
+
+def compute_bono(fecha=None):
+    """Bono a 10 años (Yahoo ^TNX; si falla, FRED DGS10, que va un día por detrás) y MOVE (Yahoo ^MOVE).
+    Guarda bono_estado.json. Devuelve el estado del día o None. fecha = cierre de mercado (corta lo posterior)."""
+    try:
+        y10 = mv = None
+        fuente = "Yahoo"
+        if yf is not None:
+            try:
+                d = yf.download(["^TNX", "^MOVE"], period="2y", interval="1d", progress=False, auto_adjust=False, threads=False)
+                if d is not None and len(d):
+                    cl = d["Close"] if isinstance(d.columns, pd.MultiIndex) else d
+                    if "^TNX" in cl:
+                        y10 = _bono_serie(cl["^TNX"])
+                    if "^MOVE" in cl:
+                        mv = _bono_serie(cl["^MOVE"])
+            except Exception as _dege:
+                _deg("bono:yahoo", _dege)
+        if y10 is None or len(y10) < 60:
+            f = _fred_csv("DGS10", desde=str(dt.date.today() - dt.timedelta(days=800)))
+            y10 = _bono_serie(f) if f is not None else None
+            fuente = "FRED"
+        if y10 is None or len(y10) < 60:
+            return None
+        if float(y10.tail(20).median()) > 20:          # por si Yahoo lo da multiplicado por 10
+            y10 = y10 / 10.0
+        if fecha:
+            y10 = y10[y10.index <= pd.Timestamp(str(fecha)[:10])]
+            if mv is not None:
+                mv = mv[mv.index <= pd.Timestamp(str(fecha)[:10])]
+        U = float(BONO_UMBRAL)
+        u, ant = float(y10.iloc[-1]), float(y10.iloc[-2])
+        fu = str(y10.index[-1].date())
+        ch5 = (u - float(y10.iloc[-6])) * 100 if len(y10) > 6 else None
+        ch21 = (u - float(y10.iloc[-22])) * 100 if len(y10) > 22 else None
+        y1 = y10.tail(252)
+        tend = ("BAJANDO" if ch21 is not None and ch21 <= -BONO_MES_PB else
+                "SUBIENDO" if ch21 is not None and ch21 >= BONO_MES_PB else "QUIETO")
+        # ¿desde cuándo está de este lado de la línea? y ¿cuándo estuvo por debajo la última vez?
+        lado = y10 < U
+        otro = y10.index[(lado != lado.iloc[-1]).values]
+        desde = str(y10.index[y10.index > otro[-1]][0].date()) if len(otro) else None
+        bajo_antes = y10.index[(y10 < U).values][:-1] if u < U else y10.index[(y10 < U).values]
+        ult_bajo = str(bajo_antes[-1].date()) if len(bajo_antes) else None
+        ev = []
+        if ant >= U > u:
+            ev.append("bajo_umbral")
+        elif ant < U <= u:
+            ev.append("sobre_umbral")
+        m = mp = m5 = mest = None
+        if mv is not None and len(mv) > 60:
+            m = float(mv.iloc[-1])
+            w = mv.tail(252)
+            mp = float((w <= m).mean() * 100)
+            m5 = m - float(mv.iloc[-6]) if len(mv) > 6 else None
+            mest = "TENSIÓN" if mp >= BONO_TENSION_PCT else ("CALMA" if mp <= BONO_CALMA_PCT else "NORMAL")
+            wp = mv.iloc[-253:-1]
+            mp_ant = float((wp <= float(mv.iloc[-2])).mean() * 100) if len(wp) > 60 else None
+            if mp_ant is not None and mp_ant < BONO_TENSION_PCT <= mp:
+                ev.append("move_tension")
+        st = {}
+        try:
+            if os.path.exists(BONO_FILE):
+                with open(BONO_FILE, "r", encoding="utf-8") as fh:
+                    st = json.load(fh) or {}
+        except Exception as _dege:
+            _deg("bono:leer", _dege)
+        fila = {"date": fu, "y10": round(u, 3), "ch5": None if ch5 is None else round(ch5, 1), "ch21": None if ch21 is None else round(ch21, 1),
+                "move": None if m is None else round(m, 1), "move_pct": None if mp is None else round(mp), "eventos": ev}
+        log = [x for x in (st.get("log") or []) if x.get("date") != fu] + [fila]
+        ya = st.get("avisado") if isinstance(st.get("avisado"), dict) else {}
+        nuevos = [e for e in ev if e not in (ya.get(fu) or [])]          # cada aviso, una sola vez por día
+        avisar = bool(nuevos)
+        st.update({"log": log[-400:], "ultimo": fu, "umbral": U, "fuente": fuente,
+                   "avisado": {fu: sorted(set(ya.get(fu) or []) | set(ev))}})
+        try:
+            with open(BONO_FILE, "w", encoding="utf-8") as fh:
+                json.dump(st, fh, ensure_ascii=False, indent=1)
+        except Exception as _dege:
+            _deg("bono:guardar", _dege)
+        b = {"fecha": fu, "y10": u, "ant": ant, "ch5": ch5, "ch21": ch21, "hi52": float(y1.max()), "lo52": float(y1.min()),
+             "umbral": U, "dist_pb": (u - U) * 100, "tendencia": tend, "desde": desde, "ult_bajo": ult_bajo, "move": m, "move_pct": mp,
+             "move_ch5": m5, "move_estado": mest, "eventos": ev, "avisar": avisar, "fuente": fuente}
+        b["msg"] = bono_aviso(dict(b, eventos=nuevos)) if avisar else None
+        return b
+    except Exception as _dege:
+        _deg("bono", _dege)
+        return None
+
+
+def bono_aviso(b):
+    """Texto del Telegram cuando el bono cruza la línea o el MOVE entra en tensión (una vez por día)."""
+    if not b or not b.get("eventos"):
+        return None
+    L = []
+    if "bajo_umbral" in b["eventos"]:
+        L.append(f"🟢 BONO: el 10 años de EE. UU. cierra en {_n2(b['y10'])} %, POR DEBAJO de tu línea del {_n2(b['umbral'], 1)} % "
+                 f"(el día anterior {_n2(b['ant'])} %). "
+                 + (f"Primera vez por debajo desde el {_dm(b['ult_bajo'])} de {str(b['ult_bajo'])[:4]}." if b.get("ult_bajo")
+                    else "Primera vez por debajo en los dos últimos años."))
+    if "sobre_umbral" in b["eventos"]:
+        L.append(f"🟠 BONO: el 10 años vuelve POR ENCIMA del {_n2(b['umbral'], 1)} % ({_n2(b['y10'])} %).")
+    if "move_tension" in b["eventos"]:
+        L.append(f"🟠 MOVE en tensión: {_n2(b['move'], 0)}, en el 10 % más alto del último año. Los bonos están nerviosos.")
+    L.append(f"Un mes: {b['ch21']:+.0f} pb · MOVE {_n2(b['move'], 0) if b.get('move') is not None else '—'}. "
+             "Es un dato que vigilas, no una bala: aún no está medido como señal (tarea I-004 del compañero). No es asesoramiento.")
+    return "\n".join(L)
+
+
 def compute_balas(s):
     """Estado de las 4 balas de la reserva a partir del detector de caídas (s = compute_semaforo).
     Cada bala se usa UNA vez por caída. Guarda la memoria en balas_estado.json (y un historial de caídas cerradas)."""
@@ -23861,6 +24013,1099 @@ def balas_aviso(b, s):
         return None
 
 
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# v8.7 — PESTAÑA «🌪️ CAÍDA EN CURSO» (21-nov-2026)
+#   Todo lo de la caída en una pantalla, recalculado cada noche y guardado en caida_estado.json:
+#   1) dónde está cada índice (caída, sesiones, próximo escalón);
+#   2) PROBABILIDAD DE SUELO = media de dos medidas: el CICLO (tiempo + profundidad + rebote; caídas del propio índice
+#      desde 1950/1985, mismas casillas que el Radar de TradingView) y el MIEDO (estado del VIX/VIX3M; tabla del Radar,
+#      S&P 2009-2026); y cómo están las acciones (mínimos, sectores, rendición);
+#   3) PROBABILIDAD DE RECESIÓN = media de lo disponible: curva de tipos (modelo publicado de la Fed de Nueva York),
+#      regla de Sahm, paro semanal, crédito basura y mercado de apuestas (Polymarket). Con ella, el MODO de la escalera;
+#   4) LIQUIDEZ: Fed neta (balance − Tesoro − repos inversos), crédito, repo (SOFR − IORB), dólar y MOVE.
+#   Solo informa: no cambia el Plan de rebajas. Telegram solo cuando cambia el modo, cuando la probabilidad de recesión cruza
+#   30 % o 50 %, o cuando la liquidez pasa a tensa. Las series de FRED se guardan en historiales/ (respaldo y estudios).
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+CAI_FILE = os.path.join(SEGUIMIENTO_DIR, "caida_estado.json")
+CAI_HIST = os.path.join(SEGUIMIENTO_DIR, "historiales")
+CAI_XB = [0, 4, 8, 13, 21, 31, 46, 10 ** 6]                 # sesiones desde el máximo (como el Radar)
+CAI_YB = [2.5, 3.5, 5, 7.5, 10, 15, 20, 1e9]                # peor caída hasta hoy, %
+CAI_MIN = 8                                                 # mínimo de caídas por casilla (si no, se amplía)
+# Radar (pevr_radar.pine): % de caídas con el suelo ya hecho según el estado del miedo. Orden: PÁNICO VIVO, SE FUE,
+# ALIVIO, tensión, calma. S&P, Nasdaq, Dow y Russell; datos OANDA 2009-2026 (VIX3M desde 2009).
+CAI_FH = {"SPY": [57, 84, 83, 47, 52], "QQQ": [61, 93, 83, 50, 56], "DIA": [73, 91, 90, 39, 37], "IWM": [62, 81, 66, 56, 44]}
+CAI_FN = {"SPY": [10, 10, 21, 39, 40], "QQQ": [11, 11, 20, 48, 62], "DIA": [9, 9, 18, 34, 40], "IWM": [8, 8, 15, 30, 40]}
+CAI_MIEDO_TXT = ["PÁNICO VIVO", "SE FUE", "ALIVIO", "tensión", "calma"]
+CAI_NOMBRE = {"SPY": "S&amp;P 500", "QQQ": "Nasdaq 100", "DIA": "Dow Jones", "IWM": "Russell 2000"}
+# Mercado de apuestas: si Polymarket no responde, se puede poner a mano el % que veas: (37, "2026-11-21"). Caduca a los 7 días.
+CAI_MERCADO_MANUAL = None
+CAI_FRED_REC = {"T10Y3M": "1982-01-01", "SAHMREALTIME": None, "ICSA": "1990-01-01", "BAMLH0A0HYM2": "1997-01-01", "NFCI": "1990-01-01"}
+CAI_FRED_LIQ = {"WALCL": "2015-01-01", "WTREGEN": "2015-01-01", "RRPONTSYD": "2015-01-01", "SOFR": "2018-04-01", "IORB": "2021-07-01"}
+# Umbrales de liquidez (los mismos que pevr_liquidez.pine; referencias habituales, sin medir con nuestras caídas)
+CAI_LIQ_U = {"neta": -150.0, "hy": 5.0, "hy4": 0.75, "repo": 2.0, "dxy": 3.0, "move": 120.0}
+# Lo medido el 21-nov-2026 (S&P 1945-2026, fechas NBER): patrimonio a 3 años del primer −10 % con 4 tramos del 25 %.
+CAI_MODO_ESTUDIO = [
+    # (estrategia, con recesión x1 mediana, peor; sin recesión x1 mediana, tramos usados sin recesión)
+    ("Escalera −10/−15/−20/−30", "1,23", "0,76", "1,21", "1,9 de 4"),
+    ("Saltar un escalón: −15/−20/−30/−40", "1,23", "0,83", "1,00", "0,9 de 4"),
+    ("Por tiempo: −10 % y meses 3/6/9", "1,24", "0,68", "1,27", "2,5 de 4"),
+    ("Esperar: meses 6/9/12/15", "1,20", "0,73", "1,00", "1,1 de 4"),
+]
+
+
+def _cai_fred(sid, desde=None, corte=None):
+    """FRED sin key; si falla, la última copia guardada en historiales/fred_SID.csv. (serie, 'fred'|'copia'|None)."""
+    ruta = os.path.join(CAI_HIST, f"fred_{sid}.csv")
+    s, origen = None, None
+    if corte is None:
+        try:
+            s = _fred_csv(sid, desde, timeout=15)
+            if s is not None and len(s):
+                origen = "fred"
+                try:
+                    os.makedirs(CAI_HIST, exist_ok=True)
+                    viejo = None
+                    if os.path.exists(ruta):
+                        with open(ruta, "r", encoding="utf-8") as fh:
+                            ult = fh.read().strip().splitlines()[-1:]
+                        viejo = ult[0].split(",")[0] if ult else None
+                    if viejo != str(s.index[-1].date()):
+                        s.rename(sid).to_csv(ruta, index_label="fecha")
+                except Exception as _dege:
+                    _deg(f"caida:guardar_fred:{sid}", _dege)
+            time.sleep(0.3)
+        except Exception as _dege:
+            _deg(f"caida:fred:{sid}", _dege)
+            s = None
+    if s is None and os.path.exists(ruta):
+        try:
+            d = pd.read_csv(ruta, index_col=0, parse_dates=True)
+            s = pd.to_numeric(d.iloc[:, 0], errors="coerce").dropna()
+            origen = "copia"
+        except Exception as _dege:
+            _deg(f"caida:copia:{sid}", _dege)
+            s = None
+    if s is not None and corte is not None:
+        s = s[s.index <= pd.Timestamp(corte)]
+    return (s if s is not None and len(s) else None), origen
+
+
+def _cai_episodios(c, hl=None, U=2.5):
+    """Caídas ≥ U % desde el máximo histórico (como el Radar). Devuelve (episodios, H, L, C)."""
+    c = c.dropna()
+    if hl is not None and len(hl):
+        Hs = hl["High"].reindex(c.index).fillna(c)
+        Ls = hl["Low"].reindex(c.index).fillna(c)
+        Hs = np.maximum(Hs.values, c.values)
+        Ls = np.minimum(Ls.values, c.values)
+    else:
+        Hs, Ls = c.values, c.values
+    C = c.values.astype(float)
+    E, ia = [], 0
+    n = len(C)
+    for i in range(1, n + 1):
+        if i == n or Hs[i] >= Hs[ia]:
+            if i - ia > 1:
+                k = ia + 1 + int(np.argmin(Ls[ia + 1:i]))
+                dd = (1 - Ls[k] / Hs[ia]) * 100
+                if dd >= U:
+                    E.append({"ia": ia, "ik": k, "ib": i if i < n else -1, "dd": dd})
+            if i < n:
+                ia = i
+    return E, Hs, Ls, C, c.index
+
+
+def _cai_estados(E, Hs, Ls, C, U=2.5):
+    """Un registro por día de cada caída YA TERMINADA: sesiones (x), peor caída hasta ese día (y), rebote (z), suelo hecho."""
+    R = []
+    for n, e in enumerate(E):
+        if e["ib"] < 0:
+            continue
+        mn = np.inf
+        for d in range(e["ia"] + 1, e["ib"]):
+            mn = min(mn, Ls[d])
+            y = (1 - mn / Hs[e["ia"]]) * 100
+            if y < U:
+                continue
+            R.append((n, d - e["ia"], y, (C[d] / mn - 1) * 100, e["ik"] <= d, e["dd"]))
+    if not R:
+        return None
+    R = pd.DataFrame(R, columns=["ep", "x", "y", "z", "hecho", "fin"])
+    R["xi"] = np.searchsorted(CAI_XB, R.x, side="right") - 1
+    R["yi"] = np.searchsorted(CAI_YB, R.y, side="right") - 1
+    R["zi"] = (R.z >= 2).astype(int)
+    return R
+
+
+def _cai_casilla(R, xi, yi, zi):
+    """% de caídas con el suelo ya hecho en esa casilla (cada caída pesa lo mismo). Se amplía si hay < CAI_MIN caídas."""
+    # se amplía primero a casillas vecinas CON el mismo rebote (estar en el mínimo o haber rebotado cambia mucho
+    # la respuesta) y solo al final se junta todo
+    z = (R.zi == zi)
+    pruebas = [(R.xi == xi) & (R.yi == yi) & z,
+               (R.xi.between(xi - 1, xi + 1)) & (R.yi == yi) & z,
+               (R.xi == xi) & (R.yi.between(yi - 1, yi + 1)) & z,
+               (R.xi.between(xi - 1, xi + 1)) & (R.yi.between(yi - 1, yi + 1)) & z,
+               (R.xi.between(xi - 2, xi + 2)) & (R.yi.between(yi - 1, yi + 1)) & z,
+               (R.xi.between(xi - 1, xi + 1)) & (R.yi.between(yi - 1, yi + 1))]
+    for nivel, m in enumerate(pruebas):
+        x = R[m]
+        if x.ep.nunique() >= CAI_MIN or nivel == len(pruebas) - 1:
+            if not len(x):
+                return None
+            g = x.groupby("ep")
+            fin = g.fin.first()
+            return {"p": float(g.hecho.mean().mean() * 100), "n": int(x.ep.nunique()), "ampliada": nivel,
+                    "fin_med": float(fin.median()), "fin_p90": float(fin.quantile(0.9))}
+    return None
+
+
+def _cai_ciclo(sym, corte=None):
+    """Casilla de hoy del índice (serie larga de la tabla de caídas). None si no hay caída abierta ≥ 2,5 %."""
+    sr = DD4_SERIES.get(sym) or {}
+    c, hl = sr.get("c"), sr.get("hl")
+    if c is None or len(c.dropna()) < 2000:
+        return None
+    c = c.dropna()
+    if corte is not None:
+        c = c[c.index <= pd.Timestamp(corte)]
+        hl = hl[hl.index <= pd.Timestamp(corte)] if hl is not None else None
+    E, Hs, Ls, C, idx = _cai_episodios(c, hl)
+    if not E or E[-1]["ib"] != -1:
+        return {"sym": sym, "abierta": False}
+    e = E[-1]
+    mn = float(Ls[e["ia"] + 1:].min())
+    x = len(C) - 1 - e["ia"]
+    y = (1 - mn / Hs[e["ia"]]) * 100
+    z = (C[-1] / mn - 1) * 100
+    R = _cai_estados(E, Hs, Ls, C)
+    if R is None:
+        return None
+    xi = int(np.searchsorted(CAI_XB, x, side="right") - 1)
+    yi = int(np.searchsorted(CAI_YB, y, side="right") - 1)
+    st = _cai_casilla(R, xi, yi, int(z >= 2))
+    return {"sym": sym, "abierta": True, "x": int(x), "y": round(float(y), 1), "z": round(float(z), 1),
+            "dd_hoy": round(float((C[-1] / Hs[e["ia"]] - 1) * 100), 1), "pico": str(idx[e["ia"]].date()),
+            "desde": str(idx[0].date()), "n_caidas": int(len([q for q in E if q["ib"] >= 0])), "st": st}
+
+
+def _cai_miedo(s, corte=None):
+    """Estado del miedo como el Radar: 0 pánico vivo · 1 se fue (sin mínimo nuevo después) · 3 tensión · 4 calma."""
+    mer = (s or {}).get("mercado") or {}
+    pan = (s or {}).get("panico") or {}
+    t3, vix = pan.get("t3"), (s or {}).get("vix")
+    if (s or {}).get("panico_vivo"):
+        return 0, None
+    sf = mer.get("panico_se_fue")
+    if sf:
+        try:
+            c = (DD4_SERIES.get("SPY") or {}).get("c")
+            if c is not None:
+                c = c.dropna()
+                if corte is not None:
+                    c = c[c.index <= pd.Timestamp(corte)]
+                antes, despues = c[c.index <= pd.Timestamp(sf)], c[c.index > pd.Timestamp(sf)]
+                if len(despues) and len(antes) and float(despues.min()) < float(antes.iloc[-15:].min()) * 0.9995:
+                    return (3 if (vix or 0) >= 20 or (t3 or 0) >= 1.0 else 4), f"se fue el {_dm(sf)}, anulado por un mínimo nuevo"
+            return 1, f"se fue el {_dm(sf)}"
+        except Exception as _dege:
+            _deg("caida:miedo", _dege)
+    return (3 if (vix or 0) >= 20 or (t3 or 0) >= 1.0 else 4), None
+
+
+def _cai_wilson(k, n, z=1.96):
+    """Margen del 95 % para k casos de n (en %). Con pocos casos el margen es ancho: así se ve."""
+    if not n:
+        return None, None
+    p = k / n
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    m = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return round(max(0.0, c - m) * 100), round(min(1.0, c + m) * 100)
+
+
+CAI_TRAMOS = {"SPY": [15, 20, 30, 40], "QQQ": [25, 30, 40, 50], "DIA": [15, 20, 30, 40], "IWM": [25, 30, 40, 50]}
+
+
+def _cai_final(sym, corte=None):
+    """Hasta dónde puede llegar la caída: de las caídas ya terminadas del índice que llegaron a la profundidad de hoy a una
+    velocidad parecida (entre la mitad y el doble de sesiones; si hay menos de 8, entre un tercio y el triple; si no, todas),
+    cómo acabaron. Tramos que no se solapan y suman el 100 %; la probabilidad de llegar a cada escalón es la suma de los de debajo."""
+    sr = DD4_SERIES.get(sym) or {}
+    c, hl = sr.get("c"), sr.get("hl")
+    if c is None or len(c.dropna()) < 2000:
+        return None
+    c = c.dropna()
+    if corte is not None:
+        c = c[c.index <= pd.Timestamp(corte)]
+        hl = hl[hl.index <= pd.Timestamp(corte)] if hl is not None else None
+    E, Hs, Ls, C, idx = _cai_episodios(c, hl)
+    if not E or E[-1]["ib"] != -1:
+        return None
+    e0 = E[-1]
+    y = (1 - float(Ls[e0["ia"] + 1:].min()) / Hs[e0["ia"]]) * 100
+    x = len(C) - 1 - e0["ia"]
+    if y < 5:
+        return None
+    lleg = []
+    for e in E[:-1]:
+        if e["ib"] < 0 or e["dd"] < y:
+            continue
+        mn, ses = np.inf, None
+        for d in range(e["ia"] + 1, e["ib"]):
+            mn = min(mn, Ls[d])
+            if (1 - mn / Hs[e["ia"]]) * 100 >= y:
+                ses = d - e["ia"]
+                break
+        if ses is not None:
+            lleg.append((idx[e["ia"]].year, ses, e["dd"]))
+    usados, criterio = [], ""
+    for lo_f, hi_f, txt in ((0.5, 2.0, "entre la mitad y el doble de sesiones"), (1 / 3, 3.0, "entre un tercio y el triple de sesiones"), (0, 1e9, "a cualquier velocidad")):
+        usados = [q for q in lleg if lo_f * x <= q[1] <= hi_f * x]
+        criterio = txt
+        if len(usados) >= CAI_MIN:
+            break
+    n = len(usados)
+    if not n:
+        return None
+    fin = [q[2] for q in usados]
+    cortes = [t for t in CAI_TRAMOS.get(sym, [15, 20, 30, 40]) if t > y]
+    tramos, ant = [], y
+    for t in cortes:
+        k = sum(1 for f in fin if ant <= f < t)
+        tramos.append({"txt": f"−{_n2(ant, 1) if ant == y else format(ant, 'g')} a −{t:g} %", "k": k, "p": round(k / n * 100)})
+        ant = t
+    k = sum(1 for f in fin if f >= ant)
+    tramos.append({"txt": f"peor de −{ant:g} %" if cortes else f"peor de −{_n2(y, 1)} %", "k": k, "p": round(k / n * 100),
+                   "anios": sorted({q[0] for q in usados if q[2] >= ant})})
+    llegar = []
+    niveles = sorted({p_[1] for p_ in PLAN_REB if p_[0] == sym} | set(CAI_TRAMOS.get(sym, [])))
+    for L in niveles:
+        if L <= y:
+            continue
+        k = sum(1 for f in fin if f >= L)
+        lo, hi = _cai_wilson(k, n)
+        llegar.append({"niv": L, "k": k, "p": round(k / n * 100), "lo": lo, "hi": hi,
+                       "plan": any(p_[0] == sym and p_[1] == L for p_ in PLAN_REB)})
+    return {"sym": sym, "y": round(y, 1), "x": int(x), "n": n, "criterio": criterio, "tramos": tramos, "llegar": llegar,
+            "anios": sorted(q[0] for q in usados), "desde": str(idx[0].date())[:4]}
+
+
+def _cai_logist(x, centro, escala):
+    try:
+        return 100.0 / (1.0 + math.exp(-(float(x) - centro) / escala))
+    except Exception:
+        return None
+
+
+def _cai_polymarket():
+    """Probabilidad de recesión en EE. UU. en el mercado de Polymarket que acabe más tarde de 45 días desde hoy
+    (ahora, el de 2027). (pct, pregunta) o (None, motivo)."""
+    try:
+        r = requests.get("https://gamma-api.polymarket.com/public-search",
+                         params={"q": "US recession", "limit_per_type": 30, "events_status": "active"},
+                         timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+        if getattr(r, "status_code", 0) != 200:
+            return None, f"Polymarket respondió {getattr(r, 'status_code', '?')}"
+        js = r.json() or {}
+        hoy = pd.Timestamp(dt.date.today())
+        cands = []
+        for ev in (js.get("events") or []):
+            for m in (ev.get("markets") or []):
+                q = str(m.get("question") or ev.get("title") or "")
+                ql = q.lower()
+                if "recession" not in ql or m.get("closed"):
+                    continue
+                if not any(k in q for k in ("US ", "U.S.", "United States", "US recession")):
+                    continue
+                try:
+                    px = m.get("outcomePrices")
+                    px = json.loads(px) if isinstance(px, str) else px
+                    p = float(px[0]) * 100
+                except Exception:
+                    continue
+                fin = pd.to_datetime(m.get("endDate") or ev.get("endDate"), errors="coerce")
+                if fin is not None and pd.notna(fin):
+                    fin = fin.tz_localize(None) if getattr(fin, "tzinfo", None) else fin
+                if fin is None or pd.isna(fin) or fin < hoy + pd.Timedelta(days=45):
+                    continue
+                cands.append((fin, p, q))
+        if not cands:
+            return None, "Polymarket sin mercado de recesión abierto"
+        cands.sort(key=lambda t: t[0])
+        return round(cands[0][1], 1), cands[0][2]
+    except Exception as _dege:
+        _deg("caida:polymarket", _dege)
+        return None, "Polymarket no respondió"
+
+
+def _cai_recesion(corte=None):
+    """Probabilidad de UN suceso: «empieza una recesión en EE. UU. en los próximos ~12 meses». Solo se promedian
+    fuentes que estiman ese mismo suceso (curva de tipos con el modelo de la Fed de Nueva York y el mercado de apuestas).
+    Sahm, paro semanal y crédito no son probabilidades de ese suceso: van aparte como ALARMAS de que puede haber empezado."""
+    S, orig = {}, {}
+    for sid, desde in CAI_FRED_REC.items():
+        S[sid], orig[sid] = _cai_fred(sid, desde, corte)
+    comp, alar = [], []
+    out = {"origen": orig}
+    try:
+        s = S.get("T10Y3M")
+        if s is not None and len(s) >= 22:
+            sp = float(s.iloc[-22:].mean())
+            p = 100 * 0.5 * (1 + math.erf((-0.5333 - 0.6330 * sp) / math.sqrt(2)))
+            comp.append({"k": "curva", "nombre": "Curva de tipos (10 años − 3 meses)", "p": p,
+                         "dato": f"{_n2(sp)} puntos (media de un mes)", "fecha": str(s.index[-1].date()),
+                         "nota": "modelo publicado de la Fed de Nueva York: recesión en los próximos 12 meses"})
+    except Exception as _dege:
+        _deg("caida:curva", _dege)
+    try:
+        if corte is None:
+            p, q = _cai_polymarket()
+            if p is None and CAI_MERCADO_MANUAL:
+                pm, fm = CAI_MERCADO_MANUAL
+                if (pd.Timestamp(dt.date.today()) - pd.Timestamp(fm)).days <= 7:
+                    p, q = float(pm), f"puesto a mano el {_dm(fm)} (CAI_MERCADO_MANUAL)"
+            if p is not None:
+                comp.append({"k": "mercado", "nombre": "Mercado de apuestas (Polymarket)", "p": p, "dato": esc(str(q))[:110],
+                             "fecha": str(dt.date.today()), "nota": "dinero real; el mercado que antes se cierre pasados 45 días (ahora, hasta fin de 2027)"})
+            else:
+                out["mercado_motivo"] = q
+    except Exception as _dege:
+        _deg("caida:mercado", _dege)
+    # alarmas: (nombre, valor, texto, ámbar, rojo)
+    try:
+        s = S.get("SAHMREALTIME")
+        if s is not None and len(s):
+            v = float(s.iloc[-1])
+            alar.append({"k": "sahm", "nombre": "Regla de Sahm (paro)", "v": v, "dato": f"{_n2(v)}", "fecha": str(s.index[-1].date())[:7],
+                         "nivel": 2 if v >= 0.5 else 1 if v >= 0.3 else 0, "umbral": "ámbar 0,30 · rojo 0,50",
+                         "nota": "desde 1970 saltó al empezar todas las recesiones; una falsa alarma (2024)"})
+    except Exception as _dege:
+        _deg("caida:sahm", _dege)
+    try:
+        s = S.get("ICSA")
+        if s is not None and len(s) >= 60:
+            m4 = s.rolling(4).mean().dropna()
+            base = float(m4.iloc[-56:-4].min())
+            sube = (float(m4.iloc[-1]) / base - 1) * 100
+            alar.append({"k": "paro", "nombre": "Peticiones de paro semanales", "v": sube,
+                         "dato": f"{float(m4.iloc[-1]) / 1000:.0f} mil · {sube:+.0f} % sobre su mínimo del año", "fecha": str(s.index[-1].date()),
+                         "nivel": 2 if sube >= 20 else 1 if sube >= 10 else 0, "umbral": "ámbar +10 % · rojo +20 %",
+                         "nota": "subidas del 20-30 % solían llegar con las recesiones"})
+    except Exception as _dege:
+        _deg("caida:paro", _dege)
+    try:
+        s = S.get("BAMLH0A0HYM2")
+        if s is not None and len(s) >= 25:
+            v = float(s.iloc[-1])
+            out["hy"], out["hy4"] = v, v - float(s.iloc[-21])
+            alar.append({"k": "credito", "nombre": "Crédito basura (high yield)", "v": v,
+                         "dato": f"{_n2(v)} % · 4 semanas " + f"{out['hy4']:+.2f}".replace(".", ","), "fecha": str(s.index[-1].date()),
+                         "nivel": 2 if (v >= 5 or out["hy4"] >= 0.75) else 1 if v >= 4 else 0, "umbral": "ámbar 4 % · rojo 5 % o +0,75 en un mes",
+                         "nota": "en 2008 y 2020 pasó del 7-8 %; por debajo del 4 %, tranquilo"})
+    except Exception as _dege:
+        _deg("caida:hy", _dege)
+    try:
+        s = S.get("NFCI")
+        if s is not None and len(s):
+            out["nfci"], out["nfci_f"] = float(s.iloc[-1]), str(s.index[-1].date())
+    except Exception as _dege:
+        _deg("caida:nfci", _dege)
+    out["comp"], out["alarmas"] = comp, alar
+    rojas = sum(1 for a in alar if a["nivel"] == 2)
+    ambar = sum(1 for a in alar if a["nivel"] == 1)
+    out["rojas"], out["ambar"] = rojas, ambar
+    if comp:
+        out["p"] = round(float(np.mean([x["p"] for x in comp])), 0)
+    p = out.get("p")
+    if (p is not None and p >= 50) or rojas >= 2:
+        out["modo"] = "RECESIÓN"
+    elif (p is not None and p >= 30) or rojas == 1 or ambar >= 2:
+        out["modo"] = "VIGILANCIA"
+    elif p is not None or alar:
+        out["modo"] = "NORMAL"
+    return out
+
+
+def _cai_liquidez(rec, op, corte=None):
+    S = {}
+    for sid, desde in CAI_FRED_LIQ.items():
+        S[sid] = _cai_fred(sid, desde, corte)[0]
+    f, filas = 0, []
+    try:
+        W, T, Rr = S.get("WALCL"), S.get("WTREGEN"), S.get("RRPONTSYD")
+        if W is not None and T is not None and len(W) >= 6:
+            fechas = W.index[-6:]
+            neta = pd.Series([W.loc[d] / 1000 - float(T.asof(d)) / 1000 - (float(Rr.asof(d)) if Rr is not None and pd.notna(Rr.asof(d)) else 0.0)
+                              for d in fechas], index=fechas)
+            d4 = float(neta.iloc[-1] - neta.iloc[-5])
+            al = d4 <= CAI_LIQ_U["neta"]
+            f += al
+            filas.append(("Fed neta (balance − Tesoro − repos inversos)", f"{neta.iloc[-1]:,.0f} mil millones · 4 semanas {d4:+,.0f}".replace(",", "."), al,
+                          f"alarma si baja más de {abs(CAI_LIQ_U['neta']):.0f} mil millones en 4 semanas"))
+    except Exception as _dege:
+        _deg("caida:neta", _dege)
+    hy, hy4 = (rec or {}).get("hy"), (rec or {}).get("hy4")
+    if hy is not None:
+        al = hy >= CAI_LIQ_U["hy"] or (hy4 is not None and hy4 >= CAI_LIQ_U["hy4"])
+        f += al
+        filas.append(("Crédito basura (high yield)", f"{_n2(hy)} % · 4 semanas " + (f"{hy4:+.2f}".replace(".", ",") if hy4 is not None else "—"), al,
+                      f"alarma con {_n2(CAI_LIQ_U['hy'], 1)} % o +{_n2(CAI_LIQ_U['hy4'])} en un mes"))
+    try:
+        so, io = S.get("SOFR"), S.get("IORB")
+        if so is not None and io is not None and len(so):
+            rp = (float(so.iloc[-1]) - float(io.asof(so.index[-1]))) * 100
+            al = rp >= CAI_LIQ_U["repo"]
+            f += al
+            filas.append(("Repo a un día (SOFR − IORB)", f"{rp:+.0f} pb", al, f"alarma con +{CAI_LIQ_U['repo']:.0f} pb: faltan reservas en los bancos"))
+    except Exception as _dege:
+        _deg("caida:repo", _dege)
+    try:
+        hoy = pd.Timestamp(corte).date() if corte is not None else dt.date.today()
+        dx = fetch_yahoo("DX-Y.NYB", hoy - dt.timedelta(days=70), hoy)
+        if dx is not None and len(dx) >= 21:
+            ch = (float(dx["Close"].iloc[-1]) / float(dx["Close"].iloc[-21]) - 1) * 100
+            al = ch >= CAI_LIQ_U["dxy"]
+            f += al
+            filas.append(("Dólar (DXY), 20 sesiones", f"{ch:+.1f} %".replace(".", ","), al, f"alarma con +{CAI_LIQ_U['dxy']:.0f} %: todo el mundo busca dólares"))
+    except Exception as _dege:
+        _deg("caida:dxy", _dege)
+    mv = ((op or {}).get("bono") or {}).get("move")
+    if mv is not None:
+        al = mv >= CAI_LIQ_U["move"]
+        f += al
+        filas.append(("MOVE (miedo en los bonos)", f"{mv:.0f}", al, f"alarma con {CAI_LIQ_U['move']:.0f}"))
+    if not filas:
+        return None
+    nota = int(f)
+    est = "CRISIS" if nota >= 4 else "TENSA" if nota == 3 else "JUSTA" if nota == 2 else "HOLGADA"
+    return {"nota": nota, "n": len(filas), "estado": est, "filas": filas}
+
+
+def compute_caida_curso(op, daily=None, corte=None):
+    """Todo lo de la pestaña. Nunca rompe el build: cada bloque sale o dice que falta."""
+    op = op or {}
+    s = op.get("semaforo") or {}
+    out = {"fecha": s.get("fecha") or str(dt.date.today()), "idx": [], "eventos": [], "plan": op.get("plan_reb")}
+    # 1) índices: caída de la terminal (52 semanas con máximos de vela) + próximo escalón
+    try:
+        for fr in (s.get("filas") or []):
+            if fr.get("sym") not in ("SPY", "QQQ", "DIA", "IWM", "RSP"):
+                continue
+            prox = next((n for n in (fr.get("niveles") or []) if not n.get("toc")), None)
+            dia = None
+            try:
+                _cc = (daily or {}).get(fr["sym"])["Close"].dropna()
+                if corte is not None:
+                    _cc = _cc[_cc.index <= pd.Timestamp(corte)]
+                dia = round((float(_cc.iloc[-1]) / float(_cc.iloc[-2]) - 1) * 100, 1)
+            except Exception:
+                dia = None
+            out["idx"].append({"sym": fr["sym"], "dd": fr.get("dd"), "px": fr.get("px"), "pico": fr.get("pico"),
+                               "inicio": fr.get("inicio"), "hoy": dia,
+                               "prox": ({"niv": prox["niv"], "px": prox["px"],
+                                         "falta": (prox["px"] / fr["px"] - 1) * 100 if fr.get("px") else None} if prox else None)})
+    except Exception as _dege:
+        _deg("caida:indices", _dege)
+    # 2) suelo: ciclo + miedo
+    try:
+        em, em_txt = _cai_miedo(s, corte)
+        out["miedo"] = {"estado": em, "txt": CAI_MIEDO_TXT[em] + (f" ({em_txt})" if em_txt else ""),
+                        "t3": (s.get("panico") or {}).get("t3"), "vix": s.get("vix")}
+        sue = []
+        for sym in ("SPY", "QQQ", "DIA", "IWM"):
+            cy = _cai_ciclo(sym, corte)
+            if not cy or not cy.get("abierta") or not cy.get("st"):
+                continue
+            pm = CAI_FH[sym][em]
+            pc = cy["st"]["p"]
+            n_c, n_m = cy["st"]["n"], CAI_FN[sym][em]
+            sue.append({**cy, "p_ciclo": round(pc), "p_miedo": pm, "n_miedo": n_m, "p": round((pc + pm) / 2),
+                        "m_ciclo": _cai_wilson(round(pc / 100 * n_c), n_c), "m_miedo": _cai_wilson(round(pm / 100 * n_m), n_m)})
+        out["suelo"] = sue
+        out["final"] = [f_ for f_ in (_cai_final(sym, corte) for sym in ("SPY", "QQQ")) if f_]
+        out["acciones"] = {"nl": s.get("nl"), "rend": s.get("rendicion") or {},
+                           "sect": ((op.get("estr") or {}).get("sect") if isinstance(op.get("estr"), dict) else None)}
+    except Exception as _dege:
+        _deg("caida:suelo", _dege)
+    # 3) recesión y 4) liquidez
+    try:
+        out["rec"] = _cai_recesion(corte)
+    except Exception as _dege:
+        _deg("caida:recesion", _dege)
+        out["rec"] = None
+    try:
+        out["liq"] = _cai_liquidez(out.get("rec"), op, corte)
+    except Exception as _dege:
+        _deg("caida:liquidez", _dege)
+        out["liq"] = None
+    # registro diario + avisos
+    try:
+        est = {}
+        if os.path.exists(CAI_FILE):
+            with open(CAI_FILE, "r", encoding="utf-8") as fh:
+                est = json.load(fh) or {}
+        dias = est.get("dias") or {}
+        f = str(out["fecha"])
+        spy = next((x for x in (out.get("suelo") or []) if x["sym"] == "SPY"), None)
+        rec = out.get("rec") or {}
+        liq = out.get("liq") or {}
+        prev = [dias[k] for k in sorted(dias) if k < f]
+        prev = prev[-1] if prev else {}
+        hoy_reg = {"suelo": spy["p"] if spy else None, "ciclo": spy["p_ciclo"] if spy else None, "miedo": spy["p_miedo"] if spy else None,
+                   "rec": rec.get("p"), "modo": rec.get("modo"), "liq": liq.get("nota"),
+                   "dd": {x["sym"]: x["dd"] for x in out["idx"] if x.get("dd") is not None},
+                   "comp": {x["k"]: round(x["p"]) for x in (rec.get("comp") or [])}, "alarmas": rec.get("rojas")}
+        ev = []
+        if rec.get("modo") and prev.get("modo") and rec["modo"] != prev["modo"]:
+            ev.append(f"el modo de la escalera pasa de {prev['modo']} a {rec['modo']}")
+        for lin in (30, 50):
+            if rec.get("p") is not None and prev.get("rec") is not None and prev["rec"] < lin <= rec["p"]:
+                ev.append(f"la probabilidad de recesión sube del {lin} % ({rec['p']:.0f} %)")
+        if liq.get("nota") is not None and liq["nota"] >= 3 and (prev.get("liq") is None or prev["liq"] < 3):
+            ev.append(f"la liquidez pasa a {liq.get('estado')} ({liq['nota']}/{liq.get('n')})")
+        out["eventos"] = ev
+        out["hist"] = [(k, dias[k]) for k in sorted(dias) if k < f][-119:] + [(f, hoy_reg)]
+        avisado = est.get("avisado") or {}
+        if ev and avisado.get(f) != ev:
+            out["msg"] = ("🌪️ CAÍDA EN CURSO — " + "; ".join(ev) + ".\n"
+                          + (f"Suelo S&P {spy['p']} % · " if spy else "") + (f"recesión {rec['p']:.0f} % ({rec.get('modo')})" if rec.get("p") is not None else "")
+                          + "\nMira la pestaña 🌪️ de la terminal. Solo informa: no cambia el Plan de rebajas.")
+            avisado = {f: ev}
+        if corte is None and not VIAJE_A:
+            dias[f] = hoy_reg
+            dias = {k: dias[k] for k in sorted(dias)[-500:]}
+            guardar_json_seguro(CAI_FILE, {"dias": dias, "avisado": avisado, "version": "v8.7"}, indent=0)
+    except Exception as _dege:
+        _deg("caida:registro", _dege)
+    return out
+
+
+def _cai_spark(vals, col, W=300, H=46):
+    """Línea de 0 a 100 con los últimos días (None se salta)."""
+    pts = [(i, v) for i, v in enumerate(vals) if v is not None]
+    if len(pts) < 2:
+        return "<div style='font-size:11px;color:#5E708A'>el gráfico sale cuando haya al menos 2 días guardados</div>"
+    n = max(len(vals) - 1, 1)
+    xy = " ".join(f"{i / n * (W - 4) + 2:.1f},{H - 2 - v / 100 * (H - 4):.1f}" for i, v in pts)
+    lin = "".join(f"<line x1='0' x2='{W}' y1='{H - 2 - y / 100 * (H - 4):.1f}' y2='{H - 2 - y / 100 * (H - 4):.1f}' stroke='#223049' stroke-dasharray='3,3'/>" for y in (30, 50))
+    return (f"<svg width='100%' viewBox='0 0 {W} {H}' preserveAspectRatio='none' style='max-width:{W}px;height:{H}px'>{lin}"
+            f"<polyline points='{xy}' fill='none' stroke='{col}' stroke-width='2'/></svg>")
+
+
+def _cai_x10(p):
+    return max(0, min(10, int((p or 0) / 10 + 0.5)))
+
+
+def _cai_sencillo(c):
+    """Lo de la pestaña contado como a un amigo: frases cortas y «X de cada 10»."""
+    L = []
+    try:
+        sue = {x["sym"]: x for x in (c.get("suelo") or [])}
+        fin = {x["sym"]: x for x in (c.get("final") or [])}
+        idx = {x["sym"]: x for x in (c.get("idx") or [])}
+        for sym, nom in (("SPY", "El S&amp;P 500"), ("QQQ", "El Nasdaq")):
+            su, fi, ix = sue.get(sym), fin.get(sym), idx.get(sym)
+            if not (su or fi or ix):
+                continue
+            t = []
+            if ix and ix.get("dd") is not None:
+                t.append(f"{nom} está un <b>{_n2(abs(ix['dd']), 1)} %</b> por debajo de su máximo"
+                         + (f" y lleva <b>{su['x']} sesiones</b> cayendo." if su else "."))
+            if su:
+                t.append(f"<b>¿Ya está el suelo?</b> En las caídas del pasado que iban igual, en <b>{_cai_x10(su['p'])} de cada 10</b> ya se había "
+                         f"visto ({su['p']} %). Son pocos casos: tómalo como orientación, no como certeza.")
+            if fi and fi.get("tramos"):
+                top = max(fi["tramos"], key=lambda q: q["k"])
+                def _tr(q):
+                    return q["txt"].replace("peor de", "por debajo de") if q["txt"].startswith("peor") else "entre " + q["txt"].replace(" a ", " y ")
+                t.append(f"<b>¿Hasta dónde?</b> Lo más repetido fue acabar {_tr(top)} "
+                         f"({top['k']} de {fi['n']} caídas parecidas).")
+                ult = fi["tramos"][-1]
+                if ult["k"] and ult is not top:
+                    t.append(f"Ojo: {ult['k']} de {fi['n']} {'acabaron' if ult['k'] > 1 else 'acabó'} {_tr(ult)}"
+                             + (f" ({', '.join(str(a) for a in ult.get('anios', []))})" if ult.get("anios") else "") + ".")
+                _pend = sorted(r["niv"] for r in ((c.get("plan") or {}).get("pasos") or []) if r["sym"] == sym and not r["fecha"])
+                sig = next((q for q in fi.get("llegar") or [] if q["plan"] and (not _pend or q["niv"] == _pend[0])), None)
+                if sig:
+                    t.append(f"Que llegue a tu siguiente escalón (−{sig['niv']:g} %) pasó en <b>{sig['k']} de {fi['n']}</b>.")
+            L.append(" ".join(t))
+        rec = c.get("rec") or {}
+        if rec.get("p") is not None or rec.get("alarmas"):
+            rj = rec.get("rojas", 0)
+            L.append(f"<b>¿Viene una recesión?</b> La probabilidad de que empiece una en los próximos 12 meses es de un <b>{int(rec.get('p') or 0)} %</b> "
+                     f"(más o menos {_cai_x10(rec.get('p'))} de cada 10). Alarmas de que ya ha empezado: <b>{rj if rj else 'ninguna'}</b>"
+                     + (" encendida" + ("s" if rj > 1 else "") if rj else "") + ". "
+                     + {"NORMAL": "El plan sigue tal cual.", "VIGILANCIA": "Vigilar: los escalones hondos, sin prisa y sin x3 de más.",
+                        "RECESIÓN": "Modo recesión: guardar algo de dinero para caídas de −30/−40 %."}.get(rec.get("modo"), ""))
+        liq = c.get("liq") or {}
+        if liq:
+            L.append(f"<b>¿Falta dinero en el sistema?</b> {'No' if liq['nota'] <= 1 else 'Algo' if liq['nota'] == 2 else 'Sí'}: "
+                     f"{liq['nota']} de {liq['n']} alarmas. "
+                     + ("Si todo está tranquilo mientras la bolsa cae, es una caída de precios, no una crisis financiera." if liq["nota"] <= 1 else ""))
+    except Exception as _dege:
+        _deg("caida:sencillo", _dege)
+    return L
+
+
+def _caida_html(c):
+    V, A, R, G = "#2FD08A", "#F4B740", "#F4607A", "#9FB0C8"
+    if not c:
+        return ("<div class='panel full'><h2>🌪️ Caída en curso</h2><div class='note'>Hoy no se ha podido calcular "
+                "(mira Salud del build en la pestaña PRO).</div></div>")
+    h = []
+    def card(tit, val, col, sub):
+        return (f"<div style='flex:1;min-width:190px;border:1px solid #223049;border-radius:8px;padding:8px 10px'>"
+                f"<div style='font-size:11px;color:#9FB0C8'>{tit}</div><div style='font-size:22px;font-weight:800;color:{col}'>{val}</div>"
+                f"<div style='font-size:11px;color:#9FB0C8;line-height:1.45'>{sub}</div></div>")
+    spy = next((x for x in (c.get("suelo") or []) if x["sym"] == "SPY"), None)
+    rec = c.get("rec") or {}
+    liq = c.get("liq") or {}
+    modo = rec.get("modo")
+    mcol = {"NORMAL": V, "VIGILANCIA": A, "RECESIÓN": R}.get(modo, G)
+    # ── cabecera: tres números ───────────────────────────────────────
+    try:
+        hist = c.get("hist") or []
+        c1 = card("Probabilidad de que el suelo del S&amp;P ya esté hecho", (f"{spy['p']} %" if spy else "—"),
+                  (V if spy and spy["p"] >= 65 else A if spy and spy["p"] >= 45 else R) if spy else G,
+                  (f"media de ciclo {spy['p_ciclo']} % y miedo {spy['p_miedo']} %" if spy else "sin caída abierta o sin datos")
+                  + _cai_spark([d.get("suelo") for _, d in hist], V))
+        c2 = card("Probabilidad de recesión", (f"{rec['p']:.0f} %" if rec.get("p") is not None else "—"),
+                  mcol, (f"en ~12 meses · modo de la escalera: <b style='color:{mcol}'>{modo}</b> · alarmas rojas {rec.get('rojas', 0)} de {len(rec.get('alarmas') or [])}" if modo else "sin datos de FRED ni del mercado")
+                  + _cai_spark([d.get("rec") for _, d in hist], R))
+        c3 = card("Liquidez del sistema", (f"{liq['estado']} · {liq['nota']}/{liq['n']}" if liq else "—"),
+                  ({"HOLGADA": V, "JUSTA": A}.get(liq.get("estado"), R) if liq else G),
+                  "Fed, crédito, repo, dólar y MOVE; 3 alarmas o más = tensa")
+        h.append("<div class='panel full'><h2>🌪️ Caída en curso</h2>"
+                 f"<div style='font-size:12px;color:#9FB0C8;margin-bottom:8px'>Cierre del {esc(_dm(c.get('fecha')))} · se recalcula cada noche y se guarda "
+                 "en caida_estado.json · <b>solo informa: no cambia el Plan de rebajas</b></div>"
+                 f"<div style='display:flex;flex-wrap:wrap;gap:8px'>{c1}{c2}{c3}</div>"
+                 + ("<div style='margin-top:8px;font-size:12.5px;color:#F4B740'>Hoy: " + esc("; ".join(c.get("eventos") or [])) + "</div>" if c.get("eventos") else "")
+                 + "</div>")
+    except Exception as _dege:
+        _deg("caida:html:cab", _dege)
+    try:
+        _ss = _cai_sencillo(c)
+        if _ss:
+            h.append("<div class='panel full'><h2>📖 En palabras sencillas</h2>"
+                     + "".join(f"<p style='margin:6px 0;font-size:14px;line-height:1.55'>{x}</p>" for x in _ss)
+                     + "<div class='note'><b>Cómo leer los números:</b> «4 de cada 10» = de cada 10 caídas parecidas del pasado, en 4 pasó eso. "
+                       "«Puede estar entre 30 y 80 %» = como hay pocas caídas para comparar, el dato baila mucho: cuanto más ancho, menos fiarse. "
+                       "Nada de esto dice lo que va a pasar; dice lo que pasó otras veces.</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:sencillo", _dege)
+    try:
+        if PLAN_REB_ACTIVO and c.get("plan"):
+            h.append(_plan_rebajas_html(c["plan"], titulo="🛒 Plan de rebajas (el único plan)"))
+    except Exception as _dege:
+        _deg("caida:html:plan", _dege)
+    # ── 1) dónde estamos ─────────────────────────────────────────────
+    try:
+        fil = []
+        for x in c.get("idx") or []:
+            pr = x.get("prox")
+            _pp = [r for r in ((c.get("plan") or {}).get("pasos") or []) if r["sym"] == x["sym"] and not r["fecha"]]
+            if PLAN_REB_ACTIVO and c.get("plan"):
+                pr = ({"niv": _pp[0]["niv"], "px": _pp[0]["px_niv"], "falta": _pp[0]["falta"]} if _pp else None)
+            fil.append(f"<tr><td><b>{esc(x['sym'])}</b></td><td class='r' style='color:{R if (x.get('dd') or 0) <= -10 else A}'>{_n2(x.get('dd'), 1)} %</td>"
+                       f"<td class='r'>{_n2(x.get('hoy'), 1) + ' %' if x.get('hoy') is not None else '—'}</td>"
+                       f"<td>{esc(_dm(x.get('inicio'))) if x.get('inicio') else '—'}</td>"
+                       + (f"<td>−{pr['niv']:g} % en {_n2(pr['px'])} (falta {_n2(pr['falta'], 1)} %)</td>" if pr
+                          else ("<td style='color:#5E708A'>no está en el plan</td>" if PLAN_REB_ACTIVO and c.get("plan") and x["sym"] not in {q[0] for q in PLAN_REB}
+                                else "<td>todos tocados</td>")) + "</tr>")
+        h.append("<div class='panel full'><h2>① Dónde estamos</h2><div style='overflow-x:auto'><table class='tbl' style='min-width:640px'><tr><th>Índice</th><th class='r'>Desde el máximo</th>"
+                 "<th class='r'>Hoy</th><th>En caída desde</th><th>Próximo escalón del plan</th></tr>" + "".join(fil) + "</table></div>"
+                 "<div class='note'>Máximo de 52 semanas con máximos de vela, el mismo de las balas.</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:idx", _dege)
+    # ── 2) suelo ─────────────────────────────────────────────────────
+    try:
+        fil = []
+        for x in c.get("suelo") or []:
+            st = x["st"]
+            fil.append(f"<tr><td><b>{esc(x['sym'])}</b></td><td class='r'>{x['x']}</td><td class='r'>−{_n2(x['y'], 1)} %</td><td class='r'>{_n2(x['z'], 1)} %</td>"
+                       f"<td class='r'>{x['p_ciclo']} % <span style='color:#5E708A'>({st['n']}{'*' if st['ampliada'] else ''}; {x['m_ciclo'][0]}–{x['m_ciclo'][1]})</span></td>"
+                       f"<td class='r'>{x['p_miedo']} % <span style='color:#5E708A'>({x['n_miedo']}; {x['m_miedo'][0]}–{x['m_miedo'][1]})</span></td>"
+                       f"<td class='r'><b style='color:{V if x['p'] >= 65 else A if x['p'] >= 45 else R}'>{x['p']} %</b></td>"
+                       f"<td class='r'>−{_n2(max(st['fin_med'], x['y']), 1)} / −{_n2(max(st['fin_p90'], x['y']), 1)} %</td></tr>")
+        m = c.get("miedo") or {}
+        a = c.get("acciones") or {}
+        rd = a.get("rend") or {}
+        acc = (f"Acciones del S&amp;P en mínimos de un año: <b>{_n2(a.get('nl'), 1)} %</b> (rendición con {SEM_REND_NL:g} %) · "
+               f"sectores sacando dinero: <b>{rd.get('sect_sale', '—')}</b> (con {SEM_REND_SECT}) · rendición total: "
+               + ("<b style='color:#2FD08A'>SÍ</b>" if rd.get("hoy") else (f"la hubo el {_dm(rd['fecha'])}" if rd.get("fecha") else "<b>no</b>")))
+        h.append("<div class='panel full'><h2>② ¿Ya hemos visto el suelo?</h2>"
+                 f"<div style='font-size:12.5px;margin-bottom:6px'>Miedo: <b>{esc(m.get('txt', '—'))}</b>"
+                 + (f" · VIX/VIX3M {_n2(m.get('t3'))}" if m.get("t3") is not None else "") + (f" · VIX {_n2(m.get('vix'), 1)}" if m.get("vix") is not None else "")
+                 + f"<br>{acc}</div>"
+                 "<div style='overflow-x:auto'><table class='tbl' style='min-width:640px'><tr><th>Índice</th><th class='r'>Sesiones</th><th class='r'>Peor</th><th class='r'>Rebote</th>"
+                 "<th class='r'>Por tiempo y caída</th><th class='r'>Por el miedo</th><th class='r'>Media</th><th class='r'>Si sigue: final normal / malo</th></tr>"
+                 + "".join(fil) + "</table></div>"
+                 "<div class='note'><b>Por tiempo y caída:</b> de las caídas del pasado del mismo índice que llevaban un tiempo y una caída parecidos "
+                 "a hoy, en cuántas ya se había visto el suelo. <b>Por el miedo:</b> lo mismo, pero mirando cómo estaba el miedo (VIX). "
+                 "<b>Media:</b> la de las dos. Entre paréntesis, cuántas caídas hay detrás y entre qué valores puede estar el dato real "
+                 "(con pocas caídas, el rango es ancho). <b>Final normal / malo:</b> dónde acabaron normalmente esas caídas y dónde acabaron las peores. "
+                 "Ojo: saber que el suelo está cerca no significa ganar más esperando; el compañero no vio mejores entradas por esperar a que «se vaya el pánico».</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:suelo", _dege)
+    # ── 2b) hasta dónde puede llegar ─────────────────────────────────
+    try:
+        bl = []
+        for f_ in c.get("final") or []:
+            nom = CAI_NOMBRE.get(f_["sym"], f_["sym"])
+            tr = "".join(f"<tr><td>{t['txt']}</td><td class='r'>{t['k']}</td><td class='r'><b>{t['p']} %</b></td>"
+                         f"<td style='color:#9FB0C8'>{', '.join(str(a) for a in t.get('anios', []))}</td></tr>" for t in f_["tramos"])
+            ll = "".join(f"<tr><td>−{q['niv']:g} %{' <b style=color:#4CC2E0>(escalón del plan)</b>' if q['plan'] else ''}</td>"
+                         f"<td class='r'><b>{q['p']} %</b></td><td class='r' style='color:#9FB0C8'>{q['lo']}–{q['hi']} %</td><td class='r'>{q['k']} de {f_['n']}</td></tr>"
+                         for q in f_["llegar"])
+            bl.append(f"<div style='margin-top:8px'><div style='font-size:13.5px;font-weight:800'>{nom}: va por −{_n2(f_['y'], 1)} % en {f_['x']} sesiones</div>"
+                      f"<div style='font-size:12px;color:#9FB0C8;margin:2px 0 4px'>{f_['n']} caídas del índice (desde {f_['desde']}) que llegaron a −{_n2(f_['y'], 1)} % "
+                      f"{f_['criterio']}: {', '.join(str(a) for a in f_['anios'])}</div>"
+                      "<div style='display:flex;flex-wrap:wrap;gap:12px'>"
+                      "<div style='overflow-x:auto;flex:1;min-width:280px'><table class='tbl'><tr><th>Cómo acabaron</th><th class='r'>Caídas</th><th class='r'>%</th><th>Años</th></tr>"
+                      + tr + f"<tr><td><b>Total</b></td><td class='r'>{f_['n']}</td><td class='r'><b>100 %</b></td><td></td></tr></table></div>"
+                      "<div style='overflow-x:auto;flex:1;min-width:280px'><table class='tbl'><tr><th>¿Llega a…?</th><th class='r'>Prob.</th><th class='r'>Puede estar entre</th><th class='r'>Casos</th></tr>"
+                      + ll + "</table></div></div></div>")
+        if bl:
+            h.append("<div class='panel full'><h2>② b · ¿Hasta dónde puede llegar?</h2>" + "".join(bl)
+                     + "<div class='note'><b>Cómo se lee:</b> la tabla de la izquierda dice dónde acabaron las caídas pasadas parecidas a la de hoy; "
+                       "cada una acaba en una sola fila, por eso suman 100 %. La de la derecha dice cuántas llegaron a cada nivel (se suman las filas de ese "
+                       "nivel hacia abajo). Sirve para saber cuánto dinero del plan es probable que llegue a usarse. Con pocas caídas, el rango «puede estar entre» es ancho.</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:final", _dege)
+    # ── 3) recesión ──────────────────────────────────────────────────
+    try:
+        fil = []
+        for x in rec.get("comp") or []:
+            fil.append(f"<tr><td>{esc(x['nombre'])}</td><td class='r'><b style='color:{R if x['p'] >= 50 else A if x['p'] >= 30 else V}'>{x['p']:.0f} %</b></td>"
+                       f"<td>{x['dato']}</td><td style='color:#9FB0C8'>{esc(x.get('fecha', ''))}</td><td style='color:#9FB0C8'>{esc(x['nota'])}</td></tr>")
+        if rec.get("mercado_motivo"):
+            fil.append(f"<tr><td>Mercado de apuestas</td><td class='r'>—</td><td colspan='3' style='color:#9FB0C8'>{esc(rec['mercado_motivo'])} · "
+                       "se puede poner a mano en CAI_MERCADO_MANUAL</td></tr>")
+        fal = "".join(f"<tr><td>{esc(a['nombre'])}</td><td><b style='color:{[V, A, R][a['nivel']]}'>{['tranquila', 'ÁMBAR', 'ROJA'][a['nivel']]}</b></td>"
+                      f"<td>{a['dato']}</td><td style='color:#9FB0C8'>{esc(a['umbral'])}</td><td style='color:#9FB0C8'>{esc(a['nota'])}</td></tr>"
+                      for a in rec.get("alarmas") or [])
+        nf = (f" · Condiciones financieras de la Fed de Chicago (NFCI): <b>{_n2(rec['nfci'])}</b> (positivo = más duras que la media)" if rec.get("nfci") is not None else "")
+        est_rows = "".join(f"<tr><td>{a}</td><td class='r'>{b}</td><td class='r'>{c_}</td><td class='r'>{d}</td><td class='r'>{e}</td></tr>" for a, b, c_, d, e in CAI_MODO_ESTUDIO)
+        txt_modo = {"NORMAL": "Escalera tal cual. Lo medido: sin recesión, saltarse escalones o esperar deja el dinero parado (mediana 1,00 a 3 años frente a 1,21).",
+                    "VIGILANCIA": "Escalera tal cual, pero los escalones hondos (−20 % o más) en x2 y no en x3, y vigilando el paro y el crédito.",
+                    "RECESIÓN": "Guardar un tramo para −30/−40 % y no usar x3 en los hondos. Lo medido: saltar un escalón no mejoró la mediana en recesión "
+                                "(1,23 igual), solo el peor caso (0,83 frente a 0,76); sirve para aguantar un 2000 o un 2008, no para ganar más."}.get(modo, "")
+        h.append("<div class='panel full'><h2>③ ¿Viene una recesión?</h2>"
+                 f"<div style='font-size:13px;margin-bottom:6px'>Probabilidad de que <b>empiece una recesión en EE. UU. en los próximos ~12 meses</b>: "
+                 f"<b style='color:{mcol}'>{(str(int(rec['p'])) + ' %') if rec.get('p') is not None else '—'}</b> · alarmas de que ya ha empezado: "
+                 f"<b>{rec.get('rojas', 0)} rojas, {rec.get('ambar', 0)} ámbar</b> de {len(rec.get('alarmas') or [])} · modo de la escalera: <b style='color:{mcol}'>{modo or '—'}</b>"
+                 f"<br><span style='color:#9FB0C8'>{txt_modo}</span>{nf}</div>"
+                 "<div style='overflow-x:auto'><table class='tbl' style='min-width:640px'><tr><th>Probabilidad del suceso</th><th class='r'>Prob.</th><th>Dato</th><th>Fecha</th><th>Qué mide</th></tr>" + "".join(fil) + "</table></div>"
+                 "<div style='overflow-x:auto;margin-top:6px'><table class='tbl' style='min-width:640px'><tr><th>Alarma</th><th>Estado</th><th>Dato</th><th>Umbrales</th><th>Cómo leerla</th></tr>" + fal + "</table></div>"
+                 "<div class='note'><b>Cómo se lee:</b> arriba, dos estimaciones de lo mismo (que empiece una recesión en el próximo año): la curva de tipos "
+                 "(cuando el interés a corto plazo supera al de largo, suele venir recesión) y la gente apostando dinero real. Se hace la media de las dos. "
+                 "Abajo, tres alarmas que suelen encenderse cuando la recesión ya ha empezado: el paro sube (Sahm y peticiones de paro) y el crédito "
+                 "para empresas arriesgadas se encarece. "
+                 "<b>Modo:</b> RECESIÓN si la probabilidad llega al 50 % o hay 2 alarmas rojas; VIGILANCIA si llega al 30 %, o hay 1 roja o 2 ámbar; si no, NORMAL. "
+                 "Por qué importa: en las caídas del S&amp;P del 15 % o más, con recesión la media fue −35 % y unos 17 meses hasta el suelo; sin ella, −22 % y unos 3 meses.</div>"
+                 "<h3 style='margin:10px 0 4px;font-size:13px'>¿Saltarse escalones o entrar por tiempo? (S&amp;P 1945-2026, 4 tramos, patrimonio a 3 años del primer −10 %)</h3>"
+                 "<div style='overflow-x:auto'><table class='tbl' style='min-width:640px'><tr><th>Estrategia</th><th class='r'>Con recesión (10): mediana</th><th class='r'>peor</th>"
+                 "<th class='r'>Sin recesión (14): mediana</th><th class='r'>tramos usados</th></tr>" + est_rows + "</table></div>"
+                 "<div class='note'>x1, dividendos incluidos; 1,00 = no ganar nada (lo no invertido queda en liquidez sin interés). En recesión todas acaban "
+                 "parecido; saltar o esperar solo mejora el peor caso (2000, 2008) y, si no hay recesión, deja el dinero parado. Con x2 lo mismo: "
+                 "escalera 1,36 / 1,32 frente a saltar 1,35 / 1,00. Pocas caídas: pista, no prueba.</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:rec", _dege)
+    # ── 4) liquidez ──────────────────────────────────────────────────
+    try:
+        if liq:
+            fil = "".join(f"<tr><td>{esc(n)}</td><td><b style='color:{R if al else V}'>{v}</b></td><td style='color:#9FB0C8'>{esc(t)}</td></tr>" for n, v, al, t in liq["filas"])
+            h.append("<div class='panel full'><h2>④ Liquidez del sistema</h2>"
+                     f"<div style='font-size:13px;margin-bottom:6px'><b>{liq['estado']}</b> · {liq['nota']} alarma(s) de {liq['n']}</div>"
+                     "<div style='overflow-x:auto'><table class='tbl' style='min-width:640px'><tr><th>Pieza</th><th>Hoy</th><th>Alarma</th></tr>" + fil + "</table></div>"
+                     "<div class='note'>Mide si falta dinero en el sistema (Fed, bancos, crédito), no la profundidad de las órdenes en un día de pánico. "
+                     "Si todo está tranquilo mientras la bolsa cae, la caída es de precios (como 2022 o el principio de 2000), no una crisis financiera. "
+                     "Umbrales de referencia, sin medir con nuestras caídas.</div></div>")
+    except Exception as _dege:
+        _deg("caida:html:liq", _dege)
+    h.append("<div class='panel full'><div class='note'>Qué vigilar: VIX/VIX3M (≥ 1,10 pánico; &lt; 1,00 se va), acciones en mínimos (≥ 20 % rendición), "
+             "Sahm hacia 0,50 y crédito por encima del 4-5 % (recesión), y la liquidez. No es asesoramiento.</div></div>")
+    return "".join(h)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# v8.7 — 🛒 PLAN DE REBAJAS (21-nov-2026): una sola tabla, el ÚNICO plan (sustituye a las 4 balas)
+#   Cada escalón: índice, caída desde su máximo, dinero y qué se compra. Se actúa con el CIERRE del día.
+#   Salidas: los x3/x2 pasan al ETF normal del mismo índice cuando el índice recupera 1/3 de toda la caída
+#   (los x3 de los escalones hondos, 1/2); todo se vende cuando el índice vuelve a su máximo.
+#   Escalones hondos del Nasdaq: x3 solo si el VIX cierra ≥ PLAN_REB_VIX ese día (pánico, como 2008); si no,
+#   ETF normal (2000: llegaron con VIX 27-32 y el Nasdaq siguió hasta −83 %). Medido en QQQ 1999-2026 (pista).
+#   El máximo de cada caída se queda fijo hasta que se recupera (no se rearma a las 52 semanas).
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+PLAN_REB_ACTIVO = True          # False = vuelven las 4 balas como plan
+PLAN_REB_EUR = 5000.0           # dinero total del plan (configuración: cámbialo aquí)
+PLAN_REB_VIX = 40.0             # escalones «vix»: x3 si el VIX cierra ≥ esto el día del escalón; si no, normal
+PLAN_REB_FILE = os.path.join(SEGUIMIENTO_DIR, "plan_rebajas_estado.json")
+# (índice, caída %, parte del dinero, producto: "x3", "x2", "normal" o "vix")
+PLAN_REB = [
+    ("SPY", 10, 0.10, "x3"),
+    ("QQQ", 20, 0.10, "x3"),
+    ("SPY", 15, 0.10, "x3"),
+    ("QQQ", 25, 0.15, "x3"),
+    ("SPY", 20, 0.10, "x2"),
+    ("QQQ", 30, 0.15, "x2"),
+    ("QQQ", 40, 0.15, "vix"),
+    ("QQQ", 50, 0.15, "vix"),
+]
+PLAN_REB_NOMBRE = {"SPY": "S&P 500", "QQQ": "Nasdaq 100", "DIA": "Dow Jones", "IWM": "Russell 2000"}
+
+
+def _preb_vix(s):
+    """Cierres del VIX: copia del repo (historiales/cboe_vix.csv) y, si es vieja, CBOE; el de hoy, el del detector."""
+    v = None
+    try:
+        ruta = os.path.join(SEGUIMIENTO_DIR, "historiales", "cboe_vix.csv")
+        if os.path.exists(ruta):
+            d = pd.read_csv(ruta)
+            d.columns = [str(c).strip().upper() for c in d.columns]
+            v = pd.Series(pd.to_numeric(d["CLOSE"], errors="coerce").values,
+                          index=pd.to_datetime(d["DATE"], format="mixed", errors="coerce")).dropna().sort_index()
+        if v is None or len(v) == 0 or v.index[-1] < pd.Timestamp(dt.date.today()) - pd.Timedelta(days=7):
+            v2 = _sem_cboe("VIX")
+            if v2 is not None:
+                v = v2
+    except Exception as _dege:
+        _deg("plan_reb:vix", _dege)
+    try:
+        if (s or {}).get("vix") is not None and (s or {}).get("fecha"):
+            v = (v if v is not None else pd.Series(dtype=float)).copy()
+            v.loc[pd.Timestamp(s["fecha"])] = float(s["vix"])
+            v = v[~v.index.duplicated(keep="last")].sort_index()
+    except Exception as _dege:
+        _deg("plan_reb:vix_hoy", _dege)
+    return v
+
+
+def compute_plan_rebajas(s, daily, corte=None):
+    """Repite cada día la caída de cada índice desde su máximo y dice qué toca. Nunca rompe el build."""
+    s = s or {}
+    est = {}
+    try:
+        if os.path.exists(PLAN_REB_FILE):
+            with open(PLAN_REB_FILE, "r", encoding="utf-8") as fh:
+                est = json.load(fh) or {}
+    except Exception as _dege:
+        _deg("plan_reb:leer", _dege)
+    epis = est.get("episodios") or {}
+    vix = _preb_vix(s)
+    out = {"fecha": s.get("fecha"), "indices": {}, "pasos": [], "hoy": [], "eur": PLAN_REB_EUR, "vix_hoy": s.get("vix")}
+    for sym in sorted({p[0] for p in PLAN_REB}, key=lambda x: ["QQQ", "SPY", "DIA", "IWM"].index(x) if x in ("QQQ", "SPY", "DIA", "IWM") else 9):
+        try:
+            d = (daily or {}).get(sym)
+            if d is None or len(d) < 60:
+                continue
+            d = d[["High", "Close"]].dropna()
+            if corte is not None:
+                d = d[d.index <= pd.Timestamp(corte)]
+            c = d["Close"]
+            h52 = d["High"].iloc[-252:]
+            ep = epis.get(sym) or {}
+            # el máximo de la caída se queda fijo hasta recuperarlo; uno nuevo y más alto empieza otra caída
+            usa_ep = bool(ep.get("pico") and not ep.get("venta") and pd.Timestamp(ep["pico_fecha"]) >= d.index[0])
+            if usa_ep:
+                pico, tp = float(ep["pico"]), pd.Timestamp(ep["pico_fecha"])
+            else:
+                pico, tp = float(h52.max()), h52.idxmax()
+            pasos = [p for p in PLAN_REB if p[0] == sym]
+            hoy_f = c.index[-1]
+            px_hoy = float(c.iloc[-1])
+
+            def _repaso(tp, pico):
+                reg = {p[1]: {"sym": sym, "niv": p[1], "eur": round(PLAN_REB_EUR * p[2], 0), "spec": p[3], "px_niv": pico * (1 - p[1] / 100),
+                              "fecha": None, "producto": None, "vix": None, "cambio": None, "frac": None} for p in pasos}
+                lo, lo_f, venta = np.inf, None, None
+                for f, px in c[c.index > tp].items():
+                    px = float(px)
+                    if px < lo:
+                        lo, lo_f = px, f
+                    if px >= pico:
+                        venta = f
+                        # nunca en máximos con apalancados: lo que quede en x3/x2 pasa a normal ese mismo día
+                        for r in reg.values():
+                            if r["fecha"] is not None and r["frac"] and r["cambio"] is None:
+                                r["cambio"], r["en_max"] = f, True
+                        break
+                    for r in reg.values():
+                        if r["fecha"] is None and px <= r["px_niv"]:
+                            vx = float(vix.asof(f)) if vix is not None and len(vix) and pd.notna(vix.asof(f)) else None
+                            prod = ("x3" if (vx is not None and vx >= PLAN_REB_VIX) else "normal") if r["spec"] == "vix" else r["spec"]
+                            r.update(fecha=f, producto=prod, vix=vx,
+                                     frac=((0.5 if r["spec"] == "vix" else 1 / 3) if prod in ("x3", "x2") else None))
+                    for r in reg.values():
+                        if r["fecha"] is not None and r["frac"] and r["cambio"] is None and lo_f is not None and lo_f < f \
+                                and px >= lo + (pico - lo) * r["frac"]:
+                            r["cambio"] = f
+                return reg, lo, lo_f, venta
+            venta_pend = None
+            for _vuelta in range(8):
+                reg, lo, lo_f, venta = _repaso(tp, pico)
+                if venta is not None and venta < hoy_f:
+                    # esa caída ya se cerró: si no se avisó (p. ej. faltó una noche), se avisa hoy; la siguiente caída
+                    # empieza en el máximo posterior a la venta
+                    if usa_ep and venta_pend is None:
+                        venta_pend = (venta, pico)
+                    usa_ep = False
+                    seg = d["High"][d.index >= venta]
+                    tp, pico = seg.idxmax(), float(seg.max())
+                    continue
+                break
+            abierta = venta is None and px_hoy < pico
+            nombre = PLAN_REB_NOMBRE.get(sym, sym)
+            info = {"sym": sym, "nombre": nombre, "pico": pico, "pico_fecha": str(tp.date()), "px": px_hoy,
+                    "dd": (px_hoy / pico - 1) * 100, "abierta": abierta, "venta": str(venta.date()) if venta is not None else None,
+                    "lo": (lo if lo < np.inf else None), "lo_fecha": (str(lo_f.date()) if lo_f is not None else None)}
+            if info["lo"] is not None:
+                info["n13"] = lo + (pico - lo) / 3
+                info["n12"] = lo + (pico - lo) / 2
+            out["indices"][sym] = info
+            epis[sym] = {"pico": pico, "pico_fecha": str(tp.date()), "venta": info["venta"] if venta is not None and venta == hoy_f else None}
+            for r in reg.values():
+                if r["fecha"] is not None and r["fecha"] == hoy_f:
+                    p = {"x3": f"{nombre} x3", "x2": f"{nombre} x2", "normal": f"{nombre} normal"}[r["producto"]]
+                    out["hoy"].append(("compra", f"COMPRA {_eur(r['eur'])} en {p}: el {nombre} cierra en {_n2(px_hoy)} (−{r['niv']:g} % del máximo)"
+                                       + (f"; VIX {_n2(r['vix'], 1)} {'≥' if r['producto'] == 'x3' else '<'} {PLAN_REB_VIX:g} → {r['producto']}" if r["spec"] == "vix" else "")))
+            camb = [r for r in reg.values() if r["cambio"] is not None and r["cambio"] == hoy_f and not r.get("en_max")]
+            if camb:
+                out["hoy"].append(("cambio", "PASA A NORMAL lo comprado en " + ", ".join(f"−{r['niv']:g} % ({r['producto']})" for r in camb)
+                                   + f": el {nombre} ha recuperado {'la mitad' if camb[0]['frac'] == 0.5 else '1/3'} de la caída ({_n2(px_hoy)}) → vender esos {', '.join(sorted({r['producto'] for r in camb}))} y comprar {nombre} normal"))
+            if venta is not None and venta == hoy_f:
+                _qm = [r for r in reg.values() if r.get("en_max")]
+                out["hoy"].append(("venta", f"EN MÁXIMOS: el {nombre} ha vuelto a su máximo ({_n2(pico)})"
+                                   + (" → pasa a normal lo que seguía apalancado (" + ", ".join(f"−{r['niv']:g} % {r['producto']}" for r in _qm) + ")" if _qm else "")
+                                   + f"; todo queda en {nombre} normal (nunca en máximos con apalancados)"))
+            elif venta_pend is not None:
+                out["hoy"].append(("venta", f"EN MÁXIMOS desde el {_dm(str(venta_pend[0].date()))}: el {nombre} volvió a su máximo ({_n2(venta_pend[1])}); "
+                                   "si te queda algo apalancado, pásalo a normal"))
+            for r in reg.values():
+                r["fecha"] = str(r["fecha"].date()) if r["fecha"] is not None else None
+                r["cambio"] = str(r["cambio"].date()) if r["cambio"] is not None else None
+                r["falta"] = (r["px_niv"] / px_hoy - 1) * 100
+                out["pasos"].append(r)
+        except Exception as _dege:
+            _deg(f"plan_reb:{sym}", _dege)
+    out["eur_dentro"] = sum(r["eur"] for r in out["pasos"] if r["fecha"])
+    # resumen para el agente compañero (lo lee preparar.py) y registro
+    agente = []
+    for r in out["pasos"]:
+        nombre = PLAN_REB_NOMBRE.get(r["sym"], r["sym"])
+        if r["fecha"] and r["fecha"] == str(pd.Timestamp(out["fecha"]).date() if out["fecha"] else ""):
+            e = f"HOY TOCA: comprar el tramo ({r['eur'] / PLAN_REB_EUR * 100:.0f} % del plan) en {nombre} {r['producto']}"
+        elif r["fecha"]:
+            e = f"comprado el {r['fecha']} en {r['producto']}" + (f"; pasado a normal el {r['cambio']}" if r["cambio"] else "")
+        else:
+            e = f"en {_n2(r['px_niv'])} (falta {_n2(r['falta'], 1)} %): {r['eur'] / PLAN_REB_EUR * 100:.0f} % del plan en " + (
+                f"{nombre} x3 si el VIX cierra ≥ {PLAN_REB_VIX:g}, si no normal" if r["spec"] == "vix" else f"{nombre} {r['spec']}")
+        agente.append({"senal": f"{nombre} −{r['niv']:g} %", "estado": e})
+    try:
+        if corte is None and not VIAJE_A:
+            est.update({"episodios": epis, "ultimo": out["fecha"], "agente": agente, "version": "v8.7"})
+            guardar_json_seguro(PLAN_REB_FILE, est, indent=0)
+    except Exception as _dege:
+        _deg("plan_reb:guardar", _dege)
+    out["_estado"] = est
+    return out
+
+
+def plan_rebajas_aviso(pr, s):
+    """Telegram del plan: compras, paso a normal y ventas (y la rendición). Una vez por día y contenido."""
+    try:
+        if not pr:
+            return None
+        ev = (s or {}).get("eventos") or []
+        if not (pr.get("hoy") or "rendicion" in ev):
+            return None
+        firma = f"{pr.get('fecha')}|" + "|".join(t for _, t in pr.get("hoy") or []) + f"|r{int('rendicion' in ev)}"
+        est = pr.get("_estado") or {}
+        if est.get("avisado") == firma:
+            return None
+        ico = {"compra": "🛒", "cambio": "🔁", "venta": "🏁"}
+        lin = [f"🛒 PLAN DE REBAJAS · cierre {pr.get('fecha')}"]
+        lin += [f"{ico.get(k, '•')} {_sin_html(t)}." for k, t in pr.get("hoy") or []]
+        if "rendicion" in ev:
+            lin.append("🔥 RENDICIÓN TOTAL hoy (muchas acciones en mínimos, sectores sacando dinero y VIX invertido): así llegaron los suelos en V.")
+        for sym, i in (pr.get("indices") or {}).items():
+            if i.get("abierta") and i.get("n13"):
+                lin.append(f"{i['nombre']}: {_n2(i['dd'], 1)} % · pasar a normal en {_n2(i['n13'])} · máximo en {_n2(i['pico'])}")
+        lin.append(f"VIX {_n2(pr.get('vix_hoy'), 1) if pr.get('vix_hoy') is not None else '—'}. Se actúa con este cierre (en Europa, mañana por la mañana). No es asesoramiento.")
+        est["avisado"] = firma
+        if not VIAJE_A:
+            try:
+                guardar_json_seguro(PLAN_REB_FILE, est, indent=0)
+            except Exception as _dege:
+                _deg("plan_reb:avisado", _dege)
+        return "\n".join(lin)
+    except Exception as _dege:
+        _deg("plan_reb:aviso", _dege)
+        return None
+
+
+def _plan_rebajas_html(pr, titulo="② Qué toca hoy · 🛒 Plan de rebajas"):
+    V, A, R = "#2FD08A", "#F4B740", "#F4607A"
+    if not pr or not pr.get("pasos"):
+        return (f"<div class='panel full'><h2>{titulo}</h2><div class='note'>Hoy no se ha podido calcular el plan "
+                "(mira Salud del build en la pestaña PRO). No des nada por supuesto.</div></div>")
+    hoy = pr.get("hoy") or []
+    if hoy:
+        cab = ("<div style='font-size:19px;font-weight:800;color:#2FD08A'>🎯 HOY TOCA</div>"
+               + "".join(f"<div style='font-size:14.5px;margin-top:4px'>{ {'compra': '🛒', 'cambio': '🔁', 'venta': '🏁'}.get(k, '•') } {t}.</div>" for k, t in hoy)
+               + "<div style='font-size:12.5px;color:#9FB0C8;margin-top:3px'>Con este cierre (en Europa, mañana por la mañana).</div>")
+        borde = V
+    else:
+        sig = sorted([r for r in pr["pasos"] if not r["fecha"]], key=lambda r: -r["falta"])[:2]
+        cab = ("<div style='font-size:19px;font-weight:800'>Hoy no toca nada</div>"
+               + "".join(f"<div style='font-size:13.5px;margin-top:4px;color:#C9D4E5'>Lo siguiente: {PLAN_REB_NOMBRE.get(r['sym'], r['sym'])} −{r['niv']:g} % en "
+                         f"<b>{_n2(r['px_niv'])}</b> (falta {_n2(r['falta'], 1)} %) → {_eur(r['eur'])} en "
+                         + (f"x3 si el VIX ≥ {PLAN_REB_VIX:g}, si no normal" if r["spec"] == "vix" else r["spec"]) + "</div>" for r in sig))
+        borde = "#24344F"
+    bloques = []
+    for sym, i in (pr.get("indices") or {}).items():
+        nombre = i["nombre"]
+        lin = (f"Máximo <b>{_n2(i['pico'])}</b> · hoy {_n2(i['px'])} (<b style='color:{R if i['dd'] <= -10 else A}'>{_n2(i['dd'], 1)} %</b>)"
+               + (f" · mínimo {_n2(i['lo'])}" if i.get("lo") else ""))
+        if i.get("abierta") and i.get("n13"):
+            _hondo = any(x["spec"] == "vix" for x in pr["pasos"] if x["sym"] == sym)
+            lin += (f"<br>🔁 Los x3/x2 pasan a {nombre} normal con un cierre ≥ <b>{_n2(i['n13'])}</b> (1/3 de la caída)"
+                    + (f" · los x3 del fondo, ≥ <b>{_n2(i['n12'])}</b> (1/2)" if _hondo else "")
+                    + f" · 🏁 en su máximo (<b>{_n2(i['pico'])}</b>) todo en normal")
+        elif not i.get("abierta"):
+            lin += "<br>Sin caída abierta: el plan espera a la siguiente caída."
+        fil = []
+        for r in [x for x in pr["pasos"] if x["sym"] == sym]:
+            if r["fecha"] and r["cambio"]:
+                ec, et = "#4CC2E0", f"comprado {_dm(r['fecha'])} · a normal {_dm(r['cambio'])}"
+            elif r["fecha"]:
+                ec, et = (V if r["fecha"] == str(pd.Timestamp(pr['fecha']).date()) else "#4CC2E0"), (
+                    "TOCA HOY" if r["fecha"] == str(pd.Timestamp(pr['fecha']).date()) else f"comprado {_dm(r['fecha'])}")
+            else:
+                ec, et = A, f"falta {_n2(r['falta'], 1)} %"
+            prod = (r["producto"] or (f"x3 si VIX ≥ {PLAN_REB_VIX:g}, si no normal" if r["spec"] == "vix" else r["spec"]))
+            if r["spec"] == "vix" and r["producto"]:
+                prod += f" (VIX {_n2(r['vix'], 1)})" if r.get("vix") is not None else ""
+            fil.append(f"<tr><td><b>−{r['niv']:g} %</b></td><td class='r'>{_n2(r['px_niv'])}</td><td><b style='color:{ec}'>{et}</b></td>"
+                       f"<td class='r'>{_eur(r['eur'])}</td><td>{nombre} <b>{esc(prod)}</b></td></tr>")
+        bloques.append(f"<div style='margin-top:10px'><div style='font-size:14px;font-weight:800'>{nombre} ({sym})</div>"
+                       f"<div style='font-size:12.5px;color:#C9D4E5;margin:3px 0 5px'>{lin}</div>"
+                       "<div style='overflow-x:auto'><table style='min-width:560px'><tr><th>Escalón</th><th class='r'>Precio</th><th>Estado</th>"
+                       "<th class='r'>Dinero</th><th>Qué comprar</th></tr>" + "".join(fil) + "</table></div></div>")
+    return (f"<div class='panel full' style='border-color:{borde}'><h2>{titulo}</h2>"
+            f"<div style='padding:10px 12px;border-left:4px solid {borde if borde == V else '#4CC2E0'};background:rgba(76,194,224,.06);margin-bottom:6px'>{cab}</div>"
+            f"<div style='font-size:12.5px;color:#9FB0C8'>Dinero del plan {_eur(pr.get('eur'))} · ya ha saltado {_eur(pr.get('eur_dentro'))} · "
+            f"VIX hoy {_n2(pr.get('vix_hoy'), 1) if pr.get('vix_hoy') is not None else '—'}</div>"
+            + "".join(bloques)
+            + "<div class='note' style='margin-top:8px'><b>Reglas (siempre las mismas):</b> ① se compra con el cierre del día del escalón. "
+              "② Los x3 y x2 pasan al ETF normal del mismo índice cuando el índice recupera 1/3 de toda la caída (los x3 de los escalones hondos, la mitad). "
+              "③ Nunca en máximos con apalancados: cuando el índice vuelve a su máximo, lo que quede en x3/x2 pasa a normal y el normal se queda "
+              f"(no se vende; para la siguiente caída hará falta dinero nuevo). ④ En los escalones hondos del Nasdaq, x3 solo con pánico (VIX ≥ {PLAN_REB_VIX:g}); "
+              "si no, normal: en 2000 llegaron sin pánico y el Nasdaq siguió hasta −83 %. Este es el <b>único plan</b> (sustituye a las 4 balas). "
+              "Las cantidades se cambian en <code>PLAN_REB_EUR</code> y <code>PLAN_REB</code>. No es asesoramiento.</div></div>")
+
+
 def _sin_html(t):
     try:
         import re as _re
@@ -23957,7 +25202,18 @@ def _hoy_html(operativa, rachas=None, estc=None):
         fr = ctx.get("frescura") or {}
         dl = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy_d.weekday()]
         it = [f"<b>Cierre real:</b> {dl} {hoy_d.day}/{hoy_d.month}" + (f" · SPY {_n2(ctx['spy'])}" if ctx.get("spy") else "")
-              + " <span style='color:#5E708A'>· terminal v8.5</span>"]
+              + " <span style='color:#5E708A'>· terminal v8.7</span>"]
+        try:
+            _ca = op.get("caida") or {}
+            _sp = next((x for x in (_ca.get("suelo") or []) if x["sym"] == "SPY"), None)
+            _rc = _ca.get("rec") or {}
+            if _sp or _rc.get("p") is not None:
+                it.append("<b>🌪️ Caída en curso:</b> " + (f"suelo del S&amp;P {_sp['p']} %" if _sp else "")
+                          + (" · " if _sp and _rc.get("p") is not None else "")
+                          + (f"recesión {_rc['p']:.0f} % (modo {esc(_rc.get('modo'))})" if _rc.get("p") is not None else "")
+                          + " <span style='color:#5E708A'>· el detalle, en su pestaña</span>")
+        except Exception as _dege:
+            _deg("hoy:caida", _dege)
         if fr.get("faltan") and BENCH in fr.get("faltan", []):
             it.append(f"<b style='color:{R}'>⚠ Yahoo no ha dado el cierre del {esc(fr.get('esperado'))}: todo va con el día anterior</b>")
         elif fr.get("horario"):
@@ -23981,7 +25237,9 @@ def _hoy_html(operativa, rachas=None, estc=None):
         _deg("hoy:datos", _dege)
     # ── 2) QUÉ TOCA HOY ─────────────────────────────────────────────────
     try:
-        if not b or not b.get("balas"):
+        if PLAN_REB_ACTIVO and op.get("plan_reb"):
+            h.append(_plan_rebajas_html(op["plan_reb"]))
+        elif not b or not b.get("balas"):
             h.append("<div class='panel full'><h2>② Qué toca hoy</h2><div class='note'>Hoy no se ha podido calcular el plan "
                      "(mira Salud del build en la pestaña PRO). No des nada por supuesto.</div></div>")
         else:
@@ -24111,12 +25369,27 @@ def _hoy_html(operativa, rachas=None, estc=None):
             else:
                 mv, mc_, ms = "no", G, ("último: " + _dm(emp.get("fecha")) if emp and emp.get("fecha") else "sin empuje reciente")
             c5 = card("Empuje de dinero", mv, mc_, ms + (f" · hoy entra dinero en el {_n2(acc['entra'], 0)} % de las acciones" if acc.get("entra") is not None else ""))
+            bo = op.get("bono") or {}
+            if bo.get("y10") is not None:
+                _U = bo.get("umbral", BONO_UMBRAL)
+                bv = f"{_n2(bo['y10'])} % · " + {"BAJANDO": "bajando", "SUBIENDO": "subiendo", "QUIETO": "quieto"}.get(bo.get("tendencia"), "")
+                bc = V if bo["y10"] < _U else (A if bo.get("dist_pb", 99) <= 15 else (R if bo.get("tendencia") == "SUBIENDO" else G))
+                bs = ((f"<b style='color:#2FD08A'>por debajo de tu línea del {_n2(_U, 1)} %</b>" + (" (HOY)" if "bajo_umbral" in (bo.get("eventos") or []) else ""))
+                      if bo["y10"] < _U else f"tu línea: {_n2(_U, 1)} % (faltan {bo['dist_pb']:.0f} pb)")
+                bs += (f" · un mes {bo['ch21']:+.0f} pb" if bo.get("ch21") is not None else "")
+                if bo.get("move") is not None:
+                    _mc = {"TENSIÓN": "#F4607A", "CALMA": "#2FD08A"}.get(bo.get("move_estado"), "#9FB0C8")
+                    bs += (f" · MOVE {_n2(bo['move'], 0)} <b style='color:{_mc}'>{(bo.get('move_estado') or '').lower()}</b>")
+                c6 = card("Bono a 10 años de EE. UU. (y el MOVE)", bv, bc, bs)
+            else:
+                c6 = ""
             h.append("<div class='panel full'><h2>④ Termómetro del miedo</h2>"
-                     f"<div style='display:flex;flex-wrap:wrap;gap:8px'>{c1}{c2}{c3}{c4}{c5}</div>"
+                     f"<div style='display:flex;flex-wrap:wrap;gap:8px'>{c1}{c2}{c3}{c4}{c5}{c6}</div>"
                      "<div class='note' style='margin-top:6px'>Solo lo que ha aguantado al medirlo (2004-2026). Con pánico, comprar en el nivel cayó después un "
                      f"{_n2(abs(SEM_OPT['nivel'][0]), 1)} % de mediana; cuando el pánico se va, un {_n2(abs(SEM_OPT['seva'][0]), 1)} % y ganó un "
                      f"{_n2(SEM_OPT['seva'][1], 1)} % a 120 sesiones (unos 15 episodios: pista fuerte, no garantía). El DIX, el GEX, el VVIX, el SKEW y el "
-                     "índice de miedo y codicia no aportaron nada y ya no salen aquí.</div></div>")
+                     "índice de miedo y codicia no aportaron nada y ya no salen aquí. El bono a 10 años y el MOVE solo se vigilan: "
+                     "todavía no están medidos como señal.</div></div>")
     except Exception as _dege:
         _deg("hoy:termometro", _dege)
     # ── 5) AGENDA ───────────────────────────────────────────────────────
@@ -26904,13 +28177,55 @@ def main():
                     if _bl:
                         print("  🎯 Balas: " + " · ".join(f"{x['n']} {x['estado']}" for x in _bl["balas"])
                               + (" · HOY TOCA LA " + ", ".join(str(n) for n in _bl["hoy"]) if _bl.get("hoy") else ""))
-                    _msg_sm = balas_aviso(_bl, _sm)
+                    # v8.7 — 🛒 plan de rebajas: el único plan (sustituye a las 4 balas, que se siguen guardando)
+                    try:
+                        _oper["plan_reb"] = compute_plan_rebajas(_sm, daily, corte=(df.index[-1] if VIAJE_A else None))
+                        _pr = _oper["plan_reb"] or {}
+                        print("  🛒 Plan de rebajas: " + (" | ".join(t for _, t in _pr["hoy"]) if _pr.get("hoy") else "hoy no toca nada")
+                              + f" · ya ha saltado {_pr.get('eur_dentro', 0):.0f} € de {PLAN_REB_EUR:.0f} €")
+                    except Exception as _e_pr:
+                        _oper["plan_reb"] = None
+                        _avisar("plan_reb", f"plan de rebajas no calculado: {_e_pr}")
+                    _msg_sm = (plan_rebajas_aviso(_oper.get("plan_reb"), _sm) if PLAN_REB_ACTIVO and _oper.get("plan_reb")
+                               else balas_aviso(_bl, _sm))
                     if _msg_sm and not VIAJE_A:
                         notify(_msg_sm)
                     if not _pp.get("completo"):
                         _avisar("semaforo", "VIX9D/VIX3M no descargados: el pánico agudo no se puede medir hoy", nivel="info")
             except Exception as _e_sm:
                 _avisar("semaforo", f"detector de caídas no calculado: {_e_sm}")
+            # v8.6 — vigilante del bono a 10 años y del MOVE (solo informa; aviso una vez si cruza la línea)
+            try:
+                if not VIAJE_A:
+                    _oper["bono"] = compute_bono((_oper.get("semaforo") or {}).get("fecha"))
+                    _bo = _oper["bono"]
+                    if _bo:
+                        print(f"  🏦 Bono 10 años {_bo['y10']:.2f} % (línea {_bo['umbral']:g} %; un mes "
+                              + (f"{_bo['ch21']:+.0f} pb" if _bo.get("ch21") is not None else "—") + ")"
+                              + (f" · MOVE {_bo['move']:.0f} ({_bo['move_estado']})" if _bo.get("move") is not None else " · MOVE sin dato")
+                              + (" · " + ", ".join(_bo["eventos"]) if _bo.get("eventos") else ""))
+                        if _bo.get("avisar") and _bo.get("msg"):
+                            notify(_bo["msg"])
+                    else:
+                        _avisar("bono", "bono a 10 años sin datos hoy (Yahoo y FRED fallaron)", nivel="info")
+            except Exception as _e_bo:
+                _avisar("bono", f"bono a 10 años no calculado: {_e_bo}")
+            # v8.7 — 🌪️ CAÍDA EN CURSO: suelo, recesión y liquidez (solo informa; Telegram si cambia el modo)
+            try:
+                _oper["caida"] = compute_caida_curso(_oper, daily, corte=(df.index[-1] if VIAJE_A else None))
+                _ca = _oper["caida"] or {}
+                _sp = next((x for x in (_ca.get("suelo") or []) if x["sym"] == "SPY"), None)
+                _rc = _ca.get("rec") or {}
+                print("  🌪️ Caída en curso: "
+                      + (f"suelo S&P {_sp['p']} % (ciclo {_sp['p_ciclo']} %, miedo {_sp['p_miedo']} %)" if _sp else "sin caída abierta en el S&P")
+                      + (f" · recesión {_rc['p']:.0f} % ({_rc.get('modo')}, {len(_rc.get('comp') or [])} fuentes)" if _rc.get("p") is not None else " · recesión sin datos")
+                      + (f" · liquidez {_ca['liq']['estado']} {_ca['liq']['nota']}/{_ca['liq']['n']}" if _ca.get("liq") else ""))
+                if not _rc.get("comp"):
+                    _avisar("caida", "probabilidad de recesión sin datos hoy (FRED y Polymarket fallaron)", nivel="info")
+                if _ca.get("msg") and not VIAJE_A:
+                    notify(_ca["msg"])
+            except Exception as _e_ca:
+                _avisar("caida", f"pestaña Caída en curso no calculada: {_e_ca}")
             # v8.4.1 — ¿se grabaron hoy las opciones? (llevaban días paradas sin avisar)
             try:
                 if OPCIONES_ON and not VIAJE_A:

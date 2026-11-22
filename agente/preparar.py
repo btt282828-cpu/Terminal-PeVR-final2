@@ -52,6 +52,8 @@ INFORMATIVOS = {
     "senales_contrarias.json": lambda d: d[-1]["date"] if d else None,
     "track_record.json": lambda d: d[-1]["date"] if d else None,
     "plan_spy_estado.json": lambda d: d.get("ultimo"),
+    "balas_estado.json": lambda d: d.get("ultimo"),
+    "bono_estado.json": lambda d: d.get("ultimo"),
 }
 
 
@@ -128,6 +130,10 @@ def vigilante():
     res = {"fecha_mercado_esperada": str(esperada), "rojo": [], "ambar": [], "verde": [], "archivos": {}}
 
     for nombre, sacar in {**ESENCIALES, **INFORMATIVOS}.items():
+        if nombre == "balas_estado.json" and not (HIST / nombre).exists():
+            res["ambar"].append("balas_estado.json todavía no existe: la terminal v8.5 (pestaña «Hoy», las 4 balas) aún no ha "
+                                "corrido o no está subida. Hasta entonces las balas se leen del detector de caídas.")
+            continue
         d = leer(HIST / nombre)
         if isinstance(d, dict) and "__error__" in d:
             res["rojo"].append(f"{nombre}: no se puede leer ({d['__error__']})")
@@ -153,6 +159,25 @@ def vigilante():
             res["archivos"][nombre]["elementos_antes"] = t0
             if t0 >= 10 and t1 < 0.8 * t0:
                 res["rojo"].append(f"{nombre}: ha encogido de {t0} a {t1} elementos (¿datos perdidos?)")
+
+    # ¿el cable ha perdido señales de días que ya estaban grabados? (pasó el 10-nov-2026: se borró el «se va el pánico» del día 9)
+    try:
+        w1 = leer(HIST / "senales_wire.json")
+        w0 = version_anterior("historico_seguimiento_NO_BORRAR/senales_wire.json")
+        if isinstance(w1, list) and isinstance(w0, list) and w0 and w1:
+            c0, c1 = {}, {}
+            for x in w0:
+                c0[x.get("date")] = c0.get(x.get("date"), 0) + 1
+            for x in w1:
+                c1[x.get("date")] = c1.get(x.get("date"), 0) + 1
+            viejas = sorted(k for k in c1 if k)
+            primera, ultima_nueva = viejas[0], viejas[-1]
+            perdidos = [f"{k} (antes {n}, ahora {c1.get(k, 0)})" for k, n in sorted(c0.items())
+                        if k and primera <= k < ultima_nueva and c1.get(k, 0) < n][-3:]
+            if perdidos:
+                res["rojo"].append("senales_wire.json: el cable ha PERDIDO señales de días ya grabados → " + "; ".join(perdidos))
+    except Exception as e:  # noqa: BLE001
+        res["ambar"].append(f"cable: no se pudo comparar con la noche anterior ({type(e).__name__})")
 
     # historiales (se refrescan una vez por semana / mes)
     meta = leer(HIST / "historiales" / "_meta.json")
@@ -254,10 +279,33 @@ def resultado(px, sym, fecha, h):
     return float(s.iloc[pos + h] / s.iloc[pos] - 1), "ok"
 
 
+def _senales_plan(ya):
+    """Señales del plan de Pe que el cable puede no tener (hasta la v8.5 se perdían): «se va el pánico» del registro del
+    detector y las balas de balas_estado.json. Todas son de compra del mercado (SPY)."""
+    out = []
+    s = leer(HIST / "semaforo_estado.json")
+    if isinstance(s, dict):
+        for r in s.get("log") or []:
+            if "se_va" in (r.get("eventos") or []) and (r.get("date"), "SE VA EL PÁNICO") not in ya:
+                out.append({"date": r.get("date"), "tag": "SE VA EL PÁNICO", "sym": "SPY", "dir": 1})
+    b = leer(HIST / "balas_estado.json")
+    if isinstance(b, dict) and "__error__" not in b:
+        grupos = [b.get("balas") or {}] + [h.get("balas") or {} for h in (b.get("historia") or [])]
+        vistos = set()
+        for g in grupos:
+            for n, x in g.items():
+                k = (x.get("fecha"), f"BALA {n}")
+                if x.get("fecha") and k not in vistos:
+                    vistos.add(k)
+                    out.append({"date": x["fecha"], "tag": f"BALA {n}", "sym": "SPY", "dir": 1})
+    return [x for x in out if x.get("date")]
+
+
 def marcador():
     w = leer(HIST / "senales_wire.json")
     if not isinstance(w, list) or not w:
         return {"error": "senales_wire.json vacío o ilegible"}
+    w = w + _senales_plan({(x.get("date"), x.get("tag")) for x in w})
     w = pd.DataFrame(w)
     w["date"] = pd.to_datetime(w["date"])
     w["sym"] = w["sym"].replace(MAPA_SIMBOLOS)
@@ -376,7 +424,7 @@ def resumen_md(v, m, lec=None):
 
 # ───────────────────────── 3) LECTURA DEL DÍA Y MENSAJE (sin IA) ─────────────────────────
 DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
-IMPORTANTES = ("NIVEL", "PÁNICO", "PLAN SPY", "RÉGIMEN", "RISK")
+IMPORTANTES = ("BALA", "SE VA EL PÁNICO", "NIVEL", "SALIDA", "PÁNICO", "RÉGIMEN", "RISK")
 
 
 def _n(x, dec=1):
@@ -405,9 +453,19 @@ def lectura():
     c = leer(HIST / "centinela_estado.json")
     if isinstance(c, list) and c:
         r["centinela"] = c[-1].get("estado")
-    p = leer(HIST / "plan_spy_estado.json")
-    if isinstance(p, dict) and p.get("activo"):
-        r["plan_spy"] = sorted(p.get("tocados", {}), key=float)
+    b = leer(HIST / "balas_estado.json")
+    if isinstance(b, dict) and "__error__" not in b:
+        mem = b.get("balas") or {}
+        r["balas"] = {"caida_abierta": bool(b.get("activo")), "dia": b.get("ultimo"),
+                      "dadas": {n: {"fecha": x.get("fecha"), "motivo": x.get("motivo"),
+                                    **({"con_rendicion": x.get("rendicion")} if "rendicion" in x else {})}
+                                for n, x in sorted(mem.items())},
+                      "hoy": sorted(n for n, x in mem.items() if x.get("fecha") and x.get("fecha") == b.get("ultimo"))}
+    bo = leer(HIST / "bono_estado.json")
+    if isinstance(bo, dict) and "__error__" not in bo and bo.get("log"):
+        u = bo["log"][-1]
+        r["bono"] = {"dia": u.get("date"), "y10": u.get("y10"), "linea": bo.get("umbral"), "un_mes_pb": u.get("ch21"),
+                     "move": u.get("move"), "move_percentil": u.get("move_pct"), "eventos": u.get("eventos") or []}
     try:
         r["plan"] = plan(r)
     except Exception as e:  # noqa: BLE001
@@ -423,6 +481,11 @@ FESTIVOS_NY = ["2026-11-26", "2026-12-25", "2027-01-01", "2027-01-18", "2027-02-
 def plan(lec):
     """Estado de cada señal del plan de compras en caídas (sin cantidades de dinero: el repositorio es público).
     Niveles desde el máximo de 52 semanas que usa el detector."""
+    # v8.7: si la terminal ya lleva el «Plan de rebajas», ese es el único plan (sustituye a las 4 balas)
+    _prb = leer(HIST / "plan_rebajas_estado.json")
+    if _prb and _prb.get("agente"):
+        return [dict(x) for x in _prb["agente"]]
+
     s = leer(HIST / "semaforo_estado.json")
     e = leer(HIST / "estructura_estado.json")
     if not (isinstance(s, dict) and s.get("log") and s.get("etf")):
@@ -438,6 +501,17 @@ def plan(lec):
         return (pico * (1 + dd[sym] / 100), pico) if pico and dd.get(sym) is not None else (None, pico)
 
     out = []
+    bal = ((lec or {}).get("balas") or {})
+    dadas, hoy_b = bal.get("dadas") or {}, set(bal.get("hoy") or [])
+
+    def con_bala(n, nombre, est):
+        d = dadas.get(str(n))
+        if str(n) in hoy_b:
+            est = "HOY TOCA (se actúa con el cierre de hoy, no se espera al viernes) · " + est
+        elif d:
+            est = f"señal dada el {d.get('fecha')} · " + est
+        return {"senal": f"Bala {n} · {nombre}", "estado": est, "bala": n}
+
     t3, vix = u.get("t3"), u.get("vix")
     if "se_va" in (u.get("eventos") or []):
         est = "HOY SE VA EL PÁNICO"
@@ -465,8 +539,9 @@ def plan(lec):
                    + (f"; con el VIX a 3 meses quieto, VIX < {_n(umbral)}, hoy {_n(vix)})" if umbral else ")"))
         else:
             est = "no hay pánico vivo"
-    out.append({"senal": "Se va el pánico", "estado": est})
-    for sym, nivel, nombre in (("SPY", 10, "SPY −10 %"), ("QQQ", 20, "QQQ −20 %"), ("SPY", 20, "Bajista: SPY −20 %"), ("QQQ", 30, "Bajista: QQQ −30 %")):
+    out.append(con_bala(1, "se va el pánico", est))
+    for sym, nivel, nombre, nb in (("SPY", 10, "SPY −10 %", 2), ("QQQ", 20, "QQQ −20 %", 3), ("SPY", 20, "bajista: SPY −20 %", 4),
+                                   ("QQQ", 30, "bajista: QQQ −30 %", 4)):
         p0, pico = px(sym)
         if not pico or p0 is None:
             continue
@@ -480,7 +555,7 @@ def plan(lec):
             ok_t = (t3 or 0) >= 1.10
             est += (f" · rendición total: {'SÍ' if (ok_nl and ok_s and ok_t) else 'no'} "
                     f"(en mínimos {_n(nl)} % de 20; sectores sacando dinero {sect_sale} de 6; VIX/VIX3M {_n(t3, 2)} de 1,10)")
-        out.append({"senal": nombre, "estado": est})
+        out.append(con_bala(nb, nombre, est))
     # Control del mes: 21 sesiones después de que el SPY toque su −5 %
     t5 = ((etf.get("SPY") or {}).get("tocados") or {}).get("5")
     if (etf.get("SPY") or {}).get("activo") and t5 and t5.get("fecha"):
@@ -517,7 +592,8 @@ def telegram_sin_ia(v, m, lec):
         L.append(f"📉 Caídas: {dd or 'nada por debajo de −3 %'} · VIX {_n(cd['vix'])}")
         ev = cd.get("eventos") or []
         if "se_va" in ev:
-            L.append(f"🟢 HOY SE VA EL PÁNICO (VIX/VIX3M {_n(cd.get('vix_vix3m'), 2)}): mira en la terminal en qué ETF tienes reserva")
+            L.append(f"🟢 HOY SE VA EL PÁNICO (VIX/VIX3M {_n(cd.get('vix_vix3m'), 2)})"
+                     + ("" if (HIST / "plan_rebajas_estado.json").exists() else ": es la bala 1 del plan; mira la pestaña «Hoy»"))
         elif cd.get("panico_vivo"):
             L.append(f"🔥 Pánico vivo desde el {str(cd.get('panico_desde'))[8:10]}-{str(cd.get('panico_desde'))[5:7]}: "
                      f"se va cuando VIX/VIX3M baje de 1,0 (hoy {_n(cd.get('vix_vix3m'), 2)})")
@@ -526,16 +602,28 @@ def telegram_sin_ia(v, m, lec):
         if "rendicion" in ev:
             L.append("🔥 RENDICIÓN TOTAL hoy")
     if lec.get("indices"):
-        L.append("🚦 Índices: " + ", ".join(f"{k} {ver}" for k, (ver, _) in lec["indices"].items()))
+        L.append("🔢 Nota de los índices (no es una orden): " + ", ".join(f"{k} {_n(sc, 0) if isinstance(sc, (int, float)) else ver}"
+                                                                    for k, (ver, sc) in lec["indices"].items()))
     di = lec.get("dinero")
     if di:
         extra = " · VENTA EXTREMA" if di.get("extrema") else (" · EMPUJE" if di.get("empuje") else "")
         L.append(f"🧩 Dinero: {di.get('lectura')} (entran {di.get('sect_entra')} sectores, salen {di.get('sect_sale')}){extra}"
                  f" · centinela {lec.get('centinela', '—')}")
-    if lec.get("plan_spy"):
-        L.append("🎯 Plan SPY: tocados " + ", ".join(f"−{t} %" for t in lec["plan_spy"]))
-    for x in lec.get("plan") or []:
-        L.append(f"🎯 {x['senal']}: {x['estado']}")
+    bo = lec.get("bono") or {}
+    if bo.get("y10") is not None:
+        ev = bo.get("eventos") or []
+        if "bajo_umbral" in ev:
+            L.insert(1, f"🏦 El bono a 10 años cierra en {_n(bo['y10'], 2)} %, POR DEBAJO de tu línea del {_n(bo.get('linea'), 1)} % (dato a vigilar, no una bala)")
+        L.append(f"🏦 Bono 10 años {_n(bo['y10'], 2)} % (línea {_n(bo.get('linea'), 1)} %; un mes {_n(bo.get('un_mes_pb'), 0)} pb)"
+                 + (f" · MOVE {_n(bo.get('move'), 0)}" if bo.get("move") is not None else ""))
+    plan_l = lec.get("plan") or []
+    for x in [p for p in plan_l if str(p.get("estado", "")).startswith("HOY TOCA")]:
+        if x.get("bala") is None:
+            L.insert(1, f"🛒 PLAN DE REBAJAS · {x['senal']}: {x['estado']}. Mira la pestaña «Hoy» de la terminal.")
+        else:
+            L.insert(1, f"🎯 HOY TOCA LA BALA {x.get('bala')} ({x['senal'].split('· ')[-1]}). Mira la pestaña «Hoy» de la terminal.")
+    for x in plan_l:
+        L.append(f"{'🛒' if x.get('bala') is None else '🎯'} {x['senal']}: {x['estado']}")
     tabla = m.get("tabla", [])
     if tabla:
         maduras = [t for t in tabla if t.get("n20", 0) >= 30]

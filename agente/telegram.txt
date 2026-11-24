@@ -1,8 +1,9 @@
-🤖 Compañero · dom 22-nov (mercado: vie 20-nov)
-🎯 Sigue pendiente lo del viernes: tocaron S&P −10 % (SPY 689,81) y Nasdaq −20 % (QQQ 608,45), VIX 35,9. Se actúa con ese cierre; primer mercado abierto: el lunes.
-🔴 Sistema: la terminal nueva (v8.7) tiene un fallo: su plan de rebajas no calcula el Nasdaq y NO marca el escalón Nasdaq −20 % que sí tocó (el del S&P sí). Arreglo de una línea (rotacion.py 24900).
-📊 Terminal: pánico vivo (VIX/VIX3M 1,16), dinero VENTA EXTREMA. Siguientes: S&P −15 % en 664,38 (a −3,7 %), Nasdaq −25 % en 572,14 (a −6,0 %). Ojo: «recesión 3 %» sale de 1 fuente de 5.
-🧾 Marcador: sin cambios.
-🔬 Hoy he probado: tu idea del volumen de los apalancados: no añade nada medible (a 60 sesiones −0,7 pts en 2010-18, solo 6 casos). Hoy hay pico (z 2,4): vale como «ya hay miedo», no como «suelo».
-💡 Propuesta: arreglar esa línea; ampliar el cable (60 fechas) antes del 2-dic.
-🙋 Necesito de ti: ¿manda el plan de rebajas o las 4 balas? Mueve tus archivos de fondeo a agente/. Hay importes en euros en archivos públicos.
+🤖 Compañero · lun 23-11
+🛒 PLAN DE REBAJAS · HOY PASA A NORMAL el S&P −10 % (los x3 comprados el 20-nov): el SPY recuperó 1/3 de la caída (cierre 722,29). Salto con el cierre del lunes; primera ocasión: hoy martes al abrir.
+🟠 Sistema: todo grabado. Aviso menor de opciones (dato provisional). Sigue el fallo: el plan NO calcula el Nasdaq.
+📊 Terminal: rebote fuerte (SPY +4,7 %, QQQ +7 %, VIX 26,6). SPY −7,6 %, QQQ −14,7 % del máximo. Pánico SIGUE vivo (ratio 1,04; se va por debajo de 1,0).
+🎯 Plan: Nasdaq −20 % x3 tocó el 20-nov (la terminal no lo muestra). Mi cálculo: pasa a normal con cierre del QQQ ≥ ~659,9 (hoy 651,03, falta +1,4 %): mírelo a mano. Próximo: S&P −15 % en 664,38 (−8,0 %).
+🧾 Marcador: sin cambios; GIRO↑ va al revés (35 casos, 26 %).
+🔬 Hoy he probado: nada (modo repaso).
+💡 Propuesta: arreglar el Nasdaq del plan (rotacion.py ~24898).
+🙋 Necesito de ti: subir el arreglo de preparar.py (línea 237) y decidir lo del cable de 60 fechas antes del 2-dic.

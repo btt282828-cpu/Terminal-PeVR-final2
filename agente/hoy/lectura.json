@@ -1,18 +1,18 @@
 {
  "caidas": {
-  "fecha": "2026-11-20",
+  "fecha": "2026-11-23",
   "dd": {
-   "SPY": -11.75,
-   "RSP": -7.48,
-   "DIA": -11.62,
-   "QQQ": -20.24,
-   "IWM": -15.7,
-   "MAGS": -17.54
+   "SPY": -7.59,
+   "RSP": -5.08,
+   "DIA": -8.91,
+   "QQQ": -14.66,
+   "IWM": -12.7,
+   "MAGS": -11.25
   },
-  "vix": 35.89,
-  "agudo": true,
-  "en_minimos": 13.19,
-  "vix_vix3m": 1.16,
+  "vix": 26.62,
+  "agudo": false,
+  "en_minimos": 0.6,
+  "vix_vix3m": 1.044,
   "panico_vivo": true,
   "panico_desde": "2026-11-20",
   "panico_se_fue": null,
@@ -25,7 +25,7 @@
   ],
   "QQQ": [
    "NOTA BAJA",
-   0
+   1
   ],
   "DIA": [
    "NOTA BAJA",
@@ -36,25 +36,25 @@
    1
   ],
   "RSP": [
-   "NOTA BAJA",
-   3
+   "NOTA FLOJA",
+   4
   ],
   "MAGS": [
    "NOTA BAJA",
-   1
+   2
   ]
  },
  "dinero": {
-  "lectura": "VENTA EXTREMA",
+  "lectura": "SALE DE TODO",
   "sect_entra": 0,
-  "sect_sale": 7,
+  "sect_sale": 6,
   "empuje": false,
-  "extrema": true
+  "extrema": false
  },
  "centinela": "LIQUIDEZ",
  "balas": {
   "caida_abierta": true,
-  "dia": "2026-11-20",
+  "dia": "2026-11-23",
   "dadas": {
    "1": {
     "fecha": "2026-11-09",
@@ -70,34 +70,29 @@
     "con_rendicion": false
    }
   },
-  "hoy": [
-   "2",
-   "3"
-  ]
+  "hoy": []
  },
  "bono": {
-  "dia": "2026-11-20",
-  "y10": 4.912,
+  "dia": "2026-11-23",
+  "y10": 4.918,
   "linea": 4.5,
-  "un_mes_pb": -4.1,
-  "move": 106.3,
-  "move_percentil": 96,
-  "eventos": [
-   "move_tension"
-  ]
+  "un_mes_pb": -7.0,
+  "move": 100.9,
+  "move_percentil": 90,
+  "eventos": []
  },
  "plan": [
   {
    "senal": "S&P 500 −10 %",
-   "estado": "HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3"
+   "estado": "comprado el 2026-11-20 en x3; pasado a normal el 2026-11-23"
   },
   {
    "senal": "S&P 500 −15 %",
-   "estado": "en 664,38 (falta -3,7 %): 10 % del plan en S&P 500 x3"
+   "estado": "en 664,38 (falta -8,0 %): 10 % del plan en S&P 500 x3"
   },
   {
    "senal": "S&P 500 −20 %",
-   "estado": "en 625,30 (falta -9,4 %): 10 % del plan en S&P 500 x2"
+   "estado": "en 625,30 (falta -13,4 %): 10 % del plan en S&P 500 x2"
   }
  ]
 }

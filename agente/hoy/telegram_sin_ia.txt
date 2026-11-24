@@ -1,14 +1,13 @@
-🤖 Compañero (sin IA) · vie 20-11
-🛒 PLAN DE REBAJAS · S&P 500 −10 %: HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3. Mira la pestaña «Hoy» de la terminal.
-🟢 Sistema: todo grabado, sin avisos nuevos
-📉 Caídas: SPY -11,8 %, RSP -7,5 %, DIA -11,6 %, QQQ -20,2 %, IWM -15,7 %, MAGS -17,5 % · VIX 35,9
-🔥 Pánico vivo desde el 20-11: se va cuando VIX/VIX3M baje de 1,0 (hoy 1,16)
-🔢 Nota de los índices (no es una orden): SPY 1, QQQ 0, DIA 2, IWM 1, RSP 3, MAGS 1
-🧩 Dinero: VENTA EXTREMA (entran 0 sectores, salen 7) · VENTA EXTREMA · centinela LIQUIDEZ
-🏦 Bono 10 años 4,91 % (línea 4,5 %; un mes -4 pb) · MOVE 106
-🛒 S&P 500 −10 %: HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3
-🛒 S&P 500 −15 %: en 664,38 (falta -3,7 %): 10 % del plan en S&P 500 x3
-🛒 S&P 500 −20 %: en 625,30 (falta -9,4 %): 10 % del plan en S&P 500 x2
-🧾 Marcador (≥30 casos): GIRO↓ acierta 74 % (IC 57–86); GIRO↑ acierta 26 % (IC 15–43)
+🤖 Compañero (sin IA) · lun 23-11
+🟠 Sistema: aviso NUEVO en SALUD DEL BUILD → options: build a las 01:10 NY (sesion USA no cerrada): vo
+📉 Caídas: SPY -7,6 %, RSP -5,1 %, DIA -8,9 %, QQQ -14,7 %, IWM -12,7 %, MAGS -11,2 % · VIX 26,6
+🔥 Pánico vivo desde el 20-11: se va cuando VIX/VIX3M baje de 1,0 (hoy 1,04)
+🔢 Nota de los índices (no es una orden): SPY 1, QQQ 1, DIA 2, IWM 1, RSP 4, MAGS 2
+🧩 Dinero: SALE DE TODO (entran 0 sectores, salen 6) · centinela LIQUIDEZ
+🏦 Bono 10 años 4,92 % (línea 4,5 %; un mes -7 pb) · MOVE 101
+🛒 S&P 500 −10 %: comprado el 2026-11-20 en x3; pasado a normal el 2026-11-23
+🛒 S&P 500 −15 %: en 664,38 (falta -8,0 %): 10 % del plan en S&P 500 x3
+🛒 S&P 500 −20 %: en 625,30 (falta -13,4 %): 10 % del plan en S&P 500 x2
+🧾 Marcador (≥30 casos): GIRO↓ acierta 72 % (IC 55–84); GIRO↑ acierta 26 % (IC 14–42)
 🧺 Cesta semanal: mejor que el SPY 5 de 12 semanas
-📡 Cable: 21 señales · BALA SPY, BALA SPY, NIVEL SPY, NIVEL DIA, NIVEL QQQ
+📡 Cable: 21 señales

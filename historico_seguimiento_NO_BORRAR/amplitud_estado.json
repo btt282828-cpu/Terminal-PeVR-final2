@@ -613,5 +613,20 @@
 "RSP": 207.44,
 "IWM": 256.61
 }
+},
+{
+"date": "2026-11-23",
+"rsp": "ENSANCHANDO",
+"iwm": "ENSANCHANDO",
+"p50": 44.2,
+"p200": 47.8,
+"nhnl10": -17.9,
+"div": false,
+"lectura": "SIN ESTRECHAMIENTO",
+"px": {
+"SPY": 722.29,
+"RSP": 212.82,
+"IWM": 265.74
+}
 }
 ]

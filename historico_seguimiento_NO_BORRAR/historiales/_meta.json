@@ -1,45 +1,45 @@
 {
  "dix_gex.csv": {
-  "fecha": "2026-11-17",
-  "filas": 3910,
+  "fecha": "2026-11-24",
+  "filas": 3915,
   "url": "https://squeezemetrics.com/monitor/static/DIX.csv",
   "cabecera": "date,price,dix,gex",
-  "ultima": "2026-11-16,7416.59,0.40930554272654956,2555664309.7399993"
+  "ultima": "2026-11-23,7237.17,0.39056858464075306,1619839458.299999"
  },
  "cboe_vix.csv": {
-  "fecha": "2026-11-17",
-  "filas": 9317,
+  "fecha": "2026-11-24",
+  "filas": 9322,
   "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
   "cabecera": "DATE,OPEN,HIGH,LOW,CLOSE",
-  "ultima": "11/16/2026,20.000000,24.520000,19.840000,22.910000"
+  "ultima": "11/23/2026,31.380000,35.080000,15.390000,26.620000"
  },
  "cboe_vix9d.csv": {
-  "fecha": "2026-11-17",
-  "filas": 3991,
+  "fecha": "2026-11-24",
+  "filas": 3996,
   "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX9D_History.csv",
   "cabecera": "DATE,OPEN,HIGH,LOW,CLOSE",
-  "ultima": "11/16/2026,20.870000,25.250000,20.340000,23.150000"
+  "ultima": "11/23/2026,40.720000,40.720000,27.230000,27.760000"
  },
  "cboe_vix3m.csv": {
-  "fecha": "2026-11-17",
-  "filas": 4317,
+  "fecha": "2026-11-24",
+  "filas": 4322,
   "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX3M_History.csv",
   "cabecera": "DATE,OPEN,HIGH,LOW,CLOSE",
-  "ultima": "11/16/2026,21.550000,23.780000,21.240000,23.020000"
+  "ultima": "11/23/2026,30.940000,30.940000,24.770000,25.500000"
  },
  "cboe_vvix.csv": {
-  "fecha": "2026-11-17",
-  "filas": 5148,
+  "fecha": "2026-11-24",
+  "filas": 5153,
   "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VVIX_History.csv",
   "cabecera": "DATE,VVIX",
-  "ultima": "11/16/2026,114.230000"
+  "ultima": "11/23/2026,117.360000"
  },
  "cboe_skew.csv": {
-  "fecha": "2026-11-17",
-  "filas": 9271,
+  "fecha": "2026-11-24",
+  "filas": 9276,
   "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/SKEW_History.csv",
   "cabecera": "DATE,SKEW",
-  "ultima": "11/16/2026,146.330000"
+  "ultima": "11/23/2026,140.370000"
  },
  "universo": {
   "fecha": "2026-11-03",

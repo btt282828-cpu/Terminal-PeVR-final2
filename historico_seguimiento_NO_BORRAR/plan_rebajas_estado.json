@@ -6,21 +6,21 @@
 "venta": null
 }
 },
-"ultimo": "2026-11-20",
+"ultimo": "2026-11-23",
 "agente": [
 {
 "senal": "S&P 500 −10 %",
-"estado": "HOY TOCA: comprar el tramo (10 % del plan) en S&P 500 x3"
+"estado": "comprado el 2026-11-20 en x3; pasado a normal el 2026-11-23"
 },
 {
 "senal": "S&P 500 −15 %",
-"estado": "en 664,38 (falta -3,7 %): 10 % del plan en S&P 500 x3"
+"estado": "en 664,38 (falta -8,0 %): 10 % del plan en S&P 500 x3"
 },
 {
 "senal": "S&P 500 −20 %",
-"estado": "en 625,30 (falta -9,4 %): 10 % del plan en S&P 500 x2"
+"estado": "en 625,30 (falta -13,4 %): 10 % del plan en S&P 500 x2"
 }
 ],
 "version": "v8.7",
-"avisado": "2026-11-20|COMPRA 500 € en S&P 500 x3: el S&P 500 cierra en 689,81 (−10 % del máximo)|r0"
+"avisado": "2026-11-23|PASA A NORMAL lo comprado en −10 % (x3): el S&P 500 ha recuperado 1/3 de la caída (722,29) → vender esos x3 y comprar S&P 500 normal|r0"
 }

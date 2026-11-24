@@ -10,14 +10,21 @@
    "eventos": [
     "move_tension"
    ]
+  },
+  {
+   "date": "2026-11-23",
+   "y10": 4.918,
+   "ch5": -20.3,
+   "ch21": -7.0,
+   "move": 100.9,
+   "move_pct": 90,
+   "eventos": []
   }
  ],
- "ultimo": "2026-11-20",
+ "ultimo": "2026-11-23",
  "umbral": 4.5,
  "fuente": "Yahoo",
  "avisado": {
-  "2026-11-20": [
-   "move_tension"
-  ]
+  "2026-11-23": []
  }
 }

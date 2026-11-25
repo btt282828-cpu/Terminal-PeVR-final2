@@ -1,18 +1,18 @@
 {
  "caidas": {
-  "fecha": "2026-11-23",
+  "fecha": "2026-11-24",
   "dd": {
-   "SPY": -7.59,
-   "RSP": -5.08,
-   "DIA": -8.91,
-   "QQQ": -14.66,
-   "IWM": -12.7,
-   "MAGS": -11.25
+   "SPY": -8.04,
+   "RSP": -4.57,
+   "DIA": -8.19,
+   "QQQ": -16.35,
+   "IWM": -12.24,
+   "MAGS": -12.07
   },
-  "vix": 26.62,
+  "vix": 26.36,
   "agudo": false,
-  "en_minimos": 0.6,
-  "vix_vix3m": 1.044,
+  "en_minimos": 2.4,
+  "vix_vix3m": 1.035,
   "panico_vivo": true,
   "panico_desde": "2026-11-20",
   "panico_se_fue": null,
@@ -41,20 +41,20 @@
   ],
   "MAGS": [
    "NOTA BAJA",
-   2
+   1
   ]
  },
  "dinero": {
   "lectura": "SALE DE TODO",
   "sect_entra": 0,
-  "sect_sale": 6,
+  "sect_sale": 5,
   "empuje": false,
   "extrema": false
  },
  "centinela": "LIQUIDEZ",
  "balas": {
   "caida_abierta": true,
-  "dia": "2026-11-23",
+  "dia": "2026-11-24",
   "dadas": {
    "1": {
     "fecha": "2026-11-09",
@@ -73,12 +73,12 @@
   "hoy": []
  },
  "bono": {
-  "dia": "2026-11-23",
-  "y10": 4.918,
+  "dia": "2026-11-24",
+  "y10": 4.904,
   "linea": 4.5,
-  "un_mes_pb": -7.0,
-  "move": 100.9,
-  "move_percentil": 90,
+  "un_mes_pb": -8.2,
+  "move": 98.8,
+  "move_percentil": 88,
   "eventos": []
  },
  "plan": [
@@ -88,11 +88,11 @@
   },
   {
    "senal": "S&P 500 −15 %",
-   "estado": "en 664,38 (falta -8,0 %): 10 % del plan en S&P 500 x3"
+   "estado": "en 664,38 (falta -7,6 %): 10 % del plan en S&P 500 x3"
   },
   {
    "senal": "S&P 500 −20 %",
-   "estado": "en 625,30 (falta -13,4 %): 10 % del plan en S&P 500 x2"
+   "estado": "en 625,30 (falta -13,0 %): 10 % del plan en S&P 500 x2"
   }
  ]
 }

@@ -144,6 +144,26 @@ Estado: pendiente / en curso / descartada / candidata para demo.
 ## Ideas propias del agente
 (las apunta el agente; 3 por sesión de fondeo)
 
+### Sesión del 24-nov-2026 (escritas ANTES de probar)
+- **F-023 · [DESCARTADA 24-nov: ocurre lo contrario; ver estudios/F-023.md] Miedo alto = caída más pequeña (ángulo a, gestión).** Los años malos de la caída (2008, 2018, 2022) son mercados con
+  miedo. Regla: la operación de «caída» (NAS y SPX) entra con el peso de siempre (0,5) salvo que el VIX del cierre ANTERIOR sea
+  ≥ 30; entonces peso 0 (A) o 0,25 (B). Variantes (5 como mucho, fijadas ya): A = VIX≥30 → peso 0; B = VIX≥30 → peso 0,25;
+  C = VIX≥25 → peso 0; D = VIX/VIX3M ≥ 1,0 (solo desde 2009) → peso 0; E = lo contrario: VIX≥30 → peso 1 (porque la pista
+  viva dice que VIX alto mejora las entradas). VIX diario de `historiales/cboe_vix.csv` (desde 1990). Confirma: la caída con VIX
+  alto rinde peor en aprender (≤2018) Y en comprobar (2019-22), y al aplicar la regla The5ers (colchón) baja la quema o sube
+  «≤ 12 m» en 2003-15 y 2016-22 sin empeorar 2023-26. Tumba: R igual o mejor con VIX alto, o la mejora solo sale en un tramo,
+  o N < 30 con VIX alto. Frente al azar «caída igual».
+- **F-024 · Tope propio de −2 % al día con 5 gráficos (ángulo a).** Si el plan pierde ≥ 2 % en el día (en R × riesgo), no se abre
+  nada más ese día. Pregunta abierta de la revisión: ¿compensa frente a la pausa de The5ers al −3 %? Pendiente (necesita
+  simulador propio en `fondeo_extra.py`).
+- **F-026 · (apuntada tras ver F-023; NO es limpia) Caída al doble con el VIX en «backwardation».** En F-023 salió que la caída
+  con VIX/VIX3M ≥ 1,0 (cierre anterior) rinde mucho más (NAS +0,45 R N 42; SPX +0,28 N 46; positivo en los tres tramos). Pero
+  lo vi mirando todos los tramos, incluida la caja, así que NO puede dar «candidata»: solo vale como pista. Para volverla limpia
+  habría que esperar a datos nuevos (la sombra) o a otro activo. Regla única: peso 1,0 en lugar de 0,5 si ratio ≥ 1,0.
+  Ojo: con tan pocos casos (42 y 46 en 15 años) es fácil que sea suerte, y esos días son justo los de caída fuerte.
+- **F-025 · Lo contrario de lo que falla (ángulo f):** EUR/JPY pierde hasta 2022 y solo gana desde 2023. Antes de darle la
+  vuelta hay que ver si pierde ANTES de costes y en los tres tramos; si es ruido, se descarta. Pendiente.
+
 ## Contador
-Ideas probadas: 13 (F-008: 12 pruebas; F-009: 15; F-010: 11; F-011: 12 + filtro; F-012: 15; F-014: 75 + 12 de contraste; F-015: 8; F-016: 22; F-017: 8; F-018: 30 (15 reglas × 2 índices); F-019: 6 mezclas de reto; F-020: 6; F-022: 6 variantes × 2 índices)
+Ideas probadas: 14 (F-023: 5 variantes + diagnóstico por grupos; F-008: 12 pruebas; F-009: 15; F-010: 11; F-011: 12 + filtro; F-012: 15; F-014: 75 + 12 de contraste; F-015: 8; F-016: 22; F-017: 8; F-018: 30 (15 reglas × 2 índices); F-019: 6 mezclas de reto; F-020: 6; F-022: 6 variantes × 2 índices)
 Con tantas pruebas, una idea que salga bien por los pelos no significa nada.

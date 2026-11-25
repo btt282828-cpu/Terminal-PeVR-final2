@@ -1,9 +1,9 @@
-🤖 Compañero · lun 23-11
-🛒 PLAN DE REBAJAS · HOY PASA A NORMAL el S&P −10 % (los x3 comprados el 20-nov): el SPY recuperó 1/3 de la caída (cierre 722,29). Salto con el cierre del lunes; primera ocasión: hoy martes al abrir.
-🟠 Sistema: todo grabado. Aviso menor de opciones (dato provisional). Sigue el fallo: el plan NO calcula el Nasdaq.
-📊 Terminal: rebote fuerte (SPY +4,7 %, QQQ +7 %, VIX 26,6). SPY −7,6 %, QQQ −14,7 % del máximo. Pánico SIGUE vivo (ratio 1,04; se va por debajo de 1,0).
-🎯 Plan: Nasdaq −20 % x3 tocó el 20-nov (la terminal no lo muestra). Mi cálculo: pasa a normal con cierre del QQQ ≥ ~659,9 (hoy 651,03, falta +1,4 %): mírelo a mano. Próximo: S&P −15 % en 664,38 (−8,0 %).
-🧾 Marcador: sin cambios; GIRO↑ va al revés (35 casos, 26 %).
-🔬 Hoy he probado: nada (modo repaso).
-💡 Propuesta: arreglar el Nasdaq del plan (rotacion.py ~24898).
-🙋 Necesito de ti: subir el arreglo de preparar.py (línea 237) y decidir lo del cable de 60 fechas antes del 2-dic.
+🤖 Compañero · martes 24-nov
+🟢 Sistema: todo grabado y al día. Sigue el fallo de siempre: el plan de rebajas no calcula el Nasdaq (5.º día).
+📊 Terminal: SPY −8,0 % y QQQ −16,4 % desde su máximo; VIX 26,4. El pánico sigue vivo (ratio 1,035; se va por debajo de 1,0).
+🎯 Plan: hoy no toca nada. S&P −15 % falta −7,6 %; Nasdaq −25 % falta −10,3 %. Los x3 del Nasdaq pasarían a normal con cierre ≥ ~660 (hoy 638; la terminal no lo avisará, hay que mirarlo a mano).
+🧾 Marcador: sin cambios; GIRO↓ funciona, GIRO↑ va al revés, poca base.
+🔬 Hoy he probado: bajar la caída del fondeo con miedo alto. Sale al revés: con VIX alto la caída rinde más, no se apaga.
+🏁 Fondeo: sombra −0,47 % (peor −0,75 %), 8 operaciones, ninguna abierta. Las dos caídas perdieron 1 vez; vigilancia en orden.
+💡 Propuesta: que el plan lea el Nasdaq (rotacion.py ~24898).
+🙋 Necesito de ti: decidir lo del Nasdaq y el cable de 60 fechas (se llena el 1-dic).

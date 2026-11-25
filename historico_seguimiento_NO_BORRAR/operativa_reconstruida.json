@@ -1,19 +1,19 @@
 {
 "meta": {
-"actualizado": "2026-11-24",
-"dias": 1339,
+"actualizado": "2026-11-25",
+"dias": 1340,
 "faltan": 0,
 "desde": "2021-07-27",
 "validacion": {
-"n": 164,
+"n": 170,
 "iguales": 97,
 "dif_media": 0.04,
 "a1": 99
 },
 "acciones": 519,
 "nota": "composición y amplitud con los pesos y las acciones de hoy",
-"completa_desde": "2021-08-27",
-"hasta": "2026-11-24"
+"completa_desde": "2021-08-30",
+"hasta": "2026-11-25"
 },
 "recs": [
 {
@@ -89714,6 +89714,77 @@
 "a"
 ],
 "px": 66.36
+}
+}
+},
+{
+"date": "2026-11-24",
+"idx": {
+"SPY": {
+"score": 1,
+"p": [
+"r",
+"r",
+"r",
+"r",
+"a"
+],
+"px": 718.78
+},
+"QQQ": {
+"score": 1,
+"p": [
+"r",
+"r",
+"r",
+"r",
+"a"
+],
+"px": 638.1
+},
+"DIA": {
+"score": 2,
+"p": [
+"r",
+"r",
+"r",
+"a",
+"a"
+],
+"px": 499.74
+},
+"IWM": {
+"score": 1,
+"p": [
+"r",
+"r",
+"r",
+"a",
+"r"
+],
+"px": 267.14
+},
+"RSP": {
+"score": 4,
+"p": [
+"a",
+"r",
+"r",
+"v",
+"a"
+],
+"px": 213.96
+},
+"MAGS": {
+"score": 1,
+"p": [
+"r",
+"r",
+"r",
+"a",
+"r"
+],
+"px": 65.75
 }
 }
 }

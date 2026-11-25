@@ -1148,5 +1148,60 @@
 "n": 1
 }
 ]
+},
+{
+"ts": "2026-11-25 05:11 UTC",
+"opciones": {
+"corrio": true,
+"yahoo": 64,
+"yahoo_sin": 0,
+"yahoo_ult_err": "",
+"cboe": 0,
+"cboe_err": 0,
+"cboe_ult_err": "",
+"modo": "yahoo"
+},
+"avisos": [
+{
+"o": "frescura",
+"m": "1 series con el cierre del 2026-11-24 REHECHO con barras de 1 hora (Yahoo aun no daba la barra diaria). Cierre aproximado: puede diferir unas centésimas del oficial",
+"n": 1
+},
+{
+"o": "datos.DRAM",
+"m": "ETF joven: 35 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "datos.NCLD",
+"m": "ETF joven: 17 semanas de 84 necesarias. Se muestra aparte con historial corto; no entra en scoring ni cartera hasta tener historial suficiente",
+"n": 1
+},
+{
+"o": "options.iv",
+"m": "IV descartada por no plausible en 3 ETF(s) (no fiable vs su volatilidad realizada; no ensucia el rank): FAN 126%/28r, DRIV 162%/49r, UUP 37%/6r",
+"n": 1
+},
+{
+"o": "options.pcr",
+"m": "put/call fuera de banda plausible [0.29-3.5] en 14 ETF(s) — cadena fina o dato roto: NO se publica ni genera narrativa alcista/bajista: UFO (OI 0.09), BOTZ (OI 0.12), SLV (OI 0.26)",
+"n": 1
+},
+{
+"o": "acciones",
+"m": "7 ticker(s) de SECTOR_STOCKS sin datos — probablemente compradas, fusionadas o con ticker nuevo. NO aparecen en el cruce ni en las rezagadas: CTRA (en XOP), EA (en XLC), GATO (en S",
+"n": 1
+},
+{
+"o": "pesos",
+"m": "QQQ: la cartera oficial de Invesco no respondió (ValueError: HTTP 406); se usan los pesos guardados del 2026-11-12",
+"n": 1
+},
+{
+"o": "valida.CL=F",
+"m": "yahoo: cierres <= 0 o serie vacia — fuente descartada, se prueba la siguiente",
+"n": 1
+}
+]
 }
 ]

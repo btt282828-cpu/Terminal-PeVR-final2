@@ -6,7 +6,7 @@
 "venta": null
 }
 },
-"ultimo": "2026-11-24",
+"ultimo": "2026-11-25",
 "agente": [
 {
 "senal": "S&P 500 −10 %",
@@ -14,11 +14,11 @@
 },
 {
 "senal": "S&P 500 −15 %",
-"estado": "en 664,38 (falta -7,6 %): 10 % del plan en S&P 500 x3"
+"estado": "en 664,38 (falta -7,3 %): 10 % del plan en S&P 500 x3"
 },
 {
 "senal": "S&P 500 −20 %",
-"estado": "en 625,30 (falta -13,0 %): 10 % del plan en S&P 500 x2"
+"estado": "en 625,30 (falta -12,8 %): 10 % del plan en S&P 500 x2"
 }
 ],
 "version": "v8.7",

@@ -198,5 +198,9 @@
 {
 "date": "2026-11-25",
 "estado": "LIQUIDEZ"
+},
+{
+"date": "2026-11-26",
+"estado": "LIQUIDEZ"
 }
 ]

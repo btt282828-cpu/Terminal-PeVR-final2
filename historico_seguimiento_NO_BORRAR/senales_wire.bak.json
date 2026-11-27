@@ -7450,5 +7450,119 @@
 "tag": "SENT",
 "sym": "F&G",
 "dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "CLÍMAX",
+"sym": "MAGS",
+"dir": -1
+},
+{
+"date": "2026-11-25",
+"tag": "CLÍMAX",
+"sym": "SMH",
+"dir": -1
+},
+{
+"date": "2026-11-25",
+"tag": "CLÍMAX",
+"sym": "EEM",
+"dir": -1
+},
+{
+"date": "2026-11-25",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GRADUADO",
+"sym": "EEM",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GRADUADO",
+"sym": "JETS",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GRADUADO",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GRADUADO",
+"sym": "KRE",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GIRO",
+"sym": "SNDK",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GIRO",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "GIRO",
+"sym": "NCLD",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "SUELO",
+"sym": "EWY",
+"dir": 0
+},
+{
+"date": "2026-11-25",
+"tag": "SUELO",
+"sym": "SMH",
+"dir": 0
+},
+{
+"date": "2026-11-25",
+"tag": "SUELO",
+"sym": "QTUM",
+"dir": 0
+},
+{
+"date": "2026-11-25",
+"tag": "SUELO",
+"sym": "XLC",
+"dir": 0
+},
+{
+"date": "2026-11-25",
+"tag": "EARLY",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "EARLY",
+"sym": "EEM",
+"dir": 1
+},
+{
+"date": "2026-11-25",
+"tag": "SENT",
+"sym": "F&G",
+"dir": 1
 }
 ]

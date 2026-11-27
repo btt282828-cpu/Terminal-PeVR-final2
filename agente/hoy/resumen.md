@@ -1,8 +1,12 @@
-# Datos del día — mercado 2026-11-25
-_Generado 2026-11-26 04:28 UTC por agente/preparar.py (sin IA)._
+# Datos del día — mercado 2026-11-26
+_Generado 2026-11-27 04:32 UTC por agente/preparar.py (sin IA)._
 
 ## 1. Vigilante
-- 🟢 Todo grabado y sin avisos nuevos
+- 🟠 semaforo_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o retraso
+- 🟠 estructura_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o retraso
+- 🟠 dix_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o retraso
+- 🟠 amplitud_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o retraso
+- 🟠 operativa_indices.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o retraso
 
 ## Señales del plan de compras en caídas (estado de hoy)
 - **S&P 500 −10 %:** comprado el 2026-11-20 en x3; pasado a normal el 2026-11-23

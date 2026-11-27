@@ -1,5 +1,5 @@
-🤖 Compañero (sin IA) · mié 25-11
-🟢 Sistema: todo grabado, sin avisos nuevos
+🤖 Compañero (sin IA) · jue 26-11
+🟠 Sistema: semaforo_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o  | estructura_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo 
 📉 Caídas: SPY -8,3 %, RSP -3,8 %, DIA -7,9 %, QQQ -16,9 %, IWM -11,7 %, MAGS -13,0 % · VIX 28,3
 🔥 Pánico vivo desde el 20-11: se va cuando VIX/VIX3M baje de 1,0 (hoy 1,08)
 🔢 Nota de los índices (no es una orden): SPY 1, QQQ 1, DIA 3, IWM 2, RSP 5, MAGS 1

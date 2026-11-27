@@ -1,11 +1,11 @@
 {
- "fecha": "2026-11-25",
- "modo": "DIARIO",
- "pasos": 10,
- "tokens_nuevos": 42842,
- "tokens_releidos": 237375,
- "tokens_escritos": 6167,
- "equivalente_api_usd": 0.26,
- "minutos": 0.7,
+ "fecha": "2026-11-26",
+ "modo": "FONDEO",
+ "pasos": 14,
+ "tokens_nuevos": 64744,
+ "tokens_releidos": 760775,
+ "tokens_escritos": 14823,
+ "equivalente_api_usd": 0.48,
+ "minutos": 2.2,
  "terminado": "success"
 }

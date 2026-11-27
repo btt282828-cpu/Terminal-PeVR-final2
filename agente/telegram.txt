@@ -1,8 +1,9 @@
-🤖 Compañero · mié 25-nov
-🟢 Sistema: todo grabado y sin fallos nuevos. Sigue roto: el plan de rebajas no calcula el Nasdaq (6.º día).
-📊 Terminal: SPY −8,3 % y QQQ −16,9 % desde su máximo. VIX 28,3 (ayer 26,4): el miedo sube aunque el índice casi no se mueve.
-🎯 Plan: hoy no toca nada. Pánico sigue vivo (VIX/VIX3M 1,076; se va si baja de 1,0). El Nasdaq −20 % (tocado el 20-nov) pasaría a normal con cierre ≥ ~660 (hoy 634). Jueves EE. UU. cerrado.
-🧾 Marcador: sin cambios; GIRO↑ sigue al revés, sin señal propia.
-🔬 Hoy he probado: nada (día de repaso).
-💡 Propuesta: que el plan lea el Nasdaq (rotacion.py ~24898) y ampliar el cable de señales antes del 2-dic.
-🙋 Necesito de ti: subir el arreglo de preparar.py (línea 237) y decidir lo del Nasdaq y el cable.
+🤖 Compañero · jue 26-nov
+🟢 Sistema: terminal bien; hoy EE. UU. cerrado (festivo), por eso no hay datos nuevos. Sigue sin calcular el Nasdaq del plan de rebajas.
+📊 Terminal: último cierre (25-nov) SPY −8,3 % y QQQ −16,9 % desde su máximo; el pánico sigue vivo (cociente 1,08, se va por debajo de 1,0).
+🎯 Plan: hoy no toca nada. Próximo escalón: S&P −15 % (falta −7,3 %). Mañana viernes, media sesión.
+🧾 Marcador: sin cambios; GIRO↓ y GIRO↑ sin señal propia tras el control de azar.
+🔬 Hoy he probado: Russell 2000 con las reglas del robot (F-027): pierde, descartado.
+🏁 Fondeo: sombra −0,3 % (peor −0,75 %). Las dos caídas de ayer parecen abiertas (datos cortados). Vigilancia de la caída: normal, sin aviso.
+💡 Propuesta: arreglar el Nasdaq del plan (rotacion.py ~24898).
+🙋 Necesito de ti: subir el arreglo de preparar.py y decidir lo del Nasdaq.

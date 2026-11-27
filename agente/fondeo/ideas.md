@@ -164,6 +164,23 @@ Estado: pendiente / en curso / descartada / candidata para demo.
 - **F-025 · Lo contrario de lo que falla (ángulo f):** EUR/JPY pierde hasta 2022 y solo gana desde 2023. Antes de darle la
   vuelta hay que ver si pierde ANTES de costes y en los tres tramos; si es ruido, se descarta. Pendiente.
 
+### Sesión del 26-nov-2026 (escritas ANTES de probar)
+- **F-027 · [DESCARTADA 26-nov: el motor 1 pierde (−0,12 R, caja −0,31) y la caída es ~0; añadirlos sube la quema; ver estudios/F-027.md] Russell 2000 (US2000) con las mismas reglas (ángulo c).** Sin tocar ningún número:
+  motor 1 (`sistema_actual("us2000")`) y caída (`caida("us2000")`, 2,4 % / stop 3,6 %). Variantes (5, fijadas ya): A = motor 1
+  solo; B = caída sola; C = plan de Pe + motor 1 de US2000 a peso 1; D = plan de Pe + caída de US2000 a peso 0,5; E = plan de Pe
+  + las dos de US2000 a medio peso. Confirma: R > 0 en aprender (≤2018) Y comprobar (2019-22), gana al azar justo (y a «caída
+  igual» en la caída) con N ≥ 30 por tramo, y al añadirla a `plan_completo()` en The5ers (colchón) sube «≤ 12 m» o baja la quema
+  en 2003-15 y 2016-22 sin empeorar 2023-26 ni el peor día (−3,65 %). Tumba: R ≤ 0 en algún tramo, N < 30, no gana al azar, o
+  el reto no mejora (el Russell se mueve casi como el S&P: puede ser la misma apuesta repetida).
+- **F-028 · Salida por tiempo en la caída (ángulo b; pregunta abierta «estar dentro más barato»).** Si a las 72 h de la entrada
+  la operación no está por encima de la entrada, se cierra a mercado (en vez de esperar 10 días). Variantes: 48 h, 72 h, 120 h.
+  Confirma: R medio igual o mejor y menos días expuestos, y mejor tabla de retos en comprobar y caja. Tumba: R peor en
+  cualquiera de los dos índices (afinar salidas suele ser ruido). Pendiente.
+- **F-029 · Segunda caída a peso reducido si la otra ya está abierta (ángulo a).** El 49 % de las entradas del S&P cae a 1 día
+  de una del Nasdaq (la del 17-nov perdió las dos a la vez). Regla: la caída del S&P (o del Nasdaq, la que llegue segunda) entra a
+  peso 0,25 si la otra está abierta. Variantes: 0,25 y 0. Confirma: baja la quema sin bajar «≤ 12 m» en 2003-15 y 2016-22.
+  Tumba: cuando coinciden las dos, la segunda rinde igual o mejor. Pendiente.
+
 ## Contador
-Ideas probadas: 14 (F-023: 5 variantes + diagnóstico por grupos; F-008: 12 pruebas; F-009: 15; F-010: 11; F-011: 12 + filtro; F-012: 15; F-014: 75 + 12 de contraste; F-015: 8; F-016: 22; F-017: 8; F-018: 30 (15 reglas × 2 índices); F-019: 6 mezclas de reto; F-020: 6; F-022: 6 variantes × 2 índices)
+Ideas probadas: 15 (F-027: 5 variantes + 2 diagnósticos; F-023: 5 variantes + diagnóstico por grupos; F-008: 12 pruebas; F-009: 15; F-010: 11; F-011: 12 + filtro; F-012: 15; F-014: 75 + 12 de contraste; F-015: 8; F-016: 22; F-017: 8; F-018: 30 (15 reglas × 2 índices); F-019: 6 mezclas de reto; F-020: 6; F-022: 6 variantes × 2 índices)
 Con tantas pruebas, una idea que salga bien por los pelos no significa nada.

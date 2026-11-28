@@ -7564,5 +7564,143 @@
 "tag": "SENT",
 "sym": "F&G",
 "dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "CLÍMAX",
+"sym": "XBI",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "CLÍMAX",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "CLÍMAX",
+"sym": "KWEB",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "SE VA EL PÁNICO",
+"sym": "MERCADO",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "NOCTURNO",
+"sym": "EWZ",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "NOCTURNO",
+"sym": "EWY",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "NOCTURNO",
+"sym": "REMX",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "NOCTURNO",
+"sym": "EWP",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "GRADUADO",
+"sym": "EEM",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "GRADUADO",
+"sym": "JETS",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "GRADUADO",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "GRADUADO",
+"sym": "KRE",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "GIRO",
+"sym": "EWZ",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "GIRO",
+"sym": "MSTR",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "GIRO",
+"sym": "COIN",
+"dir": -1
+},
+{
+"date": "2026-11-27",
+"tag": "SUELO",
+"sym": "QTUM",
+"dir": 0
+},
+{
+"date": "2026-11-27",
+"tag": "SUELO",
+"sym": "KWEB",
+"dir": 0
+},
+{
+"date": "2026-11-27",
+"tag": "SUELO",
+"sym": "EWY",
+"dir": 0
+},
+{
+"date": "2026-11-27",
+"tag": "SUELO",
+"sym": "XME",
+"dir": 0
+},
+{
+"date": "2026-11-27",
+"tag": "EARLY",
+"sym": "DRAM",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "EARLY",
+"sym": "HYDR",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "EARLY",
+"sym": "EEM",
+"dir": 1
+},
+{
+"date": "2026-11-27",
+"tag": "SENT",
+"sym": "F&G",
+"dir": 1
 }
 ]

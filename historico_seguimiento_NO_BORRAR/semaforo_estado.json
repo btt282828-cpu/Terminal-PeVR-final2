@@ -126,7 +126,7 @@
 },
 "mercado": {
 "panico_desde": "2026-11-20",
-"panico_se_fue": null
+"panico_se_fue": "2026-11-27"
 },
 "log": [
 {
@@ -496,7 +496,30 @@
 "IWM": -11.67,
 "MAGS": -12.99
 }
+},
+{
+"date": "2026-11-27",
+"nl": 0.15,
+"vix": 23.81,
+"t9": 1.012,
+"t3": 1.0,
+"rel_pico": 0.842,
+"sect_sale": 5,
+"av": 0,
+"agudo": false,
+"panico_vivo": false,
+"eventos": [
+"se_va"
+],
+"dd": {
+"SPY": -6.82,
+"RSP": -2.6,
+"DIA": -6.75,
+"QQQ": -14.66,
+"IWM": -10.05,
+"MAGS": -11.03
+}
 }
 ],
-"ultimo": "2026-11-25"
+"ultimo": "2026-11-27"
 }

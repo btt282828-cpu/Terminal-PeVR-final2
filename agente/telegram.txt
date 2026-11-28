@@ -1,9 +1,8 @@
-🤖 Compañero · jue 26-nov
-🟢 Sistema: terminal bien; hoy EE. UU. cerrado (festivo), por eso no hay datos nuevos. Sigue sin calcular el Nasdaq del plan de rebajas.
-📊 Terminal: último cierre (25-nov) SPY −8,3 % y QQQ −16,9 % desde su máximo; el pánico sigue vivo (cociente 1,08, se va por debajo de 1,0).
-🎯 Plan: hoy no toca nada. Próximo escalón: S&P −15 % (falta −7,3 %). Mañana viernes, media sesión.
-🧾 Marcador: sin cambios; GIRO↓ y GIRO↑ sin señal propia tras el control de azar.
-🔬 Hoy he probado: Russell 2000 con las reglas del robot (F-027): pierde, descartado.
-🏁 Fondeo: sombra −0,3 % (peor −0,75 %). Las dos caídas de ayer parecen abiertas (datos cortados). Vigilancia de la caída: normal, sin aviso.
-💡 Propuesta: arreglar el Nasdaq del plan (rotacion.py ~24898).
-🙋 Necesito de ti: subir el arreglo de preparar.py y decidir lo del Nasdaq.
+🤖 Compañero · vie 27-nov
+🟠 Sistema: todo llega al día. Siguen dos fallos: el plan de rebajas no calcula el Nasdaq (8.º aviso) y el cable de señales se llena el 1-dic y el 2-dic empieza a borrar días.
+📊 Terminal: hoy se va el pánico, por un pelo (VIX/VIX3M 0,9996, media sesión). Semana: SPY +5,6 %, QQQ +7,0 %. El «suelo» de la terminal sube a 7 de cada 10, apoyado en solo 10 casos.
+🎯 Plan: hoy no toca ningún escalón. Ojo: el QQQ está a +1,4 % de 659,92, la línea de «paso a normal» del Nasdaq −20 %; la terminal no lo avisará.
+🧾 Marcador: GIRO sin señal propia tras el control de azar; SUELO y EARLY en vigilancia (pocos casos).
+🔬 Hoy he probado: I-006 (¿importa lo rápido que cae del −5 % al −10 %?). Sin conclusión: las rápidas llegaron a −20 % en 3 de cada 10 casos, las lentas en 5-6 de cada 10, pero no pasa mi listón.
+💡 Propuesta: arreglar el Nasdaq del plan (rotacion.py ~24898) y ampliar el cable antes del 2-dic.
+🙋 Necesito de ti: decidir esas dos cosas y subir el arreglo de preparar.py.

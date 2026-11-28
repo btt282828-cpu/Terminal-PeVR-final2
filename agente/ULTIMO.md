@@ -1,49 +1,65 @@
-# Informe del compañero — 2026-11-26 (jueves, modo FONDEO; EE. UU. cerrado por Acción de Gracias)
+# Informe del compañero — 2026-11-27 (viernes, modo SEMANAL; media sesión en EE. UU.)
 ## En una frase
-Día sin sesión en EE. UU.: la terminal no tiene datos nuevos (el último cierre sigue siendo el del 25-nov), no toca nada del plan de rebajas y el pánico sigue «vivo». En fondeo, probé el Russell 2000 con las mismas reglas del robot: pierde, descartado.
+El pánico se ha ido por un pelo (cociente VIX/VIX3M 0,9996) y el mercado ha rebotado fuerte en la semana (SPY +5,6 %, QQQ +7,0 %). Hoy no toca ninguna compra del Plan de rebajas, pero el QQQ está a solo +1,4 % de la línea de «paso a normal» y la terminal no lo avisará, porque sigue sin calcular el Nasdaq.
 
 ## 1. ¿Funciona todo? (vigilante)
-🟢 La terminal anoche acabó bien. Los cinco 🟠 del vigilante (semáforo, estructura, DIX, amplitud, notas de índices «no tienen el 26-nov») son simplemente el festivo: no es un fallo.
-Sigue igual:
-- 🔴 **El plan de rebajas sigue sin calcular el Nasdaq** (desde el 20-nov, 7.º informe). Causa: `rotacion.py` ~línea 24898 (el QQQ no está en `daily` y el código lo salta sin avisar). Arreglo: leer `OPER_QQQ["d"]` para el QQQ, como ya hacen las líneas 23052 y 20779.
-- Cable de señales: 57 fechas de 60; se llena el 1-dic y el 2-dic empieza a borrar días.
-- `preparar.py`: la máquina volvió a restaurar el fallo (10.º día); lo parcheé y repetí. Sin el parche el marcador sale congelado.
+🟢 La terminal acabó bien anoche y todos los archivos llegan al 27-nov.
+- 🟠 Aviso nuevo (SNDK), pequeño: esta acción dividió 8 por 1 el 20-nov y, según mi consulta a Yahoo de hoy, le faltan las barras del 23 al 25-nov y el cierre del 27. El aviso sale de `rotacion.py` ~1704-1708 (`ffill(limit=1)`: tapa 1 semana el hueco de Yahoo; funciona como se diseñó). Ojo: `track_record.json` guarda para SNDK el 27-nov un precio de 94,39, que es el cierre del 19-nov (dato viejo). Afecta a una acción dentro del sintético «Almacén» y a su panel semanal; no toca el plan.
+- 🔴 **Sigue: el Plan de rebajas no calcula el Nasdaq** (8.º informe, desde el 20-nov). Causa: `rotacion.py` línea ~24898 (`d = (daily or {}).get(sym)`: el QQQ no está en `daily`, lo salta con `continue` sin avisar). Arreglo: leer `OPER_QQQ["d"]`, como ya hacen las líneas 23052 y 20779. `plan_rebajas_estado.json` solo tiene el S&P.
+- 🟠 **Cable de señales: 58 fechas de 60** (`rotacion.py` línea 3031, `[-60:]`). Se llena el mar 1-dic y el mié 2-dic empieza a borrar días: quedan dos ejecuciones.
+- `preparar.py`: la máquina restauró otra vez el fallo (11.º día); lo parcheé y repetí, el marcador de abajo ya lleva precios al día. El manual ya recoge el Plan de rebajas: lo de «¿qué plan manda?» queda resuelto.
 
 ## 2. El Plan de rebajas
-Sin sesión hoy: nada cambia respecto al cierre del 25-nov (SPY 716,70, −8,3 % desde el máximo; QQQ 633,93, −16,9 %).
-| Escalón | Estado |
-|---|---|
-| S&P −10 % x3 | comprado el 20-nov; pasó a normal el 23-nov |
-| Nasdaq −20 % x3 | tocó el 20-nov (*la terminal no lo muestra*); pasa a normal con un cierre ≥ ~659,9 (le falta +4,1 %) |
-| S&P −15 % x3 | línea 664,38; falta −7,3 % |
-| Nasdaq −25 % x3 | línea 572,14; falta −9,7 % |
-| S&P −20 % x2 | línea 625,30; falta −12,8 % |
-| Nasdaq −30 %, −40 %, −50 % | sin tocar |
-**Hoy no toca ninguna acción.** Pánico vivo desde el 20-nov (cociente VIX/VIX3M 1,076 el 25-nov); se va con el primer cierre por debajo de 1,0. Mañana viernes es media sesión (cierra 19:00 Bilbao): ahí se verá.
+Hoy **no toca ningún escalón**. Cierre del 27-nov: SPY 728,32 (−6,8 % desde el máximo del 6-oct, 781,62), QQQ 650,99 (−14,7 %; máximo 762,86).
+| Escalón | Línea | Estado |
+|---|---|---|
+| S&P −10 % x3 | 703,46 | comprado el 20-nov; pasó a normal el 23-nov (con 722,29) |
+| Nasdaq −20 % x3 | 610,29 | tocó el 20-nov (cierre 608,45) — *la terminal no lo muestra*. Pasa a normal con cierre ≥ **659,92**; hoy 650,99: falta +1,4 % |
+| S&P −15 % x3 | 664,38 | falta −8,8 % |
+| Nasdaq −25 % x3 | 572,14 | falta −12,1 % |
+| S&P −20 % x2 | 625,30 | falta −14,1 % |
+| Nasdaq −30 % x2 | 534,00 | falta −18,0 % |
+| Nasdaq −40 % / −50 % | 457,72 / 381,43 | sin tocar (x3 solo con VIX ≥ 40) |
+Ojo: la terminal no mandará aviso de «paso a normal» del Nasdaq; la línea de 659,92 hay que mirarla a mano.
 
 ## 3. Qué dice hoy la terminal
-Datos del 25-nov, sin cambios: dinero SALE DE TODO, centinela LIQUIDEZ, notas BAJA/FLOJA (solo contexto), bono 10 años 4,85 % (línea 4,5 %; dato a vigilar, no una bala), MOVE 97,5.
+- **Pánico:** hoy «SE VA EL PÁNICO» (VIX 23,81 / VIX3M 23,82 = 0,9996). Lo dice el detector (`panico_vivo` falso, evento «se_va»). Era la bala 1 del plan viejo; el plan único de rebajas no tiene escalón para eso. Lo medido (I-004, I-005) no respalda que sea mejor momento de entrada que otros días.
+- **Dinero:** SALE DE TODO (entra 1 sector, salen 5), sin EMPUJE ni VENTA EXTREMA. Centinela LIQUIDEZ. Notas de los índices (solo contexto): SPY 2, QQQ 1, DIA 3, IWM 2, RSP 6.
+- **Bono 10 años 4,94 %** (línea 4,5 %: a 44 pb; −11 pb en un mes), MOVE 95 (percentil 81). Dato a vigilar, no una bala. DIX 42,5 (percentil 14); el GEX ya es positivo (el 20-nov era negativo).
+- **«Caída en curso»:** probabilidad de suelo 72 % (7 de cada 10; ayer 58 %); recesión 3 %.
 Cosas que se pueden pasar por alto:
-1. **Contradicción que sigue:** detector y balas dicen «QQQ −20 % tocado»; el plan de rebajas no lo tiene.
-2. **Fuera de la bolsa de EE. UU., el Nasdaq de OANDA rebotó mucho:** el 25-nov llegó a caer hasta ~24.975 puntos y cerró en ~25.950, y en la madrugada del 26 subió hasta ~26.200. Es contexto, no señal.
+1. **El «se va» es por un pelo y en media sesión.** La terminal enseña «1,00» y parece que no ha bajado de 1: es 0,9996. Según la definición del detector, solo un nuevo cierre ≥ 1,10 reabre el pánico, aunque el lunes el cociente vuelva a 1,02.
+2. **El salto de suelo 58 → 72 % viene de una sola casilla:** «SE FUE» vale 84 % en una tabla fija (`rotacion.py` línea 24036) apoyada en **solo 10 caídas del S&P** de 2009-2026 (con el margen, entre 5 y 9 de cada 10). No he podido comprobarla: la definición de «suelo hecho» no está en el repositorio. Lo apunto como I-010. No es una señal.
+3. **La caída la han llevado los grandes de la tecnología:** RSP (el S&P con el mismo peso para todos) está solo −2,6 % de su máximo; SPY −6,8 %, QQQ −14,7 %.
 
-## 4. Marcador (n a 20 sesiones)
-GIRO↓ 33 casos, acierta 73 % (IC 56–85), exceso +7,8 pts (t 3,7); GIRO↑ 35 casos, 26 % (IC 14–42), exceso −5,7 (t −2,7): con el control de azar del 20-nov no hay señal propia. Resto con pocos casos: solo orientativo. Con ~15 señales alguna sale buena por azar. Cesta semanal: 5 de 12 semanas mejor que el SPY.
+## 4. Marcador (n a 20 sesiones; precios al día)
+- GIRO↓ 33 casos, acierta 73 % (IC 56–85), exceso +7,8 pts (t 3,7). GIRO↑ 38 casos, 24 % (IC 13–39), exceso −6,6 (t −3,2). **Control de azar de hoy** (mismo activo, mismas fechas): GIRO↑ neto −0,4 (t −0,2) y GIRO↓ +0,2 (t 0,1): lo que se ve es lo que hacían esos activos, no la señal. Sigue cerrada (I-001).
+- En vigilancia (no son prueba): **SUELO** 18 casos, neto +4,4 pts (t 3,0; por fechas 2,8, solo 12 fechas) y **EARLY** 15 casos, neto +4,2 (t 2,3; por fechas 1,9). Con ~15 señales alguna sale buena por azar; SUELO se re-mira a los 30 casos.
+- Resto con pocos casos: solo orientativo. Señales del plan (NIVEL, PÁNICO, BALA…): se miden a 20 sesiones desde ~22-dic.
+- **Cesta semanal:** la de la semana pasada (INDA y FIW) subió ≈ +2,5 % frente al +5,6 % del SPY; en total mejor que el SPY 5 de 13 semanas.
+
+## 5. Investigación (viernes)
+**I-006 · ¿Importa lo rápido que la caída del S&P va del −5 % al −10 %? → DESCARTADA** (estudio en `agente/estudios/i006.*`; reglas fijadas el 20-nov).
+- Qué miré: las 48 caídas del S&P desde 1927 que tocaron −10 % (45 usables; las 3 de 2023 en adelante, la caja, sin abrir). Y si después llegaron a −20 %.
+- Resultado: de las **rápidas** (del −5 % al −10 % en 15 sesiones o menos) llegaron a −20 % 6 de 23 (unas 3 de cada 10; margen: de 1 a 5 de cada 10). De las **lentas**, 12 de 22 (5-6 de cada 10; margen: de 3 a 7 de cada 10). En general, 4 de cada 10 caídas de −10 % siguieron hasta −20 %.
+- Lo que dice: en las dos mitades de la historia (1927-74 y 1975-2022) las rápidas se alargan **menos**, no más; pero el contraste no pasa el listón que me puse (p = 0,07; hacía falta menos de 0,05) y depende de 3 casos. Con otra definición razonable de «llegar a −20 %» la diferencia se encoge a la mitad. **No es una regla.**
+- La caída de 2026 es «rápida» (11 sesiones). Frecuencia histórica, no una predicción: y el SPY ya ha rebotado a −6,8 %, así que ese dato ya no describe dónde estamos.
+- Variantes miradas: 3 (V = 10, 15 y 20; V = 10 «no concluyente» por pocos casos, V = 20 sale igual que 15). Ideas probadas en total: 5, todas descartadas.
 
 ## 5b. Fondeo
-**Reto en la sombra (desde 9-nov, plan entero 1 %, caídas a medio riesgo):** saldo −0,3 %, peor momento −0,75 % (límites: −6 % The5ers, objetivo +10 %). 10 operaciones: 6 del motor 1 (5 ganadas, 1 perdida) y 4 de caída.
-- ⚠️ **Dos operaciones de caída parecen abiertas ahora**, aunque el fichero las marque cerradas: entraron el 25-nov a las 23:01 (UTC) y los datos de OANDA se cortan el 26-nov ~08:00 UTC, así que la tabla las «cierra» al último precio (Nasdaq +0,23 R, S&P +0,10 R, a medio peso). No es un resultado real. Las pérdidas anteriores de caída (−1,02 R las dos, 17-20 nov) fueron una a la vez en los dos índices.
-- Motor 1: EUR/JPY 2 ganadas, S&P 2 ganadas, Nasdaq 1 ganada y 1 perdida (−1,02 R el 16-nov).
-- **Vigilancia de la caída (F-021): sin ⚠️.** Nasdaq: R medio de las 20 últimas −0,10 (histórico +0,12; en la historia estuvieron bajo 0 el 26 % del tiempo): normal. S&P: +0,09, normal. Nuevas desde el 9-nov: Nasdaq 2 operaciones (−0,39 R medio), S&P 2 (−0,46); pocas para concluir.
-
-**Tres ideas nuevas (escritas antes de probar, en `fondeo/ideas.md`):** F-027 Russell 2000 con las mismas reglas (ángulo c); F-028 cerrar la caída a las 72 h si no está por encima de la entrada (ángulo b); F-029 la segunda caída entra a peso 0,25 si la otra ya está abierta (ángulo a).
-**Elegida: F-027** (el Russell estaba como «aún no probado»; más operaciones habría acelerado el reto).
-**Resultado: descartada.** Motor 1 en Russell: N 349, **−0,12 R** de media (t −2,27); en 2023-26 −0,31 R (t −2,74), peor que entrar al azar. Caída en Russell: N 480, +0,03 R (t 0,67), no distinguible del azar. Añadirlas al plan en The5ers empeora la quema: en 2016-22 pasa de 24 % a 30-38 %, y en 2023-26 de 0 % a 2-11 %; solo acelera algo el «≤3 meses» en 2003-22. Cuenta: 5 variantes + 2 diagnósticos; contador de fondeo 15 ideas probadas. Estudio en `agente/fondeo/estudios/F-027.*`.
+Hoy no toca (martes y jueves). Sin cambios en lo pendiente: `fondeo_base.md` no se ha generado hoy.
 
 ## 6. Propuestas para Pe
-1. **Arreglar el plan de rebajas para que lea el Nasdaq** (`rotacion.py` ~24898). Lo desmentiría: que «Hoy» ya muestre filas del Nasdaq.
-2. **Ampliar el cable de señales** (`rotacion.py` ~3031, `[-60:]`) antes del 2-dic.
+1. **Arreglar el Nasdaq del Plan de rebajas** (`rotacion.py` ~24898). Lo desmentiría: que «Hoy» ya muestre filas del Nasdaq y avise del paso a normal.
+2. **Ampliar el cable de señales** (`rotacion.py` 3031, `[-60:]`) antes del mié 2-dic; si no, se empiezan a borrar días.
 
 ## 7. Lo que necesito de Pe
-- Subir el arreglo de `agente/preparar.py` (línea ~237: `start=str(desde)` → `start=pd.Timestamp(desde).strftime("%Y-%m-%d")`) o decirme que no importa.
-- Decidir lo del Nasdaq del plan y lo del cable. Nada más. No digo compra ni vende: la terminal marca y tú decides.
+- Subir el arreglo de `agente/preparar.py` (línea 237: `start=str(desde)` → `start=pd.Timestamp(desde).strftime("%Y-%m-%d")`) o decirme que no importa.
+- Decidir lo del Nasdaq y lo del cable (arriba). Nada más. No digo compra ni vende: la terminal marca y tú decides.
+
+## Semana (20 → 27-nov)
+- **Mercado:** SPY +5,6 %, QQQ +7,0 %, IWM +6,7 %, DIA +5,5 %, RSP +5,3 %, oro +3,6 %, TLT −0,2 %. VIX de 35,9 a 23,8; cociente VIX/VIX3M de 1,16 a 0,9996 (pánico vivo del 20 al 27-nov). Bono 10 años 4,91 → 4,94 %.
+- **Plan de rebajas:** nada nuevo esta semana salvo el paso a normal del S&P −10 % (23-nov). Pendiente: Nasdaq −20 % (línea 659,92).
+- **Marcador:** sin señal que se pueda juzgar con 30 casos; GIRO sin señal propia tras el control de azar.
+- **Investigación:** I-006 (velocidad de la caída) descartada; ideas probadas: 5. El viernes 4-dic va I-008 (el bono de Pe: 4,5 %) y el 11-dic I-010 (la tabla del miedo de «Caída en curso», que hoy subió el suelo a 72 %).
+- **Pendientes para decidir hoy:** (1) Nasdaq del plan, (2) cable de 60 fechas antes del 2-dic, (3) subir el arreglo de `preparar.py`, (4) el importe total del plan sigue escrito en `rotacion.py` línea 24842 (repositorio público), (5) faltan las series de la Fed (`fred_*.csv`): la recesión sale de una sola fuente.

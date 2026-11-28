@@ -60,7 +60,7 @@ _(22-nov-2026: este registro se restauró desde git, versión del 20-nov; la sub
 - La tumba: diferencia < 15 puntos en cualquiera de las dos mitades, signo distinto, o alguna celda con N < 8 (entonces «no concluyente»).
 - Variantes máximas: 3 (V = 10, 15 y 20 sesiones; la principal es V = 15).
 - Aviso previo: es una pregunta sobre el S&P (SPY), no sobre el QQQ ni los apalancados; es frecuencia histórica, no predicción.
-- Estado: EN COLA (para el viernes 27-nov-2026).
+- Estado: DESCARTADA (27-nov-2026). Ver estudios/i006.md. Principal V = 15 (45 episodios usables; caja sin abrir): rápidas 6 de 23 (26 %) llegan a −20 %, lentas 12 de 22 (55 %); diferencia −28 pts, misma dirección en las dos mitades (−28 y −23) pero Fisher p = 0,07 (listón < 0,05). Dirección contraria a la intuición. V = 10 no concluyente (N < 8); V = 20 idéntica a 15. Frágil: depende de 3 casos lentos. La caída de 2026 tiene v = 11 (rápida).
 
 ## I-007 · Volumen en dólares de los ETF apalancados «de compra»: ¿añade algo al pánico agudo y a la rendición total?
 - Apuntada el 22-nov-2026 (sesión semanal del domingo), ANTES de calcular nada (ni siquiera he mirado los volúmenes).
@@ -105,6 +105,14 @@ _(22-nov-2026: este registro se restauró desde git, versión del 20-nov; la sub
 - La confirma: cada alarma roja coincide con ≥ 2 de cada 3 recesiones y da ≤ 1 falsa alarma por década. La tumba: lo contrario.
 - Estado: EN COLA (para un viernes, cuando haya series guardadas).
 
+## I-010 · La tabla del miedo de «Caída en curso»: ¿«se fue el pánico» = 8 de cada 10 caídas ya con el suelo hecho?
+- Apuntada el 27-nov-2026, sin calcular nada.
+- De dónde sale: `rotacion.py` línea 24036 (`CAI_FH`/`CAI_FN`, tabla del Radar de TradingView, S&P 2009-2026): suelo ya hecho en el 84 % de las caídas con el miedo en «SE FUE», pero con **N = 10** (PÁNICO VIVO 57 % N 10; ALIVIO 83 % N 21; tensión 47 % N 39; calma 52 % N 40). Hoy ese 84 % subió el «suelo» de la terminal de 58 % a 72 %.
+- Pregunta: con VIX/VIX3M de CBOE (`historiales/`) y el S&P ajustado, ¿se reproduce esa tabla? ¿qué es «suelo hecho» y cómo define el código cada estado (`_cai_miedo`)?
+- Regla exacta: SE ESCRIBE EL VIERNES, leyendo `_cai_miedo` y la definición de «suelo hecho», ANTES de calcular. Mismos trozos (aprender ≤2018, comprobar 2019-22, caja 2023+ cerrada) y azar justo. Variantes máximas: 3.
+- La confirma: la tabla se reproduce con N ≥ 30 en «SE FUE» (episodios separados) y el margen de Wilson deja el suelo hecho por encima del estado «calma». La tumba: lo contrario, o que la definición de «suelo hecho» no se pueda reconstruir.
+- Estado: EN COLA (primero va I-008, el bono de Pe, el viernes 4-dic; esta, el 11-dic).
+
 ---
 
-Contador de ideas probadas (cuantas más, más exigente hay que ser): **4** (I-002, I-004, I-005 e I-007; todas descartadas). I-001 se cerró sin probarla como idea propia (control de azar del marcador).
+Contador de ideas probadas (cuantas más, más exigente hay que ser): **5** (I-002, I-004, I-005, I-006 e I-007; todas descartadas). I-001 se cerró sin probarla como idea propia (control de azar del marcador).

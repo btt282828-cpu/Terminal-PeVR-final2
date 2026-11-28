@@ -1,13 +1,13 @@
-🤖 Compañero (sin IA) · jue 26-11
-🟠 Sistema: semaforo_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo o  | estructura_estado.json: no tiene el día 2026-11-26 (última 2026-11-25); puede ser festivo 
-📉 Caídas: SPY -8,3 %, RSP -3,8 %, DIA -7,9 %, QQQ -16,9 %, IWM -11,7 %, MAGS -13,0 % · VIX 28,3
-🔥 Pánico vivo desde el 20-11: se va cuando VIX/VIX3M baje de 1,0 (hoy 1,08)
-🔢 Nota de los índices (no es una orden): SPY 1, QQQ 1, DIA 3, IWM 2, RSP 5, MAGS 1
+🤖 Compañero (sin IA) · vie 27-11
+🟠 Sistema: aviso NUEVO en SALUD DEL BUILD → panel.semanal: cierre semanal ARRASTRADO 1 sem (sin dato 
+📉 Caídas: SPY -6,8 %, DIA -6,8 %, QQQ -14,7 %, IWM -10,1 %, MAGS -11,0 % · VIX 23,8
+🟢 HOY SE VA EL PÁNICO (VIX/VIX3M 1,00)
+🔢 Nota de los índices (no es una orden): SPY 2, QQQ 1, DIA 3, IWM 2, RSP 6, MAGS 1
 🧩 Dinero: SALE DE TODO (entran 1 sectores, salen 5) · centinela LIQUIDEZ
-🏦 Bono 10 años 4,85 % (línea 4,5 %; un mes -14 pb) · MOVE 98
+🏦 Bono 10 años 4,94 % (línea 4,5 %; un mes -11 pb) · MOVE 95
 🛒 S&P 500 −10 %: comprado el 2026-11-20 en x3; pasado a normal el 2026-11-23
-🛒 S&P 500 −15 %: en 664,38 (falta -7,3 %): 10 % del plan en S&P 500 x3
-🛒 S&P 500 −20 %: en 625,30 (falta -12,8 %): 10 % del plan en S&P 500 x2
-🧾 Marcador (≥30 casos): GIRO↓ acierta 73 % (IC 56–85); GIRO↑ acierta 26 % (IC 14–42)
-🧺 Cesta semanal: mejor que el SPY 5 de 12 semanas
-📡 Cable: 15 señales
+🛒 S&P 500 −15 %: en 664,38 (falta -8,8 %): 10 % del plan en S&P 500 x3
+🛒 S&P 500 −20 %: en 625,30 (falta -14,1 %): 10 % del plan en S&P 500 x2
+🧾 Marcador (≥30 casos): GIRO↓ acierta 73 % (IC 56–85); GIRO↑ acierta 24 % (IC 13–39)
+🧺 Cesta semanal: mejor que el SPY 5 de 13 semanas
+📡 Cable: 19 señales · SE VA EL PÁNICO SPY
